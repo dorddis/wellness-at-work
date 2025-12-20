@@ -97,7 +97,8 @@ export default function App() {
   } = useSessionStore();
 
   const { alerts, addAlert, dismissAlert } = useAlertStore();
-n  // Camera state
+
+  // Camera state
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const currentStreamRef = useRef<MediaStream | null>(null);
