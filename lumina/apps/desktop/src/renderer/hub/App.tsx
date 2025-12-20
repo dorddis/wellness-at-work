@@ -72,7 +72,11 @@ type View = 'dashboard' | 'monitor' | 'history' | 'settings';
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const animationRef = useRef<number>(0);
+  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRollupTimeRef = useRef<number>(0);
+  const minuteBlinkCountRef = useRef<number>(0);
+  const minuteEarSumRef = useRef<number>(0);
+  const minuteEarCountRef = useRef<number>(0);
 
   // Auth state
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -213,33 +217,72 @@ export default function App() {
     setAuthUser(null);
   }, []);
 
-  // Initialize MediaPipe and camera (only after auth)
+  // Initialize MediaPipe only (expensive, do once on auth)
   useEffect(() => {
-    if (!authUser) return; // Don't init until authenticated
-    async function init() {
+    if (!authUser) return;
+
+    async function initMediaPipe() {
       try {
-        setIsLoading(true);
-        setError(null);
-
-        console.log('[Camera] Starting initialization...');
-
-        // List available cameras
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(d => d.kind === 'videoinput');
-        console.log('[Camera] Available cameras:', videoDevices.map(d => ({ id: d.deviceId, label: d.label })));
-        setCameras(videoDevices);
-
-        console.log('[Camera] Initializing MediaPipe FaceLandmarker...');
+        console.log('[MediaPipe] Initializing FaceLandmarker...');
         await landmarkerManager.initialize({
           delegate: 'GPU',
           runningMode: 'VIDEO',
         });
-        console.log('[Camera] MediaPipe initialized');
+        console.log('[MediaPipe] Initialized successfully');
 
-        console.log('[Camera] Requesting camera access...');
+        // List available cameras (for UI)
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        console.log('[Camera] Available cameras:', videoDevices.length);
+        setCameras(videoDevices);
+
+        setIsLoading(false);
+      } catch (err) {
+        console.error('[MediaPipe] Initialization error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to initialize MediaPipe');
+        setIsLoading(false);
+      }
+    }
+
+    initMediaPipe();
+
+    return () => {
+      landmarkerManager.close();
+    };
+  }, [authUser]);
+
+  // Start camera when detection starts, stop when it stops
+  useEffect(() => {
+    if (!isDetecting) {
+      // Stop camera when detection stops
+      if (currentStreamRef.current) {
+        console.log('[Camera] Stopping camera...');
+        currentStreamRef.current.getTracks().forEach(track => track.stop());
+        currentStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      setIsVideoReady(false);
+      return;
+    }
+
+    // Start camera when detection starts
+    let mounted = true;
+
+    async function startCamera() {
+      try {
+        console.log('[Camera] Starting camera...');
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         });
+
+        if (!mounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
         console.log('[Camera] Got stream:', stream.getVideoTracks()[0]?.label);
         currentStreamRef.current = stream;
 
@@ -247,94 +290,129 @@ export default function App() {
           const video = videoRef.current;
           video.srcObject = stream;
 
-          // Wait for video to have actual data (not just metadata)
+          // Wait for video to be ready with polling
           await new Promise<void>((resolve, reject) => {
-            const checkReady = () => {
+            let attempts = 0;
+            const maxAttempts = 100; // 5 seconds max
+
+            const checkVideo = () => {
+              if (!mounted) {
+                reject(new Error('Unmounted'));
+                return;
+              }
+
               if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-                console.log('[Camera] Video ready:', video.videoWidth, 'x', video.videoHeight, 'readyState:', video.readyState);
+                console.log('[Camera] Video ready:', video.videoWidth, 'x', video.videoHeight);
                 resolve();
-                return true;
+                return;
               }
-              return false;
-            };
 
-            // Check if already ready
-            if (checkReady()) return;
-
-            // Listen for canplay event (readyState >= 3)
-            const onCanPlay = () => {
-              console.log('[Camera] canplay event, readyState:', video.readyState);
-              if (checkReady()) {
-                video.removeEventListener('canplay', onCanPlay);
+              attempts++;
+              if (attempts >= maxAttempts) {
+                reject(new Error('Video timeout - no dimensions after 5s'));
+                return;
               }
-            };
-            video.addEventListener('canplay', onCanPlay);
 
-            // Also try loadeddata (readyState >= 2)
-            video.onloadeddata = () => {
-              console.log('[Camera] loadeddata event, dimensions:', video.videoWidth, 'x', video.videoHeight);
-              checkReady();
+              setTimeout(checkVideo, 50);
             };
 
-            video.onerror = () => reject(new Error('Video error'));
-            setTimeout(() => reject(new Error('Video ready timeout - no dimensions after 10s')), 10000);
+            // Start playing first, then check
+            video.play().then(() => {
+              console.log('[Camera] Video.play() called');
+              checkVideo();
+            }).catch(reject);
           });
 
-          await video.play();
-          setIsVideoReady(true);
-          console.log('[Camera] Video playing, dimensions:', video.videoWidth, 'x', video.videoHeight);
+          if (mounted) {
+            setIsVideoReady(true);
+            console.log('[Camera] Camera ready and playing');
+          }
         }
-
-        setIsLoading(false);
-        console.log('[Camera] Initialization complete');
       } catch (err) {
-        console.error('[Camera] Initialization error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize');
-        setIsLoading(false);
+        if (mounted) {
+          console.error('[Camera] Error:', err);
+          setError(err instanceof Error ? err.message : 'Camera error');
+        }
       }
     }
 
-    init();
+    startCamera();
 
     return () => {
-      landmarkerManager.close();
-      if (videoRef.current?.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach((track) => track.stop());
+      mounted = false;
+    };
+  }, [isDetecting]);
+
+
+  // Start/stop detection loop - uses setInterval to work in background
+  useEffect(() => {
+    // Only start detection when video is actually ready
+    if (isDetecting && isVideoReady) {
+      // Run detection at ~30fps (33ms interval)
+      // Using setInterval instead of requestAnimationFrame so it runs in background
+      detectionIntervalRef.current = setInterval(() => {
+        const video = videoRef.current;
+        if (!video || !landmarkerManager.isReady()) return;
+
+        // Wait for video to have valid data
+        if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+          return;
+        }
+
+        const result = landmarkerManager.processVideoFrame(video);
+        if (result) {
+          setFaceDetected(result.rawLandmarks !== null);
+
+          if (result.blink.isBlink) {
+            recordBlink(result.blink.avgEAR);
+            window.lumina?.database.insertBlink(Date.now(), result.blink.avgEAR, true);
+            window.lumina?.detection.sendBlink({ ear: result.blink.avgEAR, timestamp: Date.now() });
+
+            // Track for minute rollups
+            minuteBlinkCountRef.current++;
+            minuteEarSumRef.current += result.blink.avgEAR;
+            minuteEarCountRef.current++;
+          }
+
+          // Create minute rollup every 60 seconds
+          const now = Date.now();
+          if (lastRollupTimeRef.current === 0) {
+            lastRollupTimeRef.current = now;
+          } else if (now - lastRollupTimeRef.current >= 60000) {
+            const avgEar = minuteEarCountRef.current > 0
+              ? minuteEarSumRef.current / minuteEarCountRef.current
+              : null;
+
+            window.lumina?.database.insertRollup(
+              lastRollupTimeRef.current,
+              minuteBlinkCountRef.current,
+              avgEar
+            );
+            console.log('[Rollup] Created:', {
+              blinks: minuteBlinkCountRef.current,
+              avgEar: avgEar?.toFixed(3)
+            });
+
+            lastRollupTimeRef.current = now;
+            minuteBlinkCountRef.current = 0;
+            minuteEarSumRef.current = 0;
+            minuteEarCountRef.current = 0;
+          }
+        }
+      }, 33); // ~30fps
+    } else {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        detectionIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (detectionIntervalRef.current) {
+        clearInterval(detectionIntervalRef.current);
+        detectionIntervalRef.current = null;
       }
     };
-  }, [authUser]);
-
-  // Detection loop
-  const runDetection = useCallback(() => {
-    if (!videoRef.current || !isDetecting || !landmarkerManager.isReady()) {
-      return;
-    }
-
-    const result = landmarkerManager.processVideoFrame(videoRef.current);
-
-    if (result) {
-      setFaceDetected(result.rawLandmarks !== null);
-
-      if (result.blink.isBlink) {
-        recordBlink(result.blink.avgEAR);
-        window.lumina?.database.insertBlink(Date.now(), result.blink.avgEAR, true);
-        window.lumina?.detection.sendBlink({ ear: result.blink.avgEAR, timestamp: Date.now() });
-      }
-    }
-
-    animationRef.current = requestAnimationFrame(runDetection);
-  }, [isDetecting, setFaceDetected, recordBlink]);
-
-  // Start/stop detection loop
-  useEffect(() => {
-    if (isDetecting) {
-      animationRef.current = requestAnimationFrame(runDetection);
-    } else {
-      cancelAnimationFrame(animationRef.current);
-    }
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [isDetecting, runDetection]);
+  }, [isDetecting, isVideoReady, setFaceDetected, recordBlink]);
 
   // Update blink rate periodically and evaluate alerts
   useEffect(() => {
