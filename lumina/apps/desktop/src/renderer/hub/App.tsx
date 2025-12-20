@@ -211,7 +211,16 @@ export default function App() {
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          
+          // Wait for video metadata to load before playing
+          await new Promise<void>((resolve) => {
+            const video = videoRef.current!;
+            if (video.readyState >= 1) { resolve(); return; }
+            video.onloadedmetadata = () => resolve();
+          });
+
           await videoRef.current.play();
+          console.log("Video playing:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
         }
 
         setIsLoading(false);
@@ -236,6 +245,13 @@ export default function App() {
   // Detection loop
   const runDetection = useCallback(() => {
     if (!videoRef.current || !isDetecting || !landmarkerManager.isReady()) {
+      return;
+    }
+
+    // Wait for video to have valid dimensions
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
+      animationRef.current = requestAnimationFrame(runDetection);
       return;
     }
 
