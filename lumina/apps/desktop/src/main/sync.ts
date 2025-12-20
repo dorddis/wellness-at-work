@@ -6,6 +6,7 @@
 import { initializeSupabase, getSupabase, syncWellnessData, type MinuteRollup } from '@lumina/api';
 import { DatabaseManager } from './database';
 import Store from 'electron-store';
+import { net } from 'electron';
 
 // Safe logger that catches EPIPE errors (broken pipe when stdout is closed)
 function safeLog(...args: unknown[]): void {
@@ -167,7 +168,7 @@ export class SyncService {
       return { synced: 0, failed: 0, errors: ['Not configured'] };
     }
 
-    if (!navigator.onLine) {
+    if (!net.isOnline()) {
       safeLog('Sync: Offline, skipping');
       return { synced: 0, failed: 0, errors: ['Offline'] };
     }

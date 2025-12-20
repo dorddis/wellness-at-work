@@ -102,6 +102,7 @@ export default function App() {
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
   const currentStreamRef = useRef<MediaStream | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Local state
   const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +130,26 @@ export default function App() {
   // Check auth on mount
   useEffect(() => {
     async function checkAuth() {
+      // DEV MODE: Bypass auth with mock user
+      if (import.meta.env.DEV) {
+        console.log('[Auth] Dev mode - using mock user');
+        const mockUser: AuthUser = {
+          id: 'dev-user-123',
+          email: 'dev@lumina.local',
+          organization: {
+            id: 'dev-org-123',
+            name: 'Dev Organization',
+            slug: 'dev-org',
+            role: 'admin',
+            department: 'Engineering',
+          },
+        };
+        setAuthUser(mockUser);
+        await window.lumina.sync.setCredentials(mockUser.organization!.id, mockUser.id);
+        setAuthChecked(true);
+        return;
+      }
+
       try {
         const result = await window.lumina.auth.getUser();
         if (result.user && result.user.organization) {
@@ -200,32 +221,74 @@ export default function App() {
         setIsLoading(true);
         setError(null);
 
+        console.log('[Camera] Starting initialization...');
+
+        // List available cameras
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        console.log('[Camera] Available cameras:', videoDevices.map(d => ({ id: d.deviceId, label: d.label })));
+        setCameras(videoDevices);
+
+        console.log('[Camera] Initializing MediaPipe FaceLandmarker...');
         await landmarkerManager.initialize({
           delegate: 'GPU',
           runningMode: 'VIDEO',
         });
+        console.log('[Camera] MediaPipe initialized');
 
+        console.log('[Camera] Requesting camera access...');
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         });
+        console.log('[Camera] Got stream:', stream.getVideoTracks()[0]?.label);
+        currentStreamRef.current = stream;
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          
-          // Wait for video metadata to load before playing
-          await new Promise<void>((resolve) => {
-            const video = videoRef.current!;
-            if (video.readyState >= 1) { resolve(); return; }
-            video.onloadedmetadata = () => resolve();
+          const video = videoRef.current;
+          video.srcObject = stream;
+
+          // Wait for video to have actual data (not just metadata)
+          await new Promise<void>((resolve, reject) => {
+            const checkReady = () => {
+              if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+                console.log('[Camera] Video ready:', video.videoWidth, 'x', video.videoHeight, 'readyState:', video.readyState);
+                resolve();
+                return true;
+              }
+              return false;
+            };
+
+            // Check if already ready
+            if (checkReady()) return;
+
+            // Listen for canplay event (readyState >= 3)
+            const onCanPlay = () => {
+              console.log('[Camera] canplay event, readyState:', video.readyState);
+              if (checkReady()) {
+                video.removeEventListener('canplay', onCanPlay);
+              }
+            };
+            video.addEventListener('canplay', onCanPlay);
+
+            // Also try loadeddata (readyState >= 2)
+            video.onloadeddata = () => {
+              console.log('[Camera] loadeddata event, dimensions:', video.videoWidth, 'x', video.videoHeight);
+              checkReady();
+            };
+
+            video.onerror = () => reject(new Error('Video error'));
+            setTimeout(() => reject(new Error('Video ready timeout - no dimensions after 10s')), 10000);
           });
 
-          await videoRef.current.play();
-          console.log("Video playing:", videoRef.current.videoWidth, "x", videoRef.current.videoHeight);
+          await video.play();
+          setIsVideoReady(true);
+          console.log('[Camera] Video playing, dimensions:', video.videoWidth, 'x', video.videoHeight);
         }
 
         setIsLoading(false);
+        console.log('[Camera] Initialization complete');
       } catch (err) {
-        console.error('Initialization error:', err);
+        console.error('[Camera] Initialization error:', err);
         setError(err instanceof Error ? err.message : 'Failed to initialize');
         setIsLoading(false);
       }
@@ -245,13 +308,6 @@ export default function App() {
   // Detection loop
   const runDetection = useCallback(() => {
     if (!videoRef.current || !isDetecting || !landmarkerManager.isReady()) {
-      return;
-    }
-
-    // Wait for video to have valid dimensions
-    const video = videoRef.current;
-    if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) {
-      animationRef.current = requestAnimationFrame(runDetection);
       return;
     }
 
@@ -888,18 +944,33 @@ function MonitorView({
 
   // Draw video to visible canvas
   useEffect(() => {
-    if (!isDetecting || !videoRef.current || !canvasRef.current) return;
+    if (!isDetecting || !videoRef.current || !canvasRef.current) {
+      console.log('[MonitorView] Draw skipped:', { isDetecting, hasVideo: !!videoRef.current, hasCanvas: !!canvasRef.current });
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      console.log('[MonitorView] No canvas context');
+      return;
+    }
 
+    console.log('[MonitorView] Starting draw loop, video readyState:', video.readyState, 'dimensions:', video.videoWidth, 'x', video.videoHeight);
+
+    let frameCount = 0;
     const draw = () => {
       if (video.readyState >= 2) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
+        if (frameCount === 0) {
+          console.log('[MonitorView] First frame drawn, canvas:', canvas.width, 'x', canvas.height);
+        }
+        frameCount++;
+      } else if (frameCount === 0) {
+        console.log('[MonitorView] Waiting for video, readyState:', video.readyState);
       }
       if (isDetecting) {
         requestAnimationFrame(draw);
