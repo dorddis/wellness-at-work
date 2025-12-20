@@ -1,0 +1,435 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                         WELLNESSGUARD ARCHITECTURE                            ║
+║                      "Simplicity + Privacy + Offline-First"                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│                              DESKTOP APPLICATION                              │
+│                           (PyQt6 - Cross-Platform)                            │
+│                                                                               │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                     LAYER 1: DETECTION ENGINE                            │ │
+│  │                    (100% On-Device Processing)                           │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  📹 Camera Input (640x480 @ 30 FPS)                                     │ │
+│  │      │                                                                   │ │
+│  │      ├──► Lighting Check ──► Zero-DCE Enhancement (if backlit/dark)     │ │
+│  │      │                                                                   │ │
+│  │      └──► MediaPipe FaceMesh (478 landmarks)                            │ │
+│  │               │                                                          │ │
+│  │               ├──► EYE Region (42 landmarks)                            │ │
+│  │               │      │                                                   │ │
+│  │               │      ├──► Confidence Filter (>0.7) ───► Handle Glasses  │ │
+│  │               │      │                                                   │ │
+│  │               │      └──► EAR Calculation ───────────► Blink Detection  │ │
+│  │               │           (Left + Right) / 2                             │ │
+│  │               │           Threshold: User-calibrated                     │ │
+│  │               │                                                          │ │
+│  │               └──► HEAD Position (33 landmarks)                         │ │
+│  │                      │                                                   │ │
+│  │                      └──► Posture Calculation ────────► Slouch Detection│ │
+│  │                           (Pitch, Yaw, Roll, Distance)                  │ │
+│  │                                                                          │ │
+│  │  🔒 PRIVACY GUARANTEE: No frames leave device, only metrics extracted   │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                         │
+│                                     ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                     LAYER 2: SMART ALERT ENGINE                          │ │
+│  │                        (Client-Side Logic)                               │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  Personal Baseline (Learned in first 2 hours):                          │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │  P50 (Median): 15 blinks/min          [Your Normal]                │ │ │
+│  │  │  P25 (Low):    11 blinks/min          [Alert if below]             │ │ │
+│  │  │  P75 (High):   19 blinks/min          [Unusually high]             │ │ │
+│  │  └────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                          │ │
+│  │  Context-Aware Alert Rules:                                             │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │  ❌ NEVER during meetings     (Calendar API check - next 15 min)   │ │ │
+│  │  │  ⏸️  DEFER during flow state   (Declining blinks + no breaks)      │ │ │
+│  │  │  🤫 SILENCE during quiet hours (User-defined: 22:00-08:00)        │ │ │
+│  │  │  ⏱️  COOLDOWN after dismissal  (10-20 min progressive backoff)    │ │ │
+│  │  │  📦 BATCH multiple alerts      (Wait 2 min, combine into one)      │ │ │
+│  │  └────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                          │ │
+│  │  Alert Decision Tree:                                                   │ │
+│  │  Current Blink Rate: 7/min  ──► Below P25? YES ──► Cooldown? NO        │ │
+│  │                                                   └──► Meeting? NO       │ │
+│  │                                                       └──► Flow? YES     │ │
+│  │                                                           └──► QUEUE     │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                         │
+│                                     ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                  LAYER 3: LOCAL DATA STORAGE                             │ │
+│  │                    (SQLite - Offline-First)                              │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  📊 Raw Events (24-hour retention):                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  blink_events      (timestamp, ear_value)                         │  │ │
+│  │  │  posture_samples   (timestamp, head_pos, score)                   │  │ │
+│  │  │  Auto-delete: > 24 hours old                                      │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  │  📈 Pre-Aggregated (Permanent):                                         │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  minute_rollups    (1-min avg: blinks/min, posture score)        │  │ │
+│  │  │  session_summaries (start, end, wellness score)                   │  │ │
+│  │  │  daily_summaries   (date, totals, grade A-F)                      │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  │  🔄 Sync Queue (7-day retention):                                       │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  sync_batches  (batch_id UUID, data JSON[], synced_at)           │  │ │
+│  │  │  Pending batches uploaded every 5 min                             │  │ │
+│  │  │  Idempotent: Safe to retry (UUID prevents duplicates)             │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                         │
+│                                     ▼                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                   LAYER 4: SYNC WORKER                                   │ │
+│  │                  (Background Thread)                                     │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  Every 5 minutes:                                                        │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │  1. Collect last 5 minute_rollups from SQLite                      │ │ │
+│  │  │  2. Create batch: { batch_id: UUID, user_id, data: [...] }        │ │ │
+│  │  │  3. POST /api/sync/batch (HTTPS to Supabase)                       │ │ │
+│  │  │  4. If success: Mark synced, delete from queue                     │ │ │
+│  │  │  5. If failure: Retry with exponential backoff                     │ │ │
+│  │  └────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                          │ │
+│  │  Offline handling:                                                       │ │
+│  │  ┌────────────────────────────────────────────────────────────────────┐ │ │
+│  │  │  ✓ Queue batches in SQLite (up to 7 days = 2,016 batches)         │ │ │
+│  │  │  ✓ On reconnect: Sync oldest first (FIFO)                          │ │ │
+│  │  │  ✓ Rate limit: Max 10 batches/min (prevent sync storm)            │ │ │
+│  │  └────────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+└───────────────────────────────┬───────────────────────────────────────────────┘
+                                │
+                                │ 🌐 HTTPS (Batched API Calls)
+                                │ Data Sent: Pre-aggregated metrics only
+                                │ NOT Sent: Video frames, images, raw events
+                                │
+┌───────────────────────────────┴───────────────────────────────────────────────┐
+│                                                                               │
+│                             SUPABASE CLOUD BACKEND                            │
+│                         (PostgreSQL as a Service)                             │
+│                                                                               │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                  COMPONENT 1: AUTHENTICATION                             │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  🔐 Supabase Auth (Built-in):                                           │ │
+│  │     ├── Email/Password (bcrypt hashing)                                 │ │
+│  │     ├── Google OAuth (one-click)                                        │ │
+│  │     ├── JWT Tokens (auto-refresh)                                       │ │
+│  │     └── Row Level Security (RLS) enforced                               │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │              COMPONENT 2: DATABASE (TimescaleDB Extension)               │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  📦 Hypertables (Time-Series Optimized):                                │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  minute_data (user_id, timestamp, metrics JSONB)                 │  │ │
+│  │  │    ├── Auto-partitioned by time chunks (1 week each)             │  │ │
+│  │  │    ├── Retention: 30 days (auto-delete older)                    │  │ │
+│  │  │    └── Index: (user_id, timestamp DESC)                          │  │ │
+│  │  │                                                                   │  │ │
+│  │  │  session_data (session_id, user_id, started_at, ended_at, ...)  │  │ │
+│  │  │    ├── Heartbeat field (last_heartbeat)                          │  │ │
+│  │  │    └── Cleanup job closes orphaned sessions (every 5 min)        │  │ │
+│  │  │                                                                   │  │ │
+│  │  │  alert_history (user_id, timestamp, type, dismissed)             │  │ │
+│  │  │    └── Used for alert fatigue analysis                           │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  │  📊 Continuous Aggregates (Auto-Maintained):                            │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  hourly_rollups  ──► Refreshed every 1 hour   (6-month retention)│  │ │
+│  │  │  daily_rollups   ──► Refreshed every 1 hour   (Forever)          │  │ │
+│  │  │  weekly_rollups  ──► Refreshed every 6 hours  (Forever)          │  │ │
+│  │  │                                                                   │  │ │
+│  │  │  Dashboard queries ONLY hit rollups (not raw minute_data)        │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  │  Storage Calculation (1,000 users):                                     │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  minute_data:    1K × 1,440 min/day × 30 days × 40 bytes = 1.7 GB│  │ │
+│  │  │  hourly_rollups: 1K × 24 hr/day × 180 days × 60 bytes   = 259 MB │  │ │
+│  │  │  daily_rollups:  1K × 365 days × 80 bytes               = 29 MB  │  │ │
+│  │  │  ─────────────────────────────────────────────────────────────── │  │ │
+│  │  │  Total: ~2 GB (fits Supabase Pro 8 GB with headroom)             │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │              COMPONENT 3: CONNECTION POOLING (Supavisor)                 │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  Transaction Mode Pooling (Port 6543):                                  │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  Pool Size: 40 connections (shared across all users)             │  │ │
+│  │  │  Lifecycle: Borrow → INSERT → Return (20ms per batch)            │  │ │
+│  │  │  Throughput: 40 × 50 writes/sec = 2,000 writes/sec capacity      │  │ │
+│  │  │  Actual load: 1,000 users ÷ 300 sec/batch = 3 writes/sec         │  │ │
+│  │  │  Headroom: 666x buffer for burst traffic                          │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  │  Handles 9 AM Monday burst automatically:                               │ │
+│  │     ✓ 500 users reconnect at once → Queued gracefully                  │ │
+│  │     ✓ Client-side random delays (0-5 min) spread load                  │ │
+│  │     ✓ Rate limiting (10 batches/min) prevents HTTP 429                 │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │              COMPONENT 4: EDGE FUNCTIONS (Optional)                      │ │
+│  ├─────────────────────────────────────────────────────────────────────────┤ │
+│  │                                                                          │ │
+│  │  Serverless TypeScript Functions:                                       │ │
+│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
+│  │  │  /api/sync/batch     ──► Validate batch_id, dedupe, INSERT       │  │ │
+│  │  │  /api/gdpr/export    ──► Generate CSV/JSON of user data          │  │ │
+│  │  │  /api/gdpr/delete    ──► Soft-delete user, trigger cleanup       │  │ │
+│  │  │  /api/weekly-report  ──► (Future) Email summary                  │  │ │
+│  │  └──────────────────────────────────────────────────────────────────┘  │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+└───────────────────────────────┬───────────────────────────────────────────────┘
+                                │
+                                │ 🌐 HTTPS (PostgREST API)
+                                │ Auto-generated REST endpoints from schema
+                                │
+┌───────────────────────────────┴───────────────────────────────────────────────┐
+│                                                                               │
+│                           WEB DASHBOARD (Next.js 14)                          │
+│                        (Static Site - Vercel/Netlify)                         │
+│                                                                               │
+├───────────────────────────────────────────────────────────────────────────────┤
+│                                                                               │
+│  🎨 Pages (React Server Components):                                         │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                          │ │
+│  │  /login                                                                  │ │
+│  │    ├── Supabase Auth UI (email + Google OAuth)                          │ │
+│  │    └── Redirect to /dashboard on success                                │ │
+│  │                                                                          │ │
+│  │  /dashboard (Today's Summary):                                           │ │
+│  │    ┌──────────────────────────────────────────────────────────────────┐ │ │
+│  │    │  Live Wellness Score: 78/100    [Recharts gauge]                 │ │ │
+│  │    │  Today's Blink Rate:  14/min    [Line chart - hourly rollups]    │ │ │
+│  │    │  Posture Quality:     82%       [Bar chart - hourly rollups]     │ │ │
+│  │    │  Session Duration:    2h 34m    [From session_data]              │ │ │
+│  │    └──────────────────────────────────────────────────────────────────┘ │ │
+│  │    Data source: Query daily_rollups (1 row = <1 KB)                     │ │
+│  │    Real-time: Supabase Realtime (session status only)                   │ │
+│  │                                                                          │ │
+│  │  /history (Trends):                                                      │ │
+│  │    ┌──────────────────────────────────────────────────────────────────┐ │ │
+│  │    │  Last 7 days:   [Line chart - daily_rollups]                     │ │ │
+│  │    │  Last 30 days:  [Line chart - daily_rollups]                     │ │ │
+│  │    │  Last 6 months: [Line chart - weekly_rollups]                    │ │ │
+│  │    └──────────────────────────────────────────────────────────────────┘ │ │
+│  │    Data source: 7-30 rows (not millions!)                               │ │
+│  │    Load time: <500ms (pre-aggregated data)                              │ │
+│  │                                                                          │ │
+│  │  /settings:                                                              │ │
+│  │    ┌──────────────────────────────────────────────────────────────────┐ │ │
+│  │    │  Alert Preferences (blink threshold, quiet hours)                │ │ │
+│  │    │  Calendar Integration (connect Google/Outlook)                   │ │ │
+│  │    │  GDPR: [Export My Data]  [Delete My Account]                    │ │ │
+│  │    └──────────────────────────────────────────────────────────────────┘ │ │
+│  │                                                                          │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  📊 Client-Side Queries (Supabase JS):                                       │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  const { data } = await supabase                                        │ │
+│  │    .from('daily_rollups')                                               │ │
+│  │    .select('*')                                                          │ │
+│  │    .gte('date', sevenDaysAgo)                                           │ │
+│  │    .order('date', { ascending: false });                                │ │
+│  │                                                                          │ │
+│  │  Row Level Security (RLS) ensures user_id = auth.uid()                  │ │
+│  │  No custom backend needed - PostgREST generates API automatically       │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  🚀 Deployment:                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  Vercel (Free Tier):                                                    │ │
+│  │    ✓ Static site export (next build && next export)                     │ │
+│  │    ✓ 100 GB bandwidth/month (1,000 users × 1 MB = 1 GB - plenty)       │ │
+│  │    ✓ Auto HTTPS, global CDN                                             │ │
+│  │    ✓ Zero server costs                                                  │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            KEY DESIGN DECISIONS                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. PRIVACY-FIRST
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✓ 100% on-device computer vision (MediaPipe runs locally)
+   ✓ NO frames sent to cloud (only metrics: 12 blinks/min, 75% posture)
+   ✓ Edge AI architecture (all inference on user's machine)
+   ✓ Compliance: GDPR-ready from day one
+
+2. OFFLINE-FIRST
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✓ SQLite local database (works 100% offline)
+   ✓ Sync queue (batches uploaded every 5 min when online)
+   ✓ Idempotent uploads (UUID batch_id prevents duplicates)
+   ✓ 7-day offline tolerance (2,016 batches = 100 KB)
+
+3. SIMPLE STACK
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✓ PyQt6 (desktop app - one codebase for Windows/macOS)
+   ✓ Supabase (auth + database + realtime - no custom backend)
+   ✓ Next.js (dashboard - static site, free hosting)
+   ✗ NO Kubernetes, Kafka, Redis, Microservices, etc.
+
+4. CLIENT-HEAVY
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✓ Alert engine runs in desktop app (zero server load)
+   ✓ Personal baseline calculated locally
+   ✓ Calendar integration via OS APIs (no cloud dependency)
+   ✓ Flow state detection client-side
+
+5. TIME-SERIES OPTIMIZED
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✓ TimescaleDB extension (auto-partitioning by time)
+   ✓ Continuous aggregates (pre-computed rollups)
+   ✓ Retention policies (auto-delete > 30 days)
+   ✓ Query rollups, not raw data (30 rows vs 25M rows)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                             COST & SCALABILITY                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────┬───────────────┬─────────────┬──────────────┬──────────────────┐
+│   Users     │   Supabase    │  Self-Host  │   Dashboard  │  Total/Month     │
+├─────────────┼───────────────┼─────────────┼──────────────┼──────────────────┤
+│   0-250     │   Free        │      -      │    Free      │   $0             │
+│   251-1K    │   Pro ($25)   │      -      │    Free      │   $25            │
+│   1K-4K     │   Pro ($25)   │      -      │    Free      │   $25            │
+│   4K-10K    │   Pro ($27)   │   DO ($60)  │    Free      │   $27-60         │
+│   10K-50K   │   Pro ($60)   │   DO ($60)  │   Vercel $20 │   $60-80         │
+│   50K-100K  │   Pro ($85)   │   DO ($60)  │   Vercel $20 │   $60-105        │
+└─────────────┴───────────────┴─────────────┴──────────────┴──────────────────┘
+
+Per-User Cost at Scale:
+  • 1,000 users:   $0.025/month  (2.5 cents)
+  • 10,000 users:  $0.003/month  (0.3 cents)
+  • 100,000 users: $0.0008/month (0.08 cents)
+
+Storage Efficiency (1,000 users):
+  • Raw blinks:        1.7 GB   (30-day retention)
+  • Hourly rollups:    259 MB   (6-month retention)
+  • Daily rollups:      29 MB   (forever retention)
+  • Total:              ~2 GB   (fits Supabase Pro 8 GB)
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          CRITICAL SIX SOLUTIONS                               ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. GLASSES DETECTION        MediaPipe confidence filtering + single-eye fallback
+2. LIGHTING ROBUSTNESS      Zero-DCE enhancement + Kalman smoothing
+3. ALERT FATIGUE           Calendar integration + flow detection + batching
+4. PRIVACY PERCEPTION      100% on-device processing + visual indicators
+5. BASELINE CALIBRATION    Auto-learn first 2 hours + percentile thresholds
+6. FLOW STATE              Detection algorithm + deferred alert queue
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                      SCALING CHALLENGE SOLUTIONS                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. OFFLINE SYNC STORM      Minute rollups (99% reduction) + rate limiting
+2. CONNECTION LIMITS       Batching + Supavisor pooling (3 writes/sec)
+3. DATA VOLUME            Retention policies (auto-delete > 30 days)
+4. QUERY PERFORMANCE      Continuous aggregates (30 rows, not 25M)
+5. ALERT LATENCY          Client-side engine (zero network)
+6. GDPR DELETION          Soft delete + background cleanup
+7. SESSION MANAGEMENT     Heartbeat + auto-close orphaned sessions
+8. SYNC IDEMPOTENCY       UUID batches + upsert safety
+9. TIER LIMITS            Free → Pro at 500 users ($25/month)
+10. BURST TRAFFIC         Randomized delays + pooler headroom
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            IMPLEMENTATION                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+MVP Timeline: 4 days
+
+  Day 1: Detection Engine
+    ✓ MediaPipe integration
+    ✓ Blink + Posture detection
+    ✓ Glasses handling
+
+  Day 2: Data & Sync
+    ✓ SQLite schema
+    ✓ Supabase setup
+    ✓ Sync worker
+
+  Day 3: Alerts & UI
+    ✓ Personal baseline
+    ✓ Calendar integration
+    ✓ System tray
+
+  Day 4: Dashboard & GDPR
+    ✓ Next.js dashboard
+    ✓ Charts (Recharts)
+    ✓ Export/Delete
+
+Polish: +1 week
+  ✓ Continuous aggregates
+  ✓ Retention policies
+  ✓ Packaging (PyInstaller)
+  ✓ User testing
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              TECH STACK                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Desktop App:    PyQt6 (Python)
+CV Library:     MediaPipe FaceMesh + Zero-DCE
+Local DB:       SQLite (offline queue)
+Backend:        Supabase (PostgreSQL + Auth + Realtime)
+Time-Series:    TimescaleDB Extension
+Dashboard:      Next.js 14 (React + Recharts)
+Hosting:        Vercel (free static site)
+CI/CD:          GitHub Actions (PyInstaller + tests)
+
+Total Technologies: 3 (PyQt, Supabase, Next.js)
+Total Cost (MVP): $0 (free tiers for first 250 users)

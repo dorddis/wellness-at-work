@@ -1,0 +1,144 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+
+/**
+ * Middleware for authentication and role-based routing
+ *
+ * Routes:
+ * - /login, /join: Public (redirect to dashboard if authenticated)
+ * - /dashboard/*: Requires authentication
+ * - /admin/*: Requires admin or manager role
+ */
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
+
+  // Skip middleware for static assets and API routes
+  if (
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/api') ||
+    request.nextUrl.pathname.includes('.')
+  ) {
+    return response;
+  }
+
+  // Create Supabase client
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }: { name: string; value: string }) =>
+            request.cookies.set(name, value)
+          );
+          response = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: CookieOptions }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  // Get current session
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // Auth callback route - always allow
+  if (pathname.startsWith('/auth/callback')) {
+    return response;
+  }
+
+  // Public routes - redirect to dashboard if authenticated
+  if (pathname === '/login' || pathname === '/join' || pathname.startsWith('/join/')) {
+    if (user) {
+      // Check if user has an organization
+      const { data: membership } = await supabase
+        .from('org_members')
+        .select('org_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) {
+        return NextResponse.redirect(new URL('/onboarding', request.url));
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    return response;
+  }
+
+  // Onboarding - requires auth but no org
+  if (pathname === '/onboarding') {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    // Check if user already has an org
+    const { data: membership } = await supabase
+      .from('org_members')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (membership) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    return response;
+  }
+
+  // Protected routes - require authentication and organization
+  if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+    if (!user) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Get user's organization membership
+    const { data: membership } = await supabase
+      .from('org_members')
+      .select('role, org_id')
+      .eq('user_id', user.id)
+      .single();
+
+    // User needs to join or create an org first
+    if (!membership) {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
+    }
+
+    // Admin routes - require admin or manager role
+    if (pathname.startsWith('/admin')) {
+      if (membership.role !== 'admin' && membership.role !== 'manager') {
+        // Redirect non-admins to employee dashboard
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    }
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (public folder)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
