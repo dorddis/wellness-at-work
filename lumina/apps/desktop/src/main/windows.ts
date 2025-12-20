@@ -58,6 +58,7 @@ export class WindowManager {
         nodeIntegration: false,
         sandbox: false, // Required for some native modules
         webSecurity: this.isDev ? false : true, // Allow WASM in dev
+        backgroundThrottling: false, // Keep running when app is in background
       },
     });
 
