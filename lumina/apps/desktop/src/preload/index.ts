@@ -41,6 +41,11 @@ export interface LuminaAPI {
     cleanup: () => Promise<void>;
     getRecentBlinks: (minutes: number) => Promise<number>;
     getSessionStats: (sessionStartTime: number) => Promise<SessionStats>;
+    // Wellness events
+    insertWellnessEvent: (timestamp: number, eventType: WellnessEventType, payload?: object) => Promise<void>;
+    getWellnessEvents: (startTime: number, endTime: number, eventType?: WellnessEventType) => Promise<WellnessEvent[]>;
+    getTodayWellnessStats: () => Promise<WellnessStats>;
+    getRecentWellnessEvents: (minutes: number) => Promise<WellnessEvent[]>;
   };
 
   // Detection Events
@@ -137,6 +142,30 @@ interface SessionStats {
   totalBlinks: number;
   avgEar: number;
   minuteCount: number;
+}
+
+// Wellness event types
+type WellnessEventType =
+  | 'yawn'
+  | 'posture_too_close'
+  | 'posture_too_far'
+  | 'posture_head_tilt'
+  | 'posture_forward_lean'
+  | 'drowsiness_mild'
+  | 'drowsiness_moderate'
+  | 'drowsiness_severe';
+
+interface WellnessEvent {
+  id?: number;
+  timestamp: number;
+  event_type: WellnessEventType;
+  payload: string | null;
+}
+
+interface WellnessStats {
+  yawnCount: number;
+  postureIssueCount: number;
+  drowsinessEventCount: number;
 }
 
 interface DetectionUpdate {
@@ -254,6 +283,14 @@ const luminaAPI: LuminaAPI = {
     getRecentBlinks: (minutes) => ipcRenderer.invoke('db:get-recent-blinks', minutes),
     getSessionStats: (sessionStartTime) =>
       ipcRenderer.invoke('db:get-session-stats', sessionStartTime),
+    // Wellness events
+    insertWellnessEvent: (timestamp, eventType, payload) =>
+      ipcRenderer.invoke('db:insert-wellness-event', timestamp, eventType, payload),
+    getWellnessEvents: (startTime, endTime, eventType) =>
+      ipcRenderer.invoke('db:get-wellness-events', startTime, endTime, eventType),
+    getTodayWellnessStats: () => ipcRenderer.invoke('db:get-today-wellness-stats'),
+    getRecentWellnessEvents: (minutes) =>
+      ipcRenderer.invoke('db:get-recent-wellness-events', minutes),
   },
 
   detection: {

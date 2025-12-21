@@ -171,6 +171,9 @@ export class SessionManager {
       avgEAR,
       sessionDurationMs: Date.now() - this.session.startedAt,
       baseline: this.calibrator.getBaseline(),
+      posture: null, // Session manager doesn't track posture - handled by FaceLandmarkerManager
+      yawn: null,    // Session manager doesn't track yawn - handled by FaceLandmarkerManager
+      drowsiness: null, // Session manager doesn't track drowsiness - handled by FaceLandmarkerManager
     };
   }
 

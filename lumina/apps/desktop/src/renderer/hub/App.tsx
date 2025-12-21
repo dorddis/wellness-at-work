@@ -14,7 +14,18 @@ import {
   ACHIEVEMENTS,
   type DayData,
 } from '@lumina/ui';
-import { FaceLandmarkerManager, AlertEngine, BaselineCalibrator, type WellnessMetrics, type Baseline } from '@lumina/core';
+import {
+  FaceLandmarkerManager,
+  AlertEngine,
+  BaselineCalibrator,
+  type WellnessMetrics,
+  type Baseline,
+  type FrameResult,
+  type PostureResult,
+  type YawnResult,
+  type DrowsinessResult,
+  type DrowsinessLevel,
+} from '@lumina/core';
 import luminaLogo from './assets/lumina-logo.png';
 import AuthScreen from './AuthScreen';
 
@@ -148,6 +159,13 @@ export default function App() {
   const [userBaseline, setUserBaseline] = useState<Baseline | null>(null);
   const [calibrationProgress, setCalibrationProgress] = useState(0);
   const [isCalibrating, setIsCalibrating] = useState(false);
+
+  // Wellness detection state (posture, yawn, drowsiness)
+  const [currentPosture, setCurrentPosture] = useState<PostureResult | null>(null);
+  const [currentYawn, setCurrentYawn] = useState<YawnResult | null>(null);
+  const [currentDrowsiness, setCurrentDrowsiness] = useState<DrowsinessResult | null>(null);
+  const lastYawnCountRef = useRef<number>(0);
+  const lastDrowsinessLevelRef = useRef<DrowsinessLevel>('alert');
 
   // Check auth on mount
   useEffect(() => {
@@ -392,6 +410,39 @@ export default function App() {
             minuteEarCountRef.current++;
           }
 
+          // Update wellness state (posture, yawn, drowsiness)
+          if (result.posture) {
+            setCurrentPosture(result.posture);
+          }
+          if (result.yawn) {
+            setCurrentYawn(result.yawn);
+            // Log new yawns to database
+            if (result.yawn.yawnCount > lastYawnCountRef.current) {
+              window.lumina?.database.insertWellnessEvent(
+                Date.now(),
+                'yawn',
+                { mar: result.yawn.mar }
+              );
+              lastYawnCountRef.current = result.yawn.yawnCount;
+            }
+          }
+          if (result.drowsiness) {
+            setCurrentDrowsiness(result.drowsiness);
+            // Log drowsiness level changes to database
+            if (result.drowsiness.drowsinessLevel !== lastDrowsinessLevelRef.current) {
+              const level = result.drowsiness.drowsinessLevel;
+              if (level !== 'alert') {
+                window.lumina?.database.insertWellnessEvent(
+                  Date.now(),
+                  level === 'mild' ? 'drowsiness_mild' :
+                    level === 'moderate' ? 'drowsiness_moderate' : 'drowsiness_severe',
+                  { perclos: result.drowsiness.perclos, recentYawns: result.drowsiness.recentYawns }
+                );
+              }
+              lastDrowsinessLevelRef.current = result.drowsiness.drowsinessLevel;
+            }
+          }
+
           // Create minute rollup every 60 seconds
           const now = Date.now();
           if (lastRollupTimeRef.current === 0) {
@@ -496,6 +547,9 @@ export default function App() {
         avgEAR: 0.25, // Default - would track from blinks
         sessionDurationMs: elapsedMs,
         baseline: userBaseline,
+        posture: currentPosture,
+        yawn: currentYawn,
+        drowsiness: currentDrowsiness,
       };
 
       const newAlerts = alertEngine.evaluate(metrics);
@@ -529,7 +583,7 @@ export default function App() {
     updateRate();
     const interval = setInterval(updateRate, 5000);
     return () => clearInterval(interval);
-  }, [isDetecting, sessionStartTime, blinkCount, faceDetected, updateBlinkRate, updateWellnessScore, addAlert, isCalibrating, userBaseline]);
+  }, [isDetecting, sessionStartTime, blinkCount, faceDetected, updateBlinkRate, updateWellnessScore, addAlert, isCalibrating, userBaseline, currentPosture, currentYawn, currentDrowsiness]);
 
   // Toggle detection
   const handleToggleDetection = () => {
@@ -779,6 +833,9 @@ export default function App() {
             onStartBreakNow={handleStartBreakNow}
             onPostponeBreak={handlePostponeBreak}
             postponesRemaining={postponesRemaining}
+            currentPosture={currentPosture}
+            currentYawn={currentYawn}
+            currentDrowsiness={currentDrowsiness}
           />
         )}
 
@@ -826,6 +883,9 @@ function DashboardView({
   onStartBreakNow,
   onPostponeBreak,
   postponesRemaining,
+  currentPosture,
+  currentYawn,
+  currentDrowsiness,
 }: {
   wellnessScore: number;
   blinkRate: number;
@@ -849,6 +909,9 @@ function DashboardView({
   onStartBreakNow: () => void;
   onPostponeBreak: () => void;
   postponesRemaining: number;
+  currentPosture: PostureResult | null;
+  currentYawn: YawnResult | null;
+  currentDrowsiness: DrowsinessResult | null;
 }) {
   // Access gamification stores
   const { streaks, todayProgress } = useStreakStore();
@@ -1126,7 +1189,11 @@ function DashboardView({
 
         {/* Posture Status */}
         <PostureStatusCard
-          status="unknown"
+          status={
+            !isDetecting ? 'unknown' :
+            !faceDetected ? 'unknown' :
+            currentPosture?.hasIssues ? 'poor' : 'good'
+          }
           goodPostureMinutes={streaks.good_posture.currentCount}
           totalMinutes={60}
           longestStreak={streaks.good_posture.longestCount}

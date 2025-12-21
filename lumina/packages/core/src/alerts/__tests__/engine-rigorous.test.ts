@@ -24,6 +24,9 @@ describe('AlertEngine - Rigorous Edge Cases', () => {
         blinkP50: 15,
         blinkP75: 18,
       },
+      posture: null,
+      yawn: null,
+      drowsiness: null,
       ...overrides,
     }
   }
@@ -618,6 +621,9 @@ describe('DEFAULT_ALERT_RULES conditions - Rigorous', () => {
       avgEAR: 0.3,
       sessionDurationMs: 30 * 60 * 1000,
       baseline: { blinkP25: 12, blinkP50: 15, blinkP75: 18 },
+      posture: null,
+      yawn: null,
+      drowsiness: null,
       ...overrides,
     }
   }

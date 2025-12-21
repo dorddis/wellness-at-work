@@ -16,6 +16,9 @@ describe('AlertEngine', () => {
         blinkP50: 15,
         blinkP75: 18,
       },
+      posture: null,
+      yawn: null,
+      drowsiness: null,
       ...overrides,
     }
   }
