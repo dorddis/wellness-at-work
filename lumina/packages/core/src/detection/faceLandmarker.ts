@@ -2,7 +2,11 @@
  * MediaPipe FaceLandmarker wrapper for Electron/browser environment
  * Uses @mediapipe/tasks-vision for face landmark detection
  *
- * Enhanced with automatic EAR calibration for per-user threshold optimization.
+ * Enhanced with:
+ * - Automatic EAR calibration for per-user threshold optimization
+ * - Posture detection (distance, tilt, lean)
+ * - Yawn detection (MAR-based)
+ * - Drowsiness detection (PERCLOS + yawn frequency)
  */
 
 import {
@@ -13,6 +17,9 @@ import {
 import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE, EAR_CALIBRATION } from './constants';
 import { BlinkDetector, BlinkDetectionResult, Point2D } from './blink';
 import { EARCalibrator, CalibrationState, EARCalibration } from './ear-calibrator';
+import { PostureAnalyzer, PostureResult } from './posture';
+import { YawnDetector, YawnResult } from './yawn';
+import { DrowsinessDetector, DrowsinessResult } from './drowsiness';
 
 export interface LandmarkerConfig {
   numFaces?: number;
@@ -32,8 +39,17 @@ export interface CalibrationInfo {
 }
 
 export interface FrameResult {
+  /** Blink detection result */
   blink: BlinkDetectionResult;
+  /** Posture analysis result */
+  posture: PostureResult | null;
+  /** Yawn detection result */
+  yawn: YawnResult | null;
+  /** Drowsiness detection result */
+  drowsiness: DrowsinessResult | null;
+  /** Raw face landmarks (478 points) */
   rawLandmarks: Point2D[] | null;
+  /** Frame timestamp (performance.now) */
   timestamp: number;
   /** Calibration status and progress */
   calibration: CalibrationInfo;
@@ -47,13 +63,20 @@ export class FaceLandmarkerManager {
   private faceLandmarker: FaceLandmarker | null = null;
   private blinkDetector: BlinkDetector;
   private earCalibrator: EARCalibrator | null = null;
+  private postureAnalyzer: PostureAnalyzer;
+  private yawnDetector: YawnDetector;
+  private drowsinessDetector: DrowsinessDetector;
   private isInitialized = false;
   private lastVideoTime = -1;
   private useCalibration: boolean;
+  private frameWidth: number = 640;
 
   constructor() {
     // Use enhanced detection with Kalman filter, spike detection, and eye quality tracking
     this.blinkDetector = BlinkDetector.createEnhanced();
+    this.postureAnalyzer = new PostureAnalyzer();
+    this.yawnDetector = new YawnDetector();
+    this.drowsinessDetector = new DrowsinessDetector();
     this.useCalibration = true;
   }
 
@@ -139,18 +162,24 @@ export class FaceLandmarkerManager {
   }
 
   /**
-   * Process a video frame and return blink detection results
+   * Process a video frame and return detection results
    *
    * @param videoElement HTMLVideoElement with webcam feed
-   * @returns Frame processing result with blink detection
+   * @param frameWidth Optional frame width for posture calculation
+   * @returns Frame processing result with all detections
    */
-  processVideoFrame(videoElement: HTMLVideoElement): FrameResult | null {
+  processVideoFrame(videoElement: HTMLVideoElement, frameWidth?: number): FrameResult | null {
     if (!this.faceLandmarker || !this.isInitialized) {
       console.error('FaceLandmarker not initialized. Call initialize() first.');
       return null;
     }
 
     const timestamp = performance.now();
+
+    // Update frame width if provided
+    if (frameWidth) {
+      this.frameWidth = frameWidth;
+    }
 
     // Skip if same frame (video not progressed)
     if (videoElement.currentTime === this.lastVideoTime) {
@@ -176,6 +205,9 @@ export class FaceLandmarkerManager {
           confidence: 0,
           threshold: this.blinkDetector.getThreshold(),
         },
+        posture: null,
+        yawn: null,
+        drowsiness: null,
         rawLandmarks: null,
         timestamp,
         calibration: this.getCalibrationInfo(),
@@ -208,8 +240,25 @@ export class FaceLandmarkerManager {
       }
     }
 
+    // Run posture detection
+    const postureResult = this.postureAnalyzer.update(landmarks, this.frameWidth);
+
+    // Run yawn detection
+    const yawnResult = this.yawnDetector.update(landmarks, timestamp);
+
+    // Feed data to drowsiness detector
+    this.drowsinessDetector.addFrame(
+      blinkResult.avgEAR,
+      yawnResult.isYawning,
+      timestamp
+    );
+    const drowsinessResult = this.drowsinessDetector.getDrowsiness(timestamp);
+
     return {
       blink: blinkResult,
+      posture: postureResult,
+      yawn: yawnResult,
+      drowsiness: drowsinessResult,
       rawLandmarks: landmarks,
       timestamp,
       calibration: this.getCalibrationInfo(),
@@ -275,6 +324,37 @@ export class FaceLandmarkerManager {
   }
 
   /**
+   * Get yawn count
+   */
+  getYawnCount(): number {
+    return this.yawnDetector.yawnCount;
+  }
+
+  /**
+   * Get posture analyzer (for calibration status)
+   */
+  getPostureAnalyzer(): PostureAnalyzer {
+    return this.postureAnalyzer;
+  }
+
+  /**
+   * Check if posture is calibrated
+   */
+  isPostureCalibrated(): boolean {
+    return this.postureAnalyzer.isCalibrated();
+  }
+
+  /**
+   * Reset all detectors
+   */
+  resetAll(): void {
+    this.blinkDetector.reset();
+    this.postureAnalyzer.reset();
+    this.yawnDetector.reset();
+    this.drowsinessDetector.reset();
+  }
+
+  /**
    * Cleanup resources
    * IMPORTANT: Must be called when done to prevent memory leaks
    */
@@ -287,6 +367,9 @@ export class FaceLandmarkerManager {
     this.lastVideoTime = -1;
     this.blinkDetector.reset();
     this.earCalibrator?.reset();
+    this.postureAnalyzer.reset();
+    this.yawnDetector.reset();
+    this.drowsinessDetector.reset();
   }
 }
 

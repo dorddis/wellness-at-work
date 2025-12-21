@@ -111,3 +111,111 @@ export const EYE_QUALITY = {
   /** Variance threshold below which eye is considered stable */
   QUALITY_THRESHOLD: 0.02,
 } as const;
+
+// ============================================================================
+// Posture Detection Configuration
+// Detects distance from screen, head tilt, and forward lean
+// ============================================================================
+
+/** Landmark indices for posture detection */
+export const LEFT_EYE_OUTER_INDEX = 33;
+export const RIGHT_EYE_OUTER_INDEX = 263;
+export const NOSE_TIP_INDEX = 1;
+
+/**
+ * Posture detection thresholds
+ */
+export const POSTURE = {
+  /** Ratio above which user is too close (face appears larger than baseline) */
+  DISTANCE_TOO_CLOSE_RATIO: 1.4,
+  /** Ratio below which user is too far (face appears smaller than baseline) */
+  DISTANCE_TOO_FAR_RATIO: 0.6,
+  /** Degrees of head tilt before considered an issue */
+  TILT_THRESHOLD_DEGREES: 10,
+  /** Nose-to-eye ratio deviation indicating forward lean */
+  LEAN_THRESHOLD: 0.15,
+  /** Frames needed for calibration baseline */
+  BASELINE_FRAMES: 60,
+  /** Absolute pixel thresholds (fallback before calibration) */
+  DISTANCE_TOO_CLOSE_PIXELS: 200,
+  DISTANCE_TOO_FAR_PIXELS: 80,
+  DISTANCE_OPTIMAL_PIXELS: 140,
+} as const;
+
+// ============================================================================
+// Yawn Detection Configuration
+// Uses Mouth Aspect Ratio (MAR) similar to EAR for eyes
+// ============================================================================
+
+/** Landmark indices for mouth/yawn detection */
+export const MOUTH_INDICES = {
+  UPPER_LIP: 13,
+  LOWER_LIP: 14,
+  LEFT_CORNER: 61,
+  RIGHT_CORNER: 291,
+} as const;
+
+/**
+ * Yawn detection thresholds
+ */
+export const YAWN = {
+  /** MAR threshold above which mouth is considered open */
+  MAR_THRESHOLD: 0.5,
+  /** Duration mouth must be open to count as yawn (ms) */
+  DURATION_MS: 1500,
+  /** Cooldown between yawn detections (ms) */
+  COOLDOWN_MS: 3000,
+} as const;
+
+// ============================================================================
+// Drowsiness Detection Configuration
+// Combines PERCLOS (% eye closure) with yawn frequency
+// ============================================================================
+
+/**
+ * Drowsiness detection thresholds
+ */
+export const DROWSINESS = {
+  /** Time window for PERCLOS calculation (ms) */
+  PERCLOS_WINDOW_MS: 60_000,
+  /** EAR below this is considered "eyes closed" for PERCLOS */
+  CLOSED_THRESHOLD: 0.2,
+  /** Time window for counting yawns (ms) - 5 minutes */
+  YAWN_WINDOW_MS: 300_000,
+  /** PERCLOS percentage thresholds for drowsiness levels */
+  LEVELS: {
+    /** Below this = alert (healthy) */
+    ALERT: 15,
+    /** Above ALERT, below MILD = mild drowsiness */
+    MILD: 20,
+    /** Above MILD, below MODERATE = moderate drowsiness */
+    MODERATE: 30,
+    // Above MODERATE = severe drowsiness
+  },
+  /** Yawn count thresholds for drowsiness levels */
+  YAWN_COUNTS: {
+    /** 1+ yawns in window = mild */
+    MILD: 1,
+    /** 2+ yawns in window = moderate */
+    MODERATE: 2,
+    /** 3+ yawns in window = severe */
+    SEVERE: 3,
+  },
+} as const;
+
+// ============================================================================
+// Alert Cooldowns for New Detection Types
+// ============================================================================
+
+export const WELLNESS_ALERT_COOLDOWN = {
+  /** Cooldown for "too close" alerts */
+  TOO_CLOSE: 10 * 60 * 1000,      // 10 minutes
+  /** Cooldown for "too far" alerts */
+  TOO_FAR: 10 * 60 * 1000,        // 10 minutes
+  /** Cooldown for "head tilt" alerts */
+  HEAD_TILT: 15 * 60 * 1000,      // 15 minutes
+  /** Cooldown for mild drowsiness alerts */
+  DROWSY_MILD: 20 * 60 * 1000,    // 20 minutes
+  /** Cooldown for severe drowsiness alerts */
+  DROWSY_SEVERE: 30 * 60 * 1000,  // 30 minutes
+} as const;

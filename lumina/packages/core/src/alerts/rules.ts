@@ -1,10 +1,29 @@
 /**
  * Alert rules configuration
  * Defines when alerts should be triggered based on wellness metrics
+ *
+ * Enhanced with posture, yawn, and drowsiness alerts.
  */
 
+import { PostureResult } from '../detection/posture';
+import { YawnResult } from '../detection/yawn';
+import { DrowsinessResult } from '../detection/drowsiness';
+import { WELLNESS_ALERT_COOLDOWN } from '../detection/constants';
+
 export type AlertSeverity = 'info' | 'warning' | 'critical';
-export type AlertType = 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture';
+export type AlertType =
+  | 'low_blink'
+  | 'critical_blink'
+  | 'long_session'
+  | 'poor_posture'
+  | 'too_close'
+  | 'too_far'
+  | 'head_tilt'
+  | 'forward_lean'
+  | 'drowsy_mild'
+  | 'drowsy_moderate'
+  | 'drowsy_severe'
+  | 'frequent_yawning';
 
 export interface AlertRule {
   type: AlertType;
@@ -25,6 +44,12 @@ export interface WellnessMetrics {
     blinkP50: number;      // 50th percentile (median)
     blinkP75: number;      // 75th percentile (high threshold)
   } | null;
+  /** Posture detection result (null if no face detected) */
+  posture: PostureResult | null;
+  /** Yawn detection result (null if no face detected) */
+  yawn: YawnResult | null;
+  /** Drowsiness detection result (null if insufficient data) */
+  drowsiness: DrowsinessResult | null;
 }
 
 /**

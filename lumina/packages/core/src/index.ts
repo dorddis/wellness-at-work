@@ -11,6 +11,9 @@ export * from './detection/kalman';
 export * from './detection/spike-detector';
 export * from './detection/eye-quality';
 export * from './detection/ear-calibrator';
+export * from './detection/posture';
+export * from './detection/yawn';
+export * from './detection/drowsiness';
 
 // Alerts
 export * from './alerts/rules';
