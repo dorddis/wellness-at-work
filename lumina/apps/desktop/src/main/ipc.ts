@@ -6,7 +6,7 @@
 import { ipcMain, dialog, shell } from 'electron';
 import * as fs from 'fs';
 import { WindowManager } from './windows';
-import { DatabaseManager } from './database';
+import { DatabaseManager, WellnessEventType } from './database';
 import { SyncService } from './sync';
 import { getSupabase, syncAlert } from '@lumina/api';
 
@@ -128,6 +128,36 @@ export function setupIPC(
 
   ipcMain.handle('db:get-session-stats', (_, sessionStartTime: number) => {
     return database.getSessionStats(sessionStartTime);
+  });
+
+  // ============================================================================
+  // Wellness Events
+  // ============================================================================
+
+  ipcMain.handle('db:insert-wellness-event', (
+    _,
+    timestamp: number,
+    eventType: WellnessEventType,
+    payload?: object
+  ) => {
+    database.insertWellnessEvent(timestamp, eventType, payload);
+  });
+
+  ipcMain.handle('db:get-wellness-events', (
+    _,
+    startTime: number,
+    endTime: number,
+    eventType?: WellnessEventType
+  ) => {
+    return database.getWellnessEvents(startTime, endTime, eventType);
+  });
+
+  ipcMain.handle('db:get-today-wellness-stats', () => {
+    return database.getTodayWellnessStats();
+  });
+
+  ipcMain.handle('db:get-recent-wellness-events', (_, minutes: number) => {
+    return database.getRecentWellnessEvents(minutes);
   });
 
   // ============================================================================
