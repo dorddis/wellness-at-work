@@ -1,60 +1,80 @@
-# Wellness at Work AI - Assignment
+# Lumina - Intelligent Wellness Companion
 
-## Company
-Singapore startup - computer vision for screen wellness (eye tracking)
+**Submitted to:** Ishaan Gupta & Mehul Bhardwaj  
+**Context:** Founding App Developer Assignment - Wellness at Work
 
-## Contact
-- Ishaan Gupta (ishaan@wellnessatwork.ai)
-- Mehul Bhardwaj
+---
 
-## Assignment
-Build Windows + Mac application for eye/blink tracking wellness.
+## 🚀 Project Overview
 
-## Our Approach: WellnessGuard
-Transform their simple blink counter into a full **AI Wellness Coach for Knowledge Workers**.
+**Lumina** is a next-generation desktop application designed to improve digital well-being for knowledge workers. Built as a response to the "Wellness at Work" challenge, it transforms a simple blink detector into a comprehensive, privacy-first AI coach.
 
-### What They Asked For
-- Blink counter with PyQt
-- Cloud sync
-- Web dashboard
-- GDPR compliance
+Unlike traditional trackers, Lumina processes all video feeds locally on the "Edge" (the user's device), ensuring that sensitive biometric data never leaves the computer. It combines real-time computer vision with a modern, unobtrusive UI to prevent eye strain and burnout.
 
-### What We're Building
-- **Multi-detection engine**: Blinks + Posture + Fatigue + Emotions
-- **Smart AI alerts**: Context-aware wellness notifications
-- **Wellness scoring**: Daily 0-100 score with breakdown
-- **Offline-first**: Works without internet, syncs when connected
-- **Professional UI**: Dark theme, system tray, charts
+## ✨ Key Features
 
-## Architecture Documentation
+- **🛡️ Privacy-First Edge AI:** Uses MediaPipe & TensorFlow.js to analyze facial landmarks locally. No video stream is ever uploaded to the cloud.
+- **👁️ Advanced Blink & Fatigue Detection:** Goes beyond simple counting. Analyzes blink duration and frequency to detect genuine fatigue.
+- **🧘 Posture Correction:** Real-time feedback when users slouch or lean too close to the screen.
+- **🔕 Intelligent Meeting Mode:** Automatically detects active video calls and pauses alerts to prevent interruptions.
+- **☁️ Offline-First Sync:** Built with a local SQLite database that seamlessly syncs with the cloud when internet is available, ensuring zero data loss.
+- **🎨 Modern Aesthetic:** A polished, dark-themed UI built with React & Tailwind CSS, designed to feel native on Windows and macOS.
 
-**Start here:** `ARCHITECTURE_SUMMARY.md` - Executive summary (5 min read)
+## 📂 Repository Structure
 
-**Deep dive:**
-1. `CRITICAL_CHALLENGES.md` - The 6 challenges that determine success/failure
-2. `SCALE_CHALLENGES_FILTERED.md` - The 10 scaling challenges (1K-100K users)
-3. `ARCHITECTURE_PROPOSAL.md` - Complete system design (30 min read)
-4. `ARCHITECTURE_DIAGRAM.txt` - Visual ASCII diagram
+This repository is organized into three main sections:
 
-**Original materials:**
-- `FEATURE_SPEC.md` - Full feature specification
-- `TestCase_ Founding App Developer - Dec '25.pdf` - Original requirements
-- `eye-tracker-share/` - Their reference code (79 lines)
+### 1. `lumina/` (The Application)
+A production-grade **Turbo Monorepo** containing the full-stack implementation.
+- **`apps/desktop`**: The main Electron application (React + Vite + MediaPipe).
+- **`apps/web`**: The web dashboard (Next.js) for analytics and reports.
+- **`packages/core`**: Shared business logic and state management.
+- **`packages/api`**: Backend API definitions and types.
 
-## Negotiation
-- Ask: 18 LPA cash + equity on top
-- Floor: 15 LPA hard cash
-- NO 50/50 split - need stability
-- Planning own startup in 2 years, 4yr vest is useless
+### 2. `docs/` (Architecture & Product)
+Comprehensive documentation covering technical decisions and product strategy.
+- **`architecture/`**: Deep dives into Event-Driven Architecture, Time-Series storage, and Edge-AI implementation.
+- **`product/`**: Competitor analysis, scaling challenges (1k to 100k users), and feature specifications.
 
-## Tech Stack
-- **Desktop**: PyQt6 + MediaPipe + DeepFace
-- **Backend**: Supabase (Auth + PostgreSQL + Realtime)
-- **Web**: Next.js or React
-- **Packaging**: PyInstaller (Win), py2app (Mac)
+### 3. `experiments/` (R&D)
+Initial Python prototypes used to validate computer vision algorithms before porting to the robust TypeScript production environment.
+- Contains `blink_detector.py` and robust detection scripts.
 
-## Implementation Status
-- [ ] Phase 1: Core (blink detection, auth, cloud sync)
-- [ ] Phase 2: Features (posture, alerts, wellness score)
-- [ ] Phase 3: Polish (web dashboard, packaging, CI/CD)
-- [ ] Phase 4: Documentation
+## 🛠️ Quick Start
+
+To run the **Lumina Desktop** application:
+
+### Prerequisites
+- Node.js (v18 or higher)
+- pnpm (`npm install -g pnpm`)
+
+### Installation & Run
+
+1. Navigate to the application root:
+   ```bash
+   cd lumina
+   ```
+
+2. Install dependencies:
+   ```bash
+   pnpm install
+   ```
+
+3. Start the desktop application (Development Mode):
+   ```bash
+   pnpm dev
+   ```
+   *This will launch the Electron app with hot-reload enabled.*
+
+## 🏗️ Architecture Highlights
+
+For this assignment, we chose a **Hybrid Desktop Architecture**:
+
+- **Frontend:** Electron + React (for a rich, responsive UI and native OS integration).
+- **AI Engine:** On-device inference using WASM/Native Modules (performance comparable to native C++).
+- **Data Layer:** Local-first SQLite database with background synchronization to Supabase/PostgreSQL.
+
+This approach offers the best balance of **performance**, **privacy**, and **developer velocity**, allowing for rapid iteration without compromising on the "Founding Engineer" quality standards.
+
+---
+*Generated for the Wellness at Work Evaluation Process - Dec 2025*
