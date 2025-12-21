@@ -93,6 +93,90 @@ export const DEFAULT_ALERT_RULES: AlertRule[] = [
     cooldownMs: 30 * 60 * 1000, // 30 minutes
     durationMs: 0, // Immediate
   },
+
+  // ============================================================================
+  // Posture Alerts
+  // ============================================================================
+  {
+    type: 'too_close',
+    severity: 'warning',
+    condition: (metrics) => metrics.posture?.distance.status === 'too_close',
+    message: 'You are too close to the screen',
+    action: 'Move back to a comfortable viewing distance (arm\'s length)',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.TOO_CLOSE,
+    durationMs: 30 * 1000, // 30 seconds sustained
+  },
+  {
+    type: 'too_far',
+    severity: 'info',
+    condition: (metrics) => metrics.posture?.distance.status === 'too_far',
+    message: 'You are quite far from the screen',
+    action: 'Move closer or adjust your seating position',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.TOO_FAR,
+    durationMs: 60 * 1000, // 1 minute sustained
+  },
+  {
+    type: 'head_tilt',
+    severity: 'warning',
+    condition: (metrics) => metrics.posture?.tilt.isTilted ?? false,
+    message: 'Head tilt detected',
+    action: 'Straighten your head to reduce neck strain',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.HEAD_TILT,
+    durationMs: 45 * 1000, // 45 seconds sustained
+  },
+  {
+    type: 'forward_lean',
+    severity: 'warning',
+    condition: (metrics) => metrics.posture?.lean.isLeaningForward ?? false,
+    message: 'Forward lean detected',
+    action: 'Sit back in your chair to maintain good posture',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.HEAD_TILT, // Same cooldown as tilt
+    durationMs: 45 * 1000, // 45 seconds sustained
+  },
+
+  // ============================================================================
+  // Drowsiness Alerts
+  // ============================================================================
+  {
+    type: 'drowsy_mild',
+    severity: 'info',
+    condition: (metrics) => metrics.drowsiness?.drowsinessLevel === 'mild',
+    message: 'Mild drowsiness detected',
+    action: 'Consider getting some fresh air or a drink of water',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.DROWSY_MILD,
+    durationMs: 60 * 1000, // 1 minute sustained
+  },
+  {
+    type: 'drowsy_moderate',
+    severity: 'warning',
+    condition: (metrics) => metrics.drowsiness?.drowsinessLevel === 'moderate',
+    message: 'Moderate drowsiness detected',
+    action: 'Take a short break - walk around or stretch',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.DROWSY_MILD,
+    durationMs: 30 * 1000, // 30 seconds sustained
+  },
+  {
+    type: 'drowsy_severe',
+    severity: 'critical',
+    condition: (metrics) => metrics.drowsiness?.drowsinessLevel === 'severe',
+    message: 'High drowsiness detected',
+    action: 'Take a break immediately - walk around or get fresh air',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.DROWSY_SEVERE,
+    durationMs: 0, // Immediate
+  },
+
+  // ============================================================================
+  // Yawn Alerts
+  // ============================================================================
+  {
+    type: 'frequent_yawning',
+    severity: 'info',
+    condition: (metrics) => (metrics.yawn?.yawnCount ?? 0) >= 3,
+    message: 'Frequent yawning detected',
+    action: 'You may be tired - consider a short break or some fresh air',
+    cooldownMs: WELLNESS_ALERT_COOLDOWN.DROWSY_MILD,
+    durationMs: 0, // Immediate when threshold reached
+  },
 ];
 
 /**
