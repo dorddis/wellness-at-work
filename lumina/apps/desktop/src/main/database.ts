@@ -59,6 +59,26 @@ export interface UserSettings {
   theme: string;
 }
 
+/**
+ * Wellness event types for tracking posture, yawn, and drowsiness
+ */
+export type WellnessEventType =
+  | 'yawn'
+  | 'posture_too_close'
+  | 'posture_too_far'
+  | 'posture_head_tilt'
+  | 'posture_forward_lean'
+  | 'drowsiness_mild'
+  | 'drowsiness_moderate'
+  | 'drowsiness_severe';
+
+export interface WellnessEvent {
+  id?: number;
+  timestamp: number;
+  event_type: WellnessEventType;
+  payload: string | null; // JSON string
+}
+
 export class DatabaseManager {
   private db: Database.Database | null = null;
   private dbPath: string;
@@ -191,6 +211,16 @@ export class DatabaseManager {
       )
     `);
 
+    // Wellness events table (yawn, posture, drowsiness)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS wellness_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        payload TEXT
+      )
+    `);
+
     // Create indexes
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_blink_events_timestamp ON blink_events(timestamp);
@@ -198,6 +228,8 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_minute_rollups_synced ON minute_rollups(synced) WHERE synced = 0;
       CREATE INDEX IF NOT EXISTS idx_user_streaks_type ON user_streaks(type);
       CREATE INDEX IF NOT EXISTS idx_daily_progress_date ON daily_progress(date);
+      CREATE INDEX IF NOT EXISTS idx_wellness_events_timestamp ON wellness_events(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_wellness_events_type ON wellness_events(event_type);
     `);
 
     // Insert default baseline if not exists
