@@ -7,6 +7,10 @@
 export * from './detection/constants';
 export * from './detection/blink';
 export * from './detection/faceLandmarker';
+export * from './detection/kalman';
+export * from './detection/spike-detector';
+export * from './detection/eye-quality';
+export * from './detection/ear-calibrator';
 
 // Alerts
 export * from './alerts/rules';

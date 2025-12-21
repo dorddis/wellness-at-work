@@ -12,7 +12,9 @@
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "package": "electron-builder",
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:integration": "cross-env ELECTRON_RUN_AS_NODE=true electron node_modules/vitest/vitest.mjs --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@lumina/api": "workspace:*",
@@ -33,6 +35,7 @@
     "@vitejs/plugin-react": "^4.3.0",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.0",
     "postcss": "^8.4.49",
@@ -40,6 +43,7 @@
     "typescript": "^5.3.0",
     "vite": "^6.0.0",
     "vite-plugin-electron": "^0.28.0",
+    "vitest": "^2.1.0",
     "wait-on": "^8.0.0"
   },
   "build": {

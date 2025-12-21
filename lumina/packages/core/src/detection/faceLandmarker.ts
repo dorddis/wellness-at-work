@@ -1,6 +1,8 @@
 /**
  * MediaPipe FaceLandmarker wrapper for Electron/browser environment
  * Uses @mediapipe/tasks-vision for face landmark detection
+ *
+ * Enhanced with automatic EAR calibration for per-user threshold optimization.
  */
 
 import {
@@ -8,33 +10,51 @@ import {
   FilesetResolver,
   FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE } from './constants';
+import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE, EAR_CALIBRATION } from './constants';
 import { BlinkDetector, BlinkDetectionResult, Point2D } from './blink';
+import { EARCalibrator, CalibrationState, EARCalibration } from './ear-calibrator';
 
 export interface LandmarkerConfig {
   numFaces?: number;
   runningMode?: 'IMAGE' | 'VIDEO';
   delegate?: 'GPU' | 'CPU';
+  /** Disable automatic EAR calibration (use fixed threshold) */
+  disableCalibration?: boolean;
+  /** Existing calibration to load (from storage) */
+  existingCalibration?: EARCalibration;
+}
+
+export interface CalibrationInfo {
+  state: CalibrationState;
+  progress: number;
+  threshold: number;
+  isCalibrated: boolean;
 }
 
 export interface FrameResult {
   blink: BlinkDetectionResult;
   rawLandmarks: Point2D[] | null;
   timestamp: number;
+  /** Calibration status and progress */
+  calibration: CalibrationInfo;
 }
 
 /**
  * MediaPipe FaceLandmarker manager
- * Handles initialization, processing, and cleanup
+ * Handles initialization, processing, cleanup, and EAR calibration
  */
 export class FaceLandmarkerManager {
   private faceLandmarker: FaceLandmarker | null = null;
   private blinkDetector: BlinkDetector;
+  private earCalibrator: EARCalibrator | null = null;
   private isInitialized = false;
   private lastVideoTime = -1;
+  private useCalibration: boolean;
 
   constructor() {
-    this.blinkDetector = new BlinkDetector();
+    // Use enhanced detection with Kalman filter, spike detection, and eye quality tracking
+    this.blinkDetector = BlinkDetector.createEnhanced();
+    this.useCalibration = true;
   }
 
   /**
@@ -51,7 +71,28 @@ export class FaceLandmarkerManager {
       numFaces = 1,
       runningMode = 'VIDEO',
       delegate = 'GPU',
+      disableCalibration = false,
+      existingCalibration,
     } = config;
+
+    this.useCalibration = !disableCalibration;
+
+    // Initialize EAR calibrator if enabled
+    if (this.useCalibration) {
+      this.earCalibrator = new EARCalibrator({
+        calibrationDurationMs: EAR_CALIBRATION.CALIBRATION_DURATION_MS,
+        minSamples: EAR_CALIBRATION.MIN_SAMPLES,
+        openEyePercentile: EAR_CALIBRATION.OPEN_EYE_PERCENTILE,
+        closedEyePercentile: EAR_CALIBRATION.CLOSED_EYE_PERCENTILE,
+        fallbackThreshold: EAR_CALIBRATION.FALLBACK_THRESHOLD,
+      });
+
+      // Load existing calibration if provided
+      if (existingCalibration) {
+        this.earCalibrator.loadCalibration(existingCalibration);
+        this.blinkDetector.setThreshold(existingCalibration.threshold);
+      }
+    }
 
     // Load WASM files from CDN
     const vision = await FilesetResolver.forVisionTasks(
@@ -74,6 +115,27 @@ export class FaceLandmarkerManager {
     });
 
     this.isInitialized = true;
+  }
+
+  /**
+   * Get current calibration info
+   */
+  private getCalibrationInfo(): CalibrationInfo {
+    if (!this.earCalibrator) {
+      return {
+        state: 'calibrated',
+        progress: 1,
+        threshold: this.blinkDetector.getThreshold(),
+        isCalibrated: true,
+      };
+    }
+
+    return {
+      state: this.earCalibrator.getState(),
+      progress: this.earCalibrator.getProgress(),
+      threshold: this.earCalibrator.getThreshold(),
+      isCalibrated: this.earCalibrator.isCalibrated(),
+    };
   }
 
   /**
@@ -110,10 +172,13 @@ export class FaceLandmarkerManager {
           leftEAR: 0,
           rightEAR: 0,
           avgEAR: 0,
+          smoothedEAR: 0,
           confidence: 0,
+          threshold: this.blinkDetector.getThreshold(),
         },
         rawLandmarks: null,
         timestamp,
+        calibration: this.getCalibrationInfo(),
       };
     }
 
@@ -133,10 +198,21 @@ export class FaceLandmarkerManager {
     // Run blink detection
     const blinkResult = this.blinkDetector.detect(landmarks, confidence);
 
+    // Feed EAR to calibrator if enabled and not yet calibrated
+    if (this.earCalibrator && !this.earCalibrator.isCalibrated()) {
+      const newThreshold = this.earCalibrator.addSample(blinkResult.smoothedEAR);
+
+      // Update detector threshold if calibration just completed
+      if (this.earCalibrator.isCalibrated()) {
+        this.blinkDetector.setThreshold(newThreshold);
+      }
+    }
+
     return {
       blink: blinkResult,
       rawLandmarks: landmarks,
       timestamp,
+      calibration: this.getCalibrationInfo(),
     };
   }
 
@@ -145,6 +221,36 @@ export class FaceLandmarkerManager {
    */
   getBlinkCount(): number {
     return this.blinkDetector.getBlinkCount();
+  }
+
+  /**
+   * Get current EAR threshold
+   */
+  getThreshold(): number {
+    return this.blinkDetector.getThreshold();
+  }
+
+  /**
+   * Get EAR calibrator (for persistence)
+   */
+  getCalibrator(): EARCalibrator | null {
+    return this.earCalibrator;
+  }
+
+  /**
+   * Export calibration for persistence
+   */
+  exportCalibration(): EARCalibration | null {
+    return this.earCalibrator?.exportCalibration() ?? null;
+  }
+
+  /**
+   * Force recalibration (e.g., if lighting changed significantly)
+   */
+  recalibrate(): void {
+    if (this.earCalibrator) {
+      this.earCalibrator.recalibrate();
+    }
   }
 
   /**
@@ -162,6 +268,13 @@ export class FaceLandmarkerManager {
   }
 
   /**
+   * Check if calibrated
+   */
+  isCalibrated(): boolean {
+    return this.earCalibrator?.isCalibrated() ?? true;
+  }
+
+  /**
    * Cleanup resources
    * IMPORTANT: Must be called when done to prevent memory leaks
    */
@@ -173,6 +286,7 @@ export class FaceLandmarkerManager {
     this.isInitialized = false;
     this.lastVideoTime = -1;
     this.blinkDetector.reset();
+    this.earCalibrator?.reset();
   }
 }
 

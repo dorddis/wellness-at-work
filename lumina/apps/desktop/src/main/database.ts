@@ -32,14 +32,56 @@ export interface UserBaseline {
   samples_count: number;
 }
 
+export interface StreakRecord {
+  id?: number;
+  type: string; // 'daily_use' | 'healthy_blink' | 'break_compliance' | 'good_posture'
+  current_count: number;
+  longest_count: number;
+  last_updated: number;
+  broken_at: number | null;
+}
+
+export interface AchievementRecord {
+  id?: number;
+  badge_id: string;
+  unlocked_at: number;
+  progress: number;
+}
+
+export interface UserSettings {
+  id: number;
+  sound_preference: string;
+  has_completed_onboarding: number;
+  max_postpones: number;
+  break_interval_minutes: number;
+  break_duration_seconds: number;
+  posture_monitoring_enabled: number;
+  theme: string;
+}
+
 export class DatabaseManager {
   private db: Database.Database | null = null;
   private dbPath: string;
 
-  constructor() {
-    // Store in app data directory
-    const userDataPath = app.getPath('userData');
-    this.dbPath = path.join(userDataPath, 'lumina.db');
+  /**
+   * Create a new DatabaseManager
+   * @param customPath Optional custom database path (for testing)
+   */
+  constructor(customPath?: string) {
+    if (customPath) {
+      this.dbPath = customPath;
+    } else {
+      // Store in app data directory (production)
+      const userDataPath = app.getPath('userData');
+      this.dbPath = path.join(userDataPath, 'lumina.db');
+    }
+  }
+
+  /**
+   * Get the database path (for testing/debugging)
+   */
+  getDbPath(): string {
+    return this.dbPath;
   }
 
   /**
@@ -100,17 +142,84 @@ export class DatabaseManager {
       )
     `);
 
+    // Streaks table (gamification)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS user_streaks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL UNIQUE,
+        current_count INTEGER DEFAULT 0,
+        longest_count INTEGER DEFAULT 0,
+        last_updated INTEGER NOT NULL,
+        broken_at INTEGER
+      )
+    `);
+
+    // Achievements table (gamification)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS user_achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        badge_id TEXT NOT NULL UNIQUE,
+        unlocked_at INTEGER NOT NULL,
+        progress INTEGER DEFAULT 0
+      )
+    `);
+
+    // User settings table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        sound_preference TEXT DEFAULT 'chime',
+        has_completed_onboarding INTEGER DEFAULT 0,
+        max_postpones INTEGER DEFAULT 2,
+        break_interval_minutes INTEGER DEFAULT 20,
+        break_duration_seconds INTEGER DEFAULT 20,
+        posture_monitoring_enabled INTEGER DEFAULT 1,
+        theme TEXT DEFAULT 'system'
+      )
+    `);
+
+    // Daily progress table (resets daily)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS daily_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL UNIQUE,
+        breaks_taken INTEGER DEFAULT 0,
+        breaks_scheduled INTEGER DEFAULT 4,
+        healthy_blink_minutes INTEGER DEFAULT 0,
+        good_posture_minutes INTEGER DEFAULT 0,
+        total_session_minutes INTEGER DEFAULT 0
+      )
+    `);
+
     // Create indexes
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_blink_events_timestamp ON blink_events(timestamp);
       CREATE INDEX IF NOT EXISTS idx_minute_rollups_timestamp ON minute_rollups(timestamp);
       CREATE INDEX IF NOT EXISTS idx_minute_rollups_synced ON minute_rollups(synced) WHERE synced = 0;
+      CREATE INDEX IF NOT EXISTS idx_user_streaks_type ON user_streaks(type);
+      CREATE INDEX IF NOT EXISTS idx_daily_progress_date ON daily_progress(date);
     `);
 
     // Insert default baseline if not exists
     this.db.exec(`
       INSERT OR IGNORE INTO user_baseline (id, samples_count) VALUES (1, 0)
     `);
+
+    // Insert default settings if not exists
+    this.db.exec(`
+      INSERT OR IGNORE INTO user_settings (id) VALUES (1)
+    `);
+
+    // Insert default streaks if not exist
+    const streakTypes = ['daily_use', 'healthy_blink', 'break_compliance', 'good_posture'];
+    const insertStreak = this.db.prepare(`
+      INSERT OR IGNORE INTO user_streaks (type, current_count, longest_count, last_updated)
+      VALUES (?, 0, 0, ?)
+    `);
+    const now = Date.now();
+    for (const type of streakTypes) {
+      insertStreak.run(type, now);
+    }
   }
 
   /**
@@ -261,6 +370,285 @@ export class DatabaseManager {
       avgEar: rollupResult.avg_ear ?? 0,
       minuteCount: rollupResult.count,
     };
+  }
+
+  // ========== STREAKS ==========
+
+  /**
+   * Get all streaks
+   */
+  getStreaks(): StreakRecord[] {
+    if (!this.db) return [];
+    const stmt = this.db.prepare('SELECT * FROM user_streaks');
+    return stmt.all() as StreakRecord[];
+  }
+
+  /**
+   * Get a specific streak
+   */
+  getStreak(type: string): StreakRecord | null {
+    if (!this.db) return null;
+    const stmt = this.db.prepare('SELECT * FROM user_streaks WHERE type = ?');
+    return stmt.get(type) as StreakRecord | null;
+  }
+
+  /**
+   * Increment a streak
+   */
+  incrementStreak(type: string): void {
+    if (!this.db) return;
+    const stmt = this.db.prepare(`
+      UPDATE user_streaks
+      SET current_count = current_count + 1,
+          longest_count = MAX(longest_count, current_count + 1),
+          last_updated = ?,
+          broken_at = NULL
+      WHERE type = ?
+    `);
+    stmt.run(Date.now(), type);
+  }
+
+  /**
+   * Break a streak (reset to 0)
+   */
+  breakStreak(type: string): void {
+    if (!this.db) return;
+    const stmt = this.db.prepare(`
+      UPDATE user_streaks
+      SET current_count = 0,
+          broken_at = ?
+      WHERE type = ?
+    `);
+    stmt.run(Date.now(), type);
+  }
+
+  /**
+   * Update a streak directly
+   */
+  updateStreak(type: string, currentCount: number, longestCount: number): void {
+    if (!this.db) return;
+    const stmt = this.db.prepare(`
+      UPDATE user_streaks
+      SET current_count = ?,
+          longest_count = ?,
+          last_updated = ?
+      WHERE type = ?
+    `);
+    stmt.run(currentCount, longestCount, Date.now(), type);
+  }
+
+  // ========== ACHIEVEMENTS ==========
+
+  /**
+   * Get all achievements
+   */
+  getAchievements(): AchievementRecord[] {
+    if (!this.db) return [];
+    const stmt = this.db.prepare('SELECT * FROM user_achievements');
+    return stmt.all() as AchievementRecord[];
+  }
+
+  /**
+   * Get a specific achievement
+   */
+  getAchievement(badgeId: string): AchievementRecord | null {
+    if (!this.db) return null;
+    const stmt = this.db.prepare('SELECT * FROM user_achievements WHERE badge_id = ?');
+    return stmt.get(badgeId) as AchievementRecord | null;
+  }
+
+  /**
+   * Unlock an achievement
+   */
+  unlockAchievement(badgeId: string): void {
+    if (!this.db) return;
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO user_achievements (badge_id, unlocked_at, progress)
+      VALUES (?, ?, 100)
+    `);
+    stmt.run(badgeId, Date.now());
+  }
+
+  /**
+   * Update achievement progress
+   */
+  updateAchievementProgress(badgeId: string, progress: number): void {
+    if (!this.db) return;
+    // Only update if not already unlocked
+    const existing = this.getAchievement(badgeId);
+    if (existing && existing.progress >= 100) return;
+
+    const stmt = this.db.prepare(`
+      INSERT INTO user_achievements (badge_id, unlocked_at, progress)
+      VALUES (?, 0, ?)
+      ON CONFLICT(badge_id) DO UPDATE SET progress = ?
+    `);
+    stmt.run(badgeId, progress, progress);
+  }
+
+  // ========== DAILY PROGRESS ==========
+
+  /**
+   * Get today's date string (YYYY-MM-DD)
+   */
+  private getTodayDate(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  /**
+   * Get or create today's progress
+   */
+  getTodayProgress(): {
+    date: string;
+    breaks_taken: number;
+    breaks_scheduled: number;
+    healthy_blink_minutes: number;
+    good_posture_minutes: number;
+    total_session_minutes: number;
+  } {
+    if (!this.db) {
+      return {
+        date: this.getTodayDate(),
+        breaks_taken: 0,
+        breaks_scheduled: 4,
+        healthy_blink_minutes: 0,
+        good_posture_minutes: 0,
+        total_session_minutes: 0,
+      };
+    }
+
+    const today = this.getTodayDate();
+
+    // Try to get existing record
+    const selectStmt = this.db.prepare('SELECT * FROM daily_progress WHERE date = ?');
+    let record = selectStmt.get(today) as any;
+
+    // Create if doesn't exist
+    if (!record) {
+      const insertStmt = this.db.prepare(`
+        INSERT INTO daily_progress (date, breaks_taken, breaks_scheduled)
+        VALUES (?, 0, 4)
+      `);
+      insertStmt.run(today);
+      record = selectStmt.get(today);
+    }
+
+    return record;
+  }
+
+  /**
+   * Increment breaks taken today
+   */
+  incrementBreaksTaken(): void {
+    if (!this.db) return;
+    this.getTodayProgress(); // Ensure record exists
+    const stmt = this.db.prepare(`
+      UPDATE daily_progress
+      SET breaks_taken = breaks_taken + 1
+      WHERE date = ?
+    `);
+    stmt.run(this.getTodayDate());
+  }
+
+  /**
+   * Add healthy blink minutes
+   */
+  addHealthyBlinkMinutes(minutes: number): void {
+    if (!this.db) return;
+    this.getTodayProgress(); // Ensure record exists
+    const stmt = this.db.prepare(`
+      UPDATE daily_progress
+      SET healthy_blink_minutes = healthy_blink_minutes + ?
+      WHERE date = ?
+    `);
+    stmt.run(minutes, this.getTodayDate());
+  }
+
+  /**
+   * Add good posture minutes
+   */
+  addGoodPostureMinutes(minutes: number): void {
+    if (!this.db) return;
+    this.getTodayProgress(); // Ensure record exists
+    const stmt = this.db.prepare(`
+      UPDATE daily_progress
+      SET good_posture_minutes = good_posture_minutes + ?
+      WHERE date = ?
+    `);
+    stmt.run(minutes, this.getTodayDate());
+  }
+
+  /**
+   * Add session minutes
+   */
+  addSessionMinutes(minutes: number): void {
+    if (!this.db) return;
+    this.getTodayProgress(); // Ensure record exists
+    const stmt = this.db.prepare(`
+      UPDATE daily_progress
+      SET total_session_minutes = total_session_minutes + ?
+      WHERE date = ?
+    `);
+    stmt.run(minutes, this.getTodayDate());
+  }
+
+  // ========== USER SETTINGS ==========
+
+  /**
+   * Get user settings
+   */
+  getUserSettings(): UserSettings | null {
+    if (!this.db) return null;
+    const stmt = this.db.prepare('SELECT * FROM user_settings WHERE id = 1');
+    return stmt.get() as UserSettings | null;
+  }
+
+  /**
+   * Update user settings
+   */
+  updateUserSettings(settings: Partial<Omit<UserSettings, 'id'>>): void {
+    if (!this.db) return;
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (settings.sound_preference !== undefined) {
+      updates.push('sound_preference = ?');
+      values.push(settings.sound_preference);
+    }
+    if (settings.has_completed_onboarding !== undefined) {
+      updates.push('has_completed_onboarding = ?');
+      values.push(settings.has_completed_onboarding);
+    }
+    if (settings.max_postpones !== undefined) {
+      updates.push('max_postpones = ?');
+      values.push(settings.max_postpones);
+    }
+    if (settings.break_interval_minutes !== undefined) {
+      updates.push('break_interval_minutes = ?');
+      values.push(settings.break_interval_minutes);
+    }
+    if (settings.break_duration_seconds !== undefined) {
+      updates.push('break_duration_seconds = ?');
+      values.push(settings.break_duration_seconds);
+    }
+    if (settings.posture_monitoring_enabled !== undefined) {
+      updates.push('posture_monitoring_enabled = ?');
+      values.push(settings.posture_monitoring_enabled);
+    }
+    if (settings.theme !== undefined) {
+      updates.push('theme = ?');
+      values.push(settings.theme);
+    }
+
+    if (updates.length === 0) return;
+
+    const stmt = this.db.prepare(`
+      UPDATE user_settings
+      SET ${updates.join(', ')}
+      WHERE id = 1
+    `);
+    stmt.run(...values);
   }
 
   /**

@@ -1,7 +1,20 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useSessionStore, useAlertStore, useSettingsStore } from '@lumina/ui';
+import {
+  useSessionStore,
+  useAlertStore,
+  useSettingsStore,
+  useStreakStore,
+  useAchievementStore,
+  PrivacyIndicator,
+  PostureStatusCard,
+  WeeklyTrendCard,
+  StreakBadge,
+  AchievementBadge,
+  PreBreakToast,
+  ACHIEVEMENTS,
+  type DayData,
+} from '@lumina/ui';
 import { FaceLandmarkerManager, AlertEngine, BaselineCalibrator, type WellnessMetrics, type Baseline } from '@lumina/core';
-import type { BlinkRateDataPoint } from '@lumina/ui';
 import luminaLogo from './assets/lumina-logo.png';
 import AuthScreen from './AuthScreen';
 
@@ -125,6 +138,11 @@ export default function App() {
   const [breakTimeRemaining, setBreakTimeRemaining] = useState(20); // 20 seconds for 20-20-20 rule
   const [lastBreakTime, setLastBreakTime] = useState<number>(Date.now());
   const BREAK_REMINDER_INTERVAL = 20 * 60 * 1000; // 20 minutes
+
+  // Pre-break toast state (30 second warning)
+  const [showPreBreakToast, setShowPreBreakToast] = useState(false);
+  const [preBreakSeconds, setPreBreakSeconds] = useState(30);
+  const [postponesRemaining, setPostponesRemaining] = useState(2);
 
   // Baseline calibration state
   const [userBaseline, setUserBaseline] = useState<Baseline | null>(null);
@@ -598,6 +616,23 @@ export default function App() {
     setIsOnBreak(false);
     setBreakTimeRemaining(20);
     setLastBreakTime(Date.now());
+    setShowPreBreakToast(false);
+  };
+
+  // Handle start break now (from pre-break toast)
+  const handleStartBreakNow = () => {
+    setShowPreBreakToast(false);
+    handleTakeBreak();
+  };
+
+  // Handle postpone break (from pre-break toast)
+  const handlePostponeBreak = () => {
+    if (postponesRemaining > 0) {
+      setPostponesRemaining(prev => prev - 1);
+      setShowPreBreakToast(false);
+      // Add 5 minutes to the next break
+      setLastBreakTime(Date.now() - (BREAK_REMINDER_INTERVAL - 5 * 60 * 1000));
+    }
   };
 
   // Format duration
@@ -739,6 +774,11 @@ export default function App() {
             isCalibrating={isCalibrating}
             calibrationProgress={calibrationProgress}
             userBaseline={userBaseline}
+            showPreBreakToast={showPreBreakToast}
+            preBreakSeconds={preBreakSeconds}
+            onStartBreakNow={handleStartBreakNow}
+            onPostponeBreak={handlePostponeBreak}
+            postponesRemaining={postponesRemaining}
           />
         )}
 
@@ -781,6 +821,11 @@ function DashboardView({
   isCalibrating,
   calibrationProgress,
   userBaseline,
+  showPreBreakToast,
+  preBreakSeconds,
+  onStartBreakNow,
+  onPostponeBreak,
+  postponesRemaining,
 }: {
   wellnessScore: number;
   blinkRate: number;
@@ -799,120 +844,317 @@ function DashboardView({
   isCalibrating: boolean;
   calibrationProgress: number;
   userBaseline: Baseline | null;
+  showPreBreakToast: boolean;
+  preBreakSeconds: number;
+  onStartBreakNow: () => void;
+  onPostponeBreak: () => void;
+  postponesRemaining: number;
 }) {
+  // Access gamification stores
+  const { streaks, todayProgress } = useStreakStore();
+  const { unlocked, getProgress } = useAchievementStore();
+
+  // Mock weekly data - in production, load from database
+  const [weeklyData, setWeeklyData] = useState<DayData[]>([]);
+
+  useEffect(() => {
+    // Load weekly data
+    async function loadWeeklyData() {
+      const today = new Date();
+      const days: DayData[] = [];
+
+      for (let i = 6; i >= 0; i--) {
+        const dayStart = new Date(today);
+        dayStart.setDate(dayStart.getDate() - i);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const rollups = await window.lumina?.database.getRollups(
+          dayStart.getTime(),
+          dayEnd.getTime()
+        );
+
+        if (rollups && rollups.length > 0) {
+          const totalBlinks = rollups.reduce((sum, r) => sum + r.blink_count, 0);
+          const avgBlinkRate = rollups.length > 0 ? totalBlinks / rollups.length : 0;
+          // Score based on blink rate
+          const score = Math.min(100, Math.round((avgBlinkRate / 15) * 100));
+          days.push({
+            label: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
+            score,
+            isToday: i === 0,
+          });
+        } else {
+          days.push({
+            label: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
+            score: i === 0 ? wellnessScore : null,
+            isToday: i === 0,
+          });
+        }
+      }
+      setWeeklyData(days);
+    }
+    loadWeeklyData();
+  }, [wellnessScore]);
+
+  // Calculate time until next break
+  const breakIntervalMinutes = 20;
+  const timeSinceBreak = Math.floor((Date.now() - todayStats.breaksCount * breakIntervalMinutes * 60000) / 1000);
+  const timeUntilBreak = Math.max(0, breakIntervalMinutes * 60 - (sessionDuration % (breakIntervalMinutes * 60)));
+  const nextBreakMinutes = Math.floor(timeUntilBreak / 60);
+  const nextBreakSeconds = timeUntilBreak % 60;
+
+  // Count unlocked achievements
+  const unlockedCount = Object.values(unlocked).filter(Boolean).length;
+
   return (
     <div className="p-6 relative">
+      {/* Pre-break Toast */}
+      <PreBreakToast
+        secondsUntilBreak={preBreakSeconds}
+        breakType="micro"
+        onStartNow={onStartBreakNow}
+        onPostpone={onPostponeBreak}
+        postponesRemaining={postponesRemaining}
+        isVisible={showPreBreakToast}
+      />
+
       {/* Break Overlay Modal */}
       {isOnBreak && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-xl">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold mb-2">20-20-20 Break</h2>
+            <h2 className="text-2xl font-bold mb-2">Time for a Break!</h2>
             <p className="text-gray-600 mb-6">
               Look at something 20 feet away to rest your eyes
             </p>
-            <div className="relative w-32 h-32 mx-auto mb-6">
+            <div className="relative w-36 h-36 mx-auto mb-6">
               <svg className="w-full h-full transform -rotate-90">
-                <circle cx="64" cy="64" r="56" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                <circle cx="72" cy="72" r="64" fill="none" stroke="#e5e7eb" strokeWidth="10" />
                 <circle
-                  cx="64"
-                  cy="64"
-                  r="56"
+                  cx="72"
+                  cy="72"
+                  r="64"
                   fill="none"
                   stroke="#3b82f6"
-                  strokeWidth="8"
-                  strokeDasharray={`${(breakTimeRemaining / 20) * 352} 352`}
+                  strokeWidth="10"
+                  strokeDasharray={`${(breakTimeRemaining / 20) * 402} 402`}
                   strokeLinecap="round"
+                  className="transition-all duration-1000"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-4xl font-bold">{breakTimeRemaining}</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-5xl font-bold">{breakTimeRemaining}</span>
+                <span className="text-sm text-gray-500">seconds</span>
               </div>
             </div>
-            <p className="text-sm text-gray-500 mb-6">seconds remaining</p>
-            <button
-              onClick={onSkipBreak}
-              className="px-6 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Skip Break
-            </button>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={onSkipBreak}
+                className="px-6 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={() => {
+                  // Extend break by 20 seconds
+                }}
+                className="px-6 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                +20s
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">My Wellness Dashboard</h1>
-        <p className="text-gray-500">Track your eye health and prevent strain</p>
+      {/* Header with Privacy Indicator */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">My Wellness Dashboard</h1>
+          <p className="text-gray-500">Track your eye health and prevent strain</p>
+        </div>
+        <PrivacyIndicator isActive={isDetecting} />
       </div>
 
-      {/* Main wellness score */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Current Wellness Score</p>
-            <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-bold">{wellnessScore}</span>
-              <span className="text-xl text-gray-400">/100</span>
+      {/* Top Row: Wellness Score + Daily Streak */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        {/* Wellness Score Card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Wellness Score</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold">{wellnessScore}</span>
+                <span className="text-xl text-gray-400">/100</span>
+              </div>
+              <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${status.bg} ${status.color}`}>
+                {status.label}
+              </span>
             </div>
-            <span className={`inline-block mt-2 px-3 py-1 rounded-full text-sm font-medium ${status.bg} ${status.color}`}>
-              {status.label}
-            </span>
+            <div className="w-28 h-28 relative">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle cx="56" cy="56" r="48" fill="none" stroke="#e5e7eb" strokeWidth="10" />
+                <circle
+                  cx="56"
+                  cy="56"
+                  r="48"
+                  fill="none"
+                  stroke={wellnessScore >= 70 ? '#22c55e' : wellnessScore >= 40 ? '#eab308' : '#ef4444'}
+                  strokeWidth="10"
+                  strokeDasharray={`${(wellnessScore / 100) * 301} 301`}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Icons.Eye />
+              </div>
+            </div>
           </div>
-          <div className="w-32 h-32 relative">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle cx="64" cy="64" r="56" fill="none" stroke="#e5e7eb" strokeWidth="12" />
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke={wellnessScore >= 70 ? '#22c55e' : wellnessScore >= 40 ? '#eab308' : '#ef4444'}
-                strokeWidth="12"
-                strokeDasharray={`${(wellnessScore / 100) * 352} 352`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Icons.Eye />
-            </div>
+        </div>
+
+        {/* Daily Streak Card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <p className="text-sm text-gray-500 mb-3">Today's Streaks</p>
+          <div className="grid grid-cols-2 gap-3">
+            <StreakBadge
+              type="daily_use"
+              count={streaks.daily_use.currentCount}
+              bestStreak={streaks.daily_use.longestCount}
+              size="sm"
+              showDetails
+            />
+            <StreakBadge
+              type="break_compliance"
+              count={todayProgress.breaksTaken}
+              size="sm"
+              showDetails
+            />
+            <StreakBadge
+              type="healthy_blink"
+              count={streaks.healthy_blink.currentCount}
+              size="sm"
+              showDetails
+            />
+            <StreakBadge
+              type="good_posture"
+              count={streaks.good_posture.currentCount}
+              size="sm"
+              showDetails
+            />
           </div>
         </div>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          label="Blink Rate"
-          value={`${blinkRate.toFixed(1)}`}
-          suffix="/min"
-          subtext={blinkRate >= 15 ? 'Healthy range' : 'Below average'}
-          trend={blinkRate >= 15 ? 'up' : 'down'}
+      {/* Live Metrics Section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Live Metrics</h3>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <span className="text-sm text-gray-500">{isDetecting ? 'Monitoring' : 'Paused'}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Blink Rate */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Icons.Eye />
+              <span className="text-sm text-gray-500">Blink Rate</span>
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold">{blinkRate.toFixed(1)}</span>
+              <span className="text-gray-400">/min</span>
+            </div>
+            <p className={`text-xs mt-1 ${blinkRate >= 15 ? 'text-green-600' : 'text-yellow-600'}`}>
+              {blinkRate >= 15 ? 'Healthy' : 'Below average'}
+            </p>
+          </div>
+
+          {/* Session Time */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Icons.Clock />
+              <span className="text-sm text-gray-500">Session</span>
+            </div>
+            <span className="text-2xl font-bold">{formatDuration(sessionDuration)}</span>
+            <p className="text-xs text-gray-500 mt-1">{blinkCount} blinks</p>
+          </div>
+
+          {/* Next Break */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm text-gray-500">Next Break</span>
+            </div>
+            <span className="text-2xl font-bold">
+              {nextBreakMinutes}:{nextBreakSeconds.toString().padStart(2, '0')}
+            </span>
+            <p className="text-xs text-gray-500 mt-1">{todayStats.breaksCount} breaks today</p>
+          </div>
+
+          {/* Face Detection */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Icons.Camera />
+              <span className="text-sm text-gray-500">Detection</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${faceDetected ? 'bg-green-500' : 'bg-yellow-500'}`} />
+              <span className="text-lg font-medium">{faceDetected ? 'Face Found' : 'No Face'}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">EAR: 0.21 threshold</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Middle Row: Weekly Trend + Posture */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        {/* Weekly Trend */}
+        <WeeklyTrendCard
+          days={weeklyData}
         />
-        <StatCard
-          label="Blinks This Session"
-          value={blinkCount.toString()}
-          subtext={isDetecting ? 'Counting...' : 'Start session'}
-        />
-        <StatCard
-          label="Session Duration"
-          value={formatDuration(sessionDuration)}
-          subtext={sessionDuration > 3600 ? 'Consider a break' : 'Keep going'}
-        />
-        <StatCard
-          label="Today's Total Blinks"
-          value={(todayStats.totalBlinks + blinkCount).toString()}
-          subtext={`${todayStats.sessionMinutes + Math.floor(sessionDuration / 60)} min monitored`}
+
+        {/* Posture Status */}
+        <PostureStatusCard
+          status="unknown"
+          goodPostureMinutes={streaks.good_posture.currentCount}
+          totalMinutes={60}
+          longestStreak={streaks.good_posture.longestCount}
         />
       </div>
 
-      {/* Quick actions */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      {/* Achievements Section */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Achievements</h3>
+          <span className="text-sm text-gray-500">{unlockedCount}/9 unlocked</span>
+        </div>
+        <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
+          {(['first_steps', 'perfect_day', 'week_warrior', 'blink_master', 'posture_pro'] as const).map((id) => (
+            <AchievementBadge
+              key={id}
+              achievement={ACHIEVEMENTS[id]}
+              isUnlocked={!!unlocked[id]}
+              progress={getProgress(id)}
+              showProgress
+              size="sm"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h3 className="font-semibold mb-4">Quick Actions</h3>
         <div className="flex gap-4">
           <button
@@ -946,7 +1188,7 @@ function DashboardView({
 
       {/* Calibration Progress */}
       {isCalibrating && (
-        <div className="mt-6 bg-purple-50 rounded-xl p-4 border border-purple-100">
+        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-6">
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-medium text-purple-900">Calibrating Your Baseline</h4>
             <span className="text-sm text-purple-700">{Math.round(calibrationProgress * 100)}%</span>
@@ -958,14 +1200,14 @@ function DashboardView({
             />
           </div>
           <p className="text-sm text-purple-700">
-            We're learning your natural blink rate. This takes about 2 hours of monitoring. Keep using Lumina normally!
+            Learning your natural blink rate. This takes about 2 hours.
           </p>
         </div>
       )}
 
       {/* Baseline Info */}
       {userBaseline && !isCalibrating && (
-        <div className="mt-6 bg-green-50 rounded-xl p-4 border border-green-100">
+        <div className="bg-green-50 rounded-xl p-4 border border-green-100 mb-6">
           <h4 className="font-medium text-green-900 mb-2">Your Personal Baseline</h4>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
@@ -981,18 +1223,15 @@ function DashboardView({
               <p className="font-medium text-green-900">{userBaseline.blinkP75.toFixed(1)}/min</p>
             </div>
           </div>
-          <p className="text-xs text-green-600 mt-2">
-            Based on {userBaseline.samplesCount} samples
-          </p>
         </div>
       )}
 
       {/* Tips */}
-      <div className="mt-6 bg-blue-50 rounded-xl p-4 border border-blue-100">
+      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
         <h4 className="font-medium text-blue-900 mb-2">Eye Health Tips</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>- Aim for 15-20 blinks per minute to prevent dry eyes</li>
-          <li>- Follow the 20-20-20 rule: Every 20 minutes, look at something 20 feet away for 20 seconds</li>
+          <li>- Follow the 20-20-20 rule for regular eye breaks</li>
           <li>- Keep your monitor at arm's length and slightly below eye level</li>
         </ul>
       </div>
@@ -1376,10 +1615,24 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     alertCooldownMinutes,
     notifications,
     showFloatingStatus,
+    soundPreference,
+    soundVolume,
+    breakIntervalMinutes,
+    breakDurationSeconds,
+    maxPostpones,
+    postureMonitoringEnabled,
+    postureSensitivity,
+    theme,
     setEarThreshold,
     setAlertCooldownMinutes,
     setNotifications,
     setShowFloatingStatus,
+    setSoundPreference,
+    setSoundVolume,
+    setBreakSettings,
+    setPostureMonitoringEnabled,
+    setPostureSensitivity,
+    setTheme,
   } = useSettingsStore();
 
   const [syncStatus, setSyncStatus] = useState<{
@@ -1499,6 +1752,181 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   }`}
                 />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Sound Settings */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold mb-4">Sound Settings</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Notification Sound</p>
+                <p className="text-sm text-gray-500">Sound played for break reminders</p>
+              </div>
+              <select
+                value={soundPreference}
+                onChange={(e) => setSoundPreference(e.target.value as any)}
+                className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+              >
+                <option value="silence">Silence</option>
+                <option value="chime">Chime</option>
+                <option value="bell">Bell</option>
+                <option value="soft-ping">Soft Ping</option>
+                <option value="nature">Nature</option>
+              </select>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Sound Volume</p>
+                <p className="text-sm text-gray-500">Volume level for notifications</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={soundVolume}
+                  onChange={(e) => setSoundVolume(parseInt(e.target.value))}
+                  className="w-24"
+                />
+                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                  {soundVolume}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Break Settings */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold mb-4">Break Settings</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Break Interval</p>
+                <p className="text-sm text-gray-500">Time between breaks (minutes)</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="10"
+                  max="60"
+                  step="5"
+                  value={breakIntervalMinutes}
+                  onChange={(e) => setBreakSettings({ breakIntervalMinutes: parseInt(e.target.value) })}
+                  className="w-24"
+                />
+                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                  {breakIntervalMinutes}m
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Break Duration</p>
+                <p className="text-sm text-gray-500">How long each break lasts (seconds)</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="10"
+                  max="60"
+                  step="5"
+                  value={breakDurationSeconds}
+                  onChange={(e) => setBreakSettings({ breakDurationSeconds: parseInt(e.target.value) })}
+                  className="w-24"
+                />
+                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                  {breakDurationSeconds}s
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Max Postpones</p>
+                <p className="text-sm text-gray-500">How many times you can delay a break</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="1"
+                  value={maxPostpones}
+                  onChange={(e) => setBreakSettings({ maxPostpones: parseInt(e.target.value) })}
+                  className="w-24"
+                />
+                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                  {maxPostpones}x
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Posture Settings */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold mb-4">Posture Monitoring</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Enable Posture Monitoring</p>
+                <p className="text-sm text-gray-500">Track your sitting posture</p>
+              </div>
+              <button
+                onClick={() => setPostureMonitoringEnabled(!postureMonitoringEnabled)}
+                className={`w-12 h-6 rounded-full transition-colors ${
+                  postureMonitoringEnabled ? 'bg-black' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    postureMonitoringEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+            {postureMonitoringEnabled && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Posture Sensitivity</p>
+                  <p className="text-sm text-gray-500">How strict the posture detection is</p>
+                </div>
+                <select
+                  value={postureSensitivity}
+                  onChange={(e) => setPostureSensitivity(e.target.value as any)}
+                  className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Appearance */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold mb-4">Appearance</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Theme</p>
+                <p className="text-sm text-gray-500">Color scheme for the app</p>
+              </div>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as any)}
+                className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+              >
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System</option>
+              </select>
             </div>
           </div>
         </div>

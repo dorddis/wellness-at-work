@@ -6,6 +6,22 @@
 import { getSupabase } from './client';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Validate and clamp days parameter to prevent Invalid Date errors
+ */
+function validateDays(days: number): number {
+  // Handle NaN, Infinity, and negative values
+  if (!Number.isFinite(days) || days < 0) {
+    return 7; // Default to 7 days
+  }
+  // Clamp to reasonable maximum (1 year)
+  return Math.min(Math.floor(days), 365);
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -77,8 +93,9 @@ export async function getMyWellnessData(
  */
 export async function getMyDailyStats(days: number = 30): Promise<DailyStats[]> {
   const supabase = getSupabase();
+  const validDays = validateDays(days);
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  startDate.setDate(startDate.getDate() - validDays);
 
   // This would normally be a database function for efficiency
   // Simplified version using client-side aggregation
@@ -160,8 +177,9 @@ export async function getOrgWellnessStats(
   activeUsers: number;
 }> {
   const supabase = getSupabase();
+  const validDays = validateDays(days);
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  startDate.setDate(startDate.getDate() - validDays);
 
   // Get wellness data
   const { data: wellnessData } = await supabase
@@ -196,8 +214,9 @@ export async function getOrgWellnessStats(
  */
 export async function getDepartmentStats(orgId: string, days: number = 7): Promise<DepartmentStats[]> {
   const supabase = getSupabase();
+  const validDays = validateDays(days);
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  startDate.setDate(startDate.getDate() - validDays);
 
   // Get members with departments
   const { data: members } = await supabase
@@ -273,8 +292,9 @@ export async function getEmployeeWellnessData(
   days: number = 7
 ): Promise<WellnessRollup[]> {
   const supabase = getSupabase();
+  const validDays = validateDays(days);
   const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  startDate.setDate(startDate.getDate() - validDays);
 
   const { data, error } = await supabase
     .from('wellness_data')

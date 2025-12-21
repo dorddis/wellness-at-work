@@ -1,34 +1,69 @@
 /**
  * System Tray Manager
- * Creates system tray icon with menu
+ * Creates system tray icon with menu and dynamic icon states
  */
 
 import { Tray, Menu, app, nativeImage, NativeImage } from 'electron';
-import path from 'path';
 import { WindowManager } from './windows';
+
+/**
+ * Tray icon states for visual feedback
+ */
+export type TrayIconState = 'active' | 'warning' | 'break' | 'paused' | 'dnd';
+
+/**
+ * Icon colors for each state (grayscale palette per design requirements)
+ */
+const ICON_COLORS: Record<TrayIconState, { r: number; g: number; b: number }> = {
+  active: { r: 34, g: 197, b: 94 },   // Green - healthy state
+  warning: { r: 234, g: 179, b: 8 },  // Yellow - needs attention
+  break: { r: 59, g: 130, b: 246 },   // Blue - break time
+  paused: { r: 156, g: 163, b: 175 }, // Gray - monitoring paused
+  dnd: { r: 107, g: 114, b: 128 },    // Dark gray - do not disturb
+};
+
+/**
+ * Tooltips for each state
+ */
+const STATE_TOOLTIPS: Record<TrayIconState, string> = {
+  active: 'Lumina - Monitoring Active',
+  warning: 'Lumina - Low Blink Rate',
+  break: 'Lumina - Break Time!',
+  paused: 'Lumina - Monitoring Paused',
+  dnd: 'Lumina - Do Not Disturb',
+};
 
 export class TrayManager {
   private tray: Tray | null = null;
   private windowManager: WindowManager;
+  private currentState: TrayIconState = 'paused';
+  private iconCache: Map<TrayIconState, NativeImage> = new Map();
 
   constructor(windowManager: WindowManager) {
     this.windowManager = windowManager;
+    this.initializeIconCache();
     this.createTray();
+  }
+
+  /**
+   * Pre-generate icons for all states
+   */
+  private initializeIconCache(): void {
+    const states: TrayIconState[] = ['active', 'warning', 'break', 'paused', 'dnd'];
+    for (const state of states) {
+      this.iconCache.set(state, this.createStateIcon(state));
+    }
   }
 
   /**
    * Create the system tray icon
    */
   private createTray(): void {
-    // Create a simple icon (in production, use actual icon file)
-    const iconPath = this.getIconPath();
-    const icon = nativeImage.createFromPath(iconPath);
-
-    // Fallback: create a simple colored icon if no file exists
-    const trayIcon = icon.isEmpty() ? this.createDefaultIcon() : icon;
+    // Start with paused state icon
+    const trayIcon = this.iconCache.get('paused') || this.createStateIcon('paused');
 
     this.tray = new Tray(trayIcon);
-    this.tray.setToolTip('Lumina - Eye Wellness');
+    this.tray.setToolTip(STATE_TOOLTIPS.paused);
 
     // Build context menu
     this.updateMenu();
@@ -45,38 +80,82 @@ export class TrayManager {
   }
 
   /**
-   * Get icon path based on platform
+   * Create an icon for a specific state
    */
-  private getIconPath(): string {
-    const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
-    return path.join(__dirname, '../../assets', iconName);
-  }
-
-  /**
-   * Create a default icon if no file exists
-   */
-  private createDefaultIcon(): NativeImage {
-    // Create a 16x16 or 32x32 icon programmatically
-    // This is a placeholder - in production, include actual icon files
+  private createStateIcon(state: TrayIconState): NativeImage {
     const size = process.platform === 'darwin' ? 22 : 16;
     const canvas = Buffer.alloc(size * size * 4);
+    const color = ICON_COLORS[state];
 
-    // Fill with a teal color (Lumina brand color)
-    for (let i = 0; i < size * size; i++) {
-      const offset = i * 4;
-      canvas[offset] = 59;     // R
-      canvas[offset + 1] = 130; // G
-      canvas[offset + 2] = 246; // B
-      canvas[offset + 3] = 255; // A
+    // Create a circular icon with the state color
+    const center = size / 2;
+    const radius = size / 2 - 1;
+
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const offset = (y * size + x) * 4;
+        const distance = Math.sqrt(Math.pow(x - center, 2) + Math.pow(y - center, 2));
+
+        if (distance <= radius) {
+          // Inside the circle
+          canvas[offset] = color.r;     // R
+          canvas[offset + 1] = color.g; // G
+          canvas[offset + 2] = color.b; // B
+          canvas[offset + 3] = 255;     // A (fully opaque)
+        } else if (distance <= radius + 1) {
+          // Anti-aliased edge
+          const alpha = Math.max(0, 1 - (distance - radius)) * 255;
+          canvas[offset] = color.r;
+          canvas[offset + 1] = color.g;
+          canvas[offset + 2] = color.b;
+          canvas[offset + 3] = Math.round(alpha);
+        } else {
+          // Outside the circle (transparent)
+          canvas[offset] = 0;
+          canvas[offset + 1] = 0;
+          canvas[offset + 2] = 0;
+          canvas[offset + 3] = 0;
+        }
+      }
     }
 
     return nativeImage.createFromBuffer(canvas, { width: size, height: size });
   }
 
   /**
-   * Update the tray menu
+   * Update the tray icon state
    */
-  updateMenu(isDetecting: boolean = false, blinkRate: number = 0): void {
+  setIconState(state: TrayIconState, customTooltip?: string): void {
+    if (this.currentState === state && !customTooltip) return;
+
+    this.currentState = state;
+    const icon = this.iconCache.get(state) || this.createStateIcon(state);
+    this.tray?.setImage(icon);
+    this.tray?.setToolTip(customTooltip || STATE_TOOLTIPS[state]);
+  }
+
+  /**
+   * Get the current icon state
+   */
+  getIconState(): TrayIconState {
+    return this.currentState;
+  }
+
+  /**
+   * Update the tray menu with current detection state
+   */
+  updateMenu(isDetecting: boolean = false, blinkRate: number = 0, isDnd: boolean = false): void {
+    // Update icon state based on detection status
+    if (isDnd) {
+      this.setIconState('dnd');
+    } else if (!isDetecting) {
+      this.setIconState('paused');
+    } else if (blinkRate < 10) {
+      this.setIconState('warning', `Lumina - Low blink rate: ${blinkRate.toFixed(0)}/min`);
+    } else {
+      this.setIconState('active', `Lumina - ${blinkRate.toFixed(0)} blinks/min`);
+    }
+
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Lumina',
@@ -84,7 +163,7 @@ export class TrayManager {
       },
       { type: 'separator' },
       {
-        label: isDetecting ? `Detecting - ${blinkRate.toFixed(0)} blinks/min` : 'Detection Paused',
+        label: this.getStatusLabel(isDetecting, blinkRate, isDnd),
         enabled: false,
       },
       { type: 'separator' },
@@ -99,10 +178,31 @@ export class TrayManager {
       { type: 'separator' },
       {
         label: isDetecting ? 'Pause Detection' : 'Start Detection',
+        enabled: !isDnd,
         click: () => {
           const hub = this.windowManager.getHubWindow();
           if (hub) {
             hub.webContents.send('toggle-detection');
+          }
+        },
+      },
+      {
+        label: isDnd ? 'Disable Do Not Disturb' : 'Enable Do Not Disturb',
+        click: () => {
+          const hub = this.windowManager.getHubWindow();
+          if (hub) {
+            hub.webContents.send('toggle-dnd');
+          }
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Take a Break Now',
+        enabled: isDetecting && !isDnd,
+        click: () => {
+          const hub = this.windowManager.getHubWindow();
+          if (hub) {
+            hub.webContents.send('start-break');
           }
         },
       },
@@ -111,7 +211,6 @@ export class TrayManager {
         label: 'Settings',
         click: () => {
           this.windowManager.showHubWindow();
-          // Navigate to settings - will be handled by renderer
           const hub = this.windowManager.getHubWindow();
           if (hub) {
             hub.webContents.send('navigate', '/settings');
@@ -128,6 +227,31 @@ export class TrayManager {
     ]);
 
     this.tray?.setContextMenu(contextMenu);
+  }
+
+  /**
+   * Get status label for the menu
+   */
+  private getStatusLabel(isDetecting: boolean, blinkRate: number, isDnd: boolean): string {
+    if (isDnd) {
+      return 'Do Not Disturb Active';
+    }
+    if (!isDetecting) {
+      return 'Detection Paused';
+    }
+    if (blinkRate < 10) {
+      return `Low Blink Rate - ${blinkRate.toFixed(0)}/min`;
+    }
+    return `Healthy - ${blinkRate.toFixed(0)} blinks/min`;
+  }
+
+  /**
+   * Set break mode icon
+   */
+  setBreakMode(isBreak: boolean): void {
+    if (isBreak) {
+      this.setIconState('break');
+    }
   }
 
   /**

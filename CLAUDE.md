@@ -88,7 +88,7 @@ Camera (30 FPS) -> MediaPipe (10ms) -> EAR Calculation
 
 **Why rollups matter:** Raw events = 2.6M rows/user/day. Minute rollups = 1,440 rows/user/day (99.8% reduction).
 
-## Critical Six Challenges (Pareto 20%)
+## Critical Nine Challenges (Pareto 20%)
 
 Must solve these before anything else. Product fails without them.
 
@@ -100,6 +100,71 @@ Must solve these before anything else. Product fails without them.
 | 4 | Privacy perception | 100% on-device CV, visual "no recording" | >80% enable camera |
 | 5 | Baseline calibration | Auto-calibrate 2hr using P25/P50/P75 | >85% alert accuracy |
 | 6 | Flow interruption | Detect via declining blink rate, queue alerts | Zero interrupts in flow |
+| **7** | **Meeting Mode (30-50% of workday)** | **Screen-capture self-view from Zoom/Teams/Meet** | **>85% detection accuracy in meetings** |
+| **8** | **Posture Detection** | **Face landmarks for distance/tilt/lean** | **>90% accuracy, <10% false positives** |
+| **9** | **Yawn & Drowsiness Detection** | **MAR + PERCLOS algorithms** | **>85% yawn accuracy, >75% fatigue correlation** |
+
+### Challenge #7: Meeting Mode (CRITICAL FOR B2B)
+
+**Problem:** Enterprise users spend 30-50% of their workday in video meetings. During meetings, the camera is "owned" by Zoom/Teams/Meet, so our app cannot access it directly. **Without solving this, Lumina is useless during 4+ hours/day.**
+
+**Solution:** Screen-capture the user's self-view preview (the small video of yourself in the corner):
+1. Detect meeting app is active (process monitoring)
+2. User calibrates self-view region once per app (drag box around their face preview)
+3. Capture that screen region at ~10 FPS
+4. Run existing MediaPipe pipeline on captured frames
+5. Calculate EAR and detect blinks as normal
+
+**Implementation:** See `lumina/docs/features/MEETING_MODE.md` for full technical spec.
+
+**Priority:** P1.5 - Must ship in v1.2 before enterprise pilots.
+
+### Challenge #8: Posture Detection
+
+**Problem:** Poor posture causes neck/back pain and eye strain. Users sit too close, tilt heads, lean forward.
+
+**Solution:** Use existing MediaPipe face landmarks to detect:
+- **Too close/far from screen** - Face bounding box size (larger = closer)
+- **Head tilt** - Angle between eye corners vs horizontal
+- **Forward lean** - Nose-to-eye vertical ratio changes
+- **Looking down** - Nose position relative to eyes
+
+**Landmarks used:** Eye corners (33, 263), nose tip (1), chin (152), forehead (10)
+
+**Alert strategy:** Gentle nudge after 30s of poor posture, 10-15 min cooldown.
+
+### Challenge #9: Yawn & Drowsiness Detection
+
+**Problem:** Fatigue causes eye strain and reduced productivity. Users don't realize they're tired.
+
+**Solution:** Extend CV pipeline with:
+1. **Mouth Aspect Ratio (MAR)** - Like EAR but for mouth. High MAR + 2+ seconds = yawn
+2. **PERCLOS** - % of time eyes are >80% closed in 1-minute window. >15% = drowsy
+3. **Combined fatigue score** - Yawn frequency + PERCLOS + low blink rate
+
+**Landmarks used:** Mouth corners (61, 291), lips (13, 14), inner mouth (78, 308)
+
+**Alert strategy:**
+- Yawn detected: Log only (no interruption)
+- 2+ yawns in 10 min: "Feeling tired? A short break might help"
+- PERCLOS >20%: "Your eyes are heavy - take a break"
+
+**Implementation:** See `lumina/docs/features/POSTURE_YAWN_DETECTION.md`
+
+### EXPLICIT NON-GOAL: Emotion Detection
+
+**We do NOT and WILL NOT implement emotion/sentiment detection.**
+
+**Why not:**
+1. **Privacy destruction** - "Employer tracks when you're frustrated" is surveillance, not wellness
+2. **Legal risk** - EU AI Act classifies workplace emotion AI as HIGH-RISK
+3. **Technical inaccuracy** - Facial expression ≠ emotion (60-70% accuracy = useless)
+4. **Trust killer** - Undermines our "privacy-first" positioning
+5. **Product focus** - We measure physiological metrics, not subjective mental states
+
+**Our positioning:** "We DON'T track your emotions" is a FEATURE, not a missing capability.
+
+See `DEC-006` in `lumina/docs/PRODUCT_DECISIONS.md` for full rationale.
 
 ## Blink Detection Algorithm
 
@@ -139,6 +204,10 @@ wellness-at-work/
 | `CRITICAL_CHALLENGES.md` | The 6 make-or-break problems | 5 min |
 | `IMPLEMENTATION_ROADMAP.md` | 4-week sprint plan | 15 min |
 | `SCALE_CHALLENGES_FILTERED.md` | Top 10 scaling challenges | 10 min |
+| `lumina/docs/features/MEETING_MODE.md` | **Planned:** Meeting mode via screen capture | 10 min |
+| `lumina/docs/features/POSTURE_YAWN_DETECTION.md` | **Planned:** Posture, yawn, drowsiness detection | 10 min |
+| `lumina/docs/PRODUCT_DECISIONS.md` | **All product decisions for founder demo** | 20 min |
+| `lumina/docs/UI_UX_IMPLEMENTATION.md` | **UI/UX enhancements: components, onboarding, gamification** | 15 min |
 
 ## Database Schema (TimescaleDB)
 

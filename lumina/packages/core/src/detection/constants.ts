@@ -15,7 +15,8 @@ export const RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380] as const;
 export const EAR_THRESHOLD = 0.21;
 
 // Consecutive frames required to confirm a blink
-export const CONSEC_FRAMES = 2;
+// Set to 1 for fast blink detection (research shows 2-4 is typical)
+export const CONSEC_FRAMES = 1;
 
 // MediaPipe confidence threshold for reliable detection
 export const MIN_DETECTION_CONFIDENCE = 0.5;
@@ -46,4 +47,67 @@ export const SESSION = {
   SYNC_INTERVAL: 5 * 60 * 1000,     // Sync every 5 minutes
   BASELINE_DURATION: 2 * 60 * 60 * 1000, // 2 hours for baseline calibration
   LONG_SESSION_THRESHOLD: 90 * 60 * 1000, // 90 minutes
+} as const;
+
+// ============================================================================
+// Robust Blink Detection Configuration
+// Based on 2024-2025 research for improved accuracy with glasses/reflections
+// ============================================================================
+
+/**
+ * EAR Calibration settings (Modified EAR algorithm)
+ * @see https://peerj.com/articles/cs-943/
+ */
+export const EAR_CALIBRATION = {
+  /** Duration of calibration period in milliseconds */
+  CALIBRATION_DURATION_MS: 60_000,
+  /** Minimum samples required for valid calibration */
+  MIN_SAMPLES: 100,
+  /** Percentile for typical open eye EAR */
+  OPEN_EYE_PERCENTILE: 75,
+  /** Percentile for typical closed eye EAR */
+  CLOSED_EYE_PERCENTILE: 10,
+  /** Fallback threshold if calibration fails */
+  FALLBACK_THRESHOLD: 0.21,
+} as const;
+
+/**
+ * Kalman filter configuration for EAR smoothing
+ * @see https://www.researchgate.net/publication/378539734
+ *
+ * NOTE: Lower measurement noise = faster response to real changes
+ * We use light smoothing to preserve fast blink detection
+ */
+export const KALMAN_CONFIG = {
+  /** Process noise (Q) - expected EAR change between frames */
+  PROCESS_NOISE: 0.05,
+  /** Measurement noise (R) - lower = faster response, less smoothing */
+  MEASUREMENT_NOISE: 0.02,
+  /** Initial EAR estimate (typical open eye) */
+  INITIAL_ESTIMATE: 0.3,
+  /** Initial estimation error */
+  INITIAL_ERROR: 1.0,
+} as const;
+
+/**
+ * Spike detection for reflection artifacts
+ *
+ * NOTE: Real blinks cause EAR to drop from ~0.3 to ~0.1 (delta = 0.2)
+ * We only filter EXTREME spikes (> 0.3) that are clearly artifacts
+ */
+export const SPIKE_DETECTION = {
+  /** Maximum allowed EAR change per frame before considered a spike */
+  MAX_EAR_DELTA: 0.30,
+  /** Frames to wait after spike before trusting new values */
+  RECOVERY_FRAMES: 1,
+} as const;
+
+/**
+ * Per-eye quality tracking configuration
+ */
+export const EYE_QUALITY = {
+  /** Number of frames for variance calculation window */
+  VARIANCE_WINDOW: 10,
+  /** Variance threshold below which eye is considered stable */
+  QUALITY_THRESHOLD: 0.02,
 } as const;

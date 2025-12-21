@@ -37,15 +37,32 @@ export async function syncWellnessData(
     return result;
   }
 
-  // Convert to Supabase format
-  const records = rollups.map((r) => ({
-    org_id: orgId,
-    user_id: userId,
-    timestamp: new Date(r.timestamp).toISOString(),
-    blink_count: r.blink_count,
-    avg_ear: r.avg_ear,
-    session_id: r.session_id,
-  }));
+  // Convert to Supabase format with timestamp validation
+  const records = rollups.map((r) => {
+    // Validate timestamp - NaN, Infinity, or invalid dates will throw on toISOString()
+    let isoTimestamp: string;
+    try {
+      const date = new Date(r.timestamp);
+      if (isNaN(date.getTime())) {
+        // Invalid date - use current time as fallback
+        isoTimestamp = new Date().toISOString();
+      } else {
+        isoTimestamp = date.toISOString();
+      }
+    } catch {
+      // Fallback to current time if conversion fails
+      isoTimestamp = new Date().toISOString();
+    }
+
+    return {
+      org_id: orgId,
+      user_id: userId,
+      timestamp: isoTimestamp,
+      blink_count: r.blink_count,
+      avg_ear: r.avg_ear,
+      session_id: r.session_id,
+    };
+  });
 
   // Batch insert (Supabase handles up to 1000 per request)
   const batchSize = 500;

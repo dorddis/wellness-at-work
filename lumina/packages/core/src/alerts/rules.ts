@@ -47,7 +47,9 @@ export const DEFAULT_ALERT_RULES: AlertRule[] = [
     type: 'critical_blink',
     severity: 'critical',
     condition: (metrics) => {
-      const threshold = metrics.baseline?.blinkP25
+      // FIX: Use nullish coalescing (??) instead of truthy check
+      // to properly handle blinkP25 = 0 (0 * 0.5 = 0, not 5)
+      const threshold = metrics.baseline?.blinkP25 != null
         ? metrics.baseline.blinkP25 * 0.5  // Half of p25
         : 5;
       return metrics.blinkRate < threshold && metrics.blinkRate > 0;
