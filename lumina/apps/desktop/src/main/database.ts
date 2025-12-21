@@ -358,6 +358,116 @@ export class DatabaseManager {
 
     const stmt = this.db.prepare('DELETE FROM blink_events WHERE timestamp < ?');
     stmt.run(cutoff);
+
+    // Also cleanup old wellness events (keep 7 days)
+    const wellnessCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const wellnessStmt = this.db.prepare('DELETE FROM wellness_events WHERE timestamp < ?');
+    wellnessStmt.run(wellnessCutoff);
+  }
+
+  // ========== WELLNESS EVENTS ==========
+
+  /**
+   * Insert a wellness event (yawn, posture issue, drowsiness change)
+   */
+  insertWellnessEvent(
+    timestamp: number,
+    eventType: WellnessEventType,
+    payload?: object
+  ): void {
+    if (!this.db) return;
+
+    const stmt = this.db.prepare(`
+      INSERT INTO wellness_events (timestamp, event_type, payload)
+      VALUES (?, ?, ?)
+    `);
+    stmt.run(timestamp, eventType, payload ? JSON.stringify(payload) : null);
+  }
+
+  /**
+   * Get wellness events for a time range
+   */
+  getWellnessEvents(
+    startTime: number,
+    endTime: number,
+    eventType?: WellnessEventType
+  ): WellnessEvent[] {
+    if (!this.db) return [];
+
+    if (eventType) {
+      const stmt = this.db.prepare(`
+        SELECT * FROM wellness_events
+        WHERE timestamp >= ? AND timestamp <= ? AND event_type = ?
+        ORDER BY timestamp ASC
+      `);
+      return stmt.all(startTime, endTime, eventType) as WellnessEvent[];
+    } else {
+      const stmt = this.db.prepare(`
+        SELECT * FROM wellness_events
+        WHERE timestamp >= ? AND timestamp <= ?
+        ORDER BY timestamp ASC
+      `);
+      return stmt.all(startTime, endTime) as WellnessEvent[];
+    }
+  }
+
+  /**
+   * Get wellness event counts for today (for dashboard)
+   */
+  getTodayWellnessStats(): {
+    yawnCount: number;
+    postureIssueCount: number;
+    drowsinessEventCount: number;
+  } {
+    if (!this.db) {
+      return { yawnCount: 0, postureIssueCount: 0, drowsinessEventCount: 0 };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startOfDay = today.getTime();
+    const now = Date.now();
+
+    const yawnStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM wellness_events
+      WHERE timestamp >= ? AND timestamp <= ? AND event_type = 'yawn'
+    `);
+    const yawnResult = yawnStmt.get(startOfDay, now) as { count: number };
+
+    const postureStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM wellness_events
+      WHERE timestamp >= ? AND timestamp <= ?
+      AND event_type IN ('posture_too_close', 'posture_too_far', 'posture_head_tilt', 'posture_forward_lean')
+    `);
+    const postureResult = postureStmt.get(startOfDay, now) as { count: number };
+
+    const drowsinessStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM wellness_events
+      WHERE timestamp >= ? AND timestamp <= ?
+      AND event_type IN ('drowsiness_mild', 'drowsiness_moderate', 'drowsiness_severe')
+    `);
+    const drowsinessResult = drowsinessStmt.get(startOfDay, now) as { count: number };
+
+    return {
+      yawnCount: yawnResult.count,
+      postureIssueCount: postureResult.count,
+      drowsinessEventCount: drowsinessResult.count,
+    };
+  }
+
+  /**
+   * Get recent wellness events (last N minutes)
+   */
+  getRecentWellnessEvents(minutes: number): WellnessEvent[] {
+    if (!this.db) return [];
+
+    const cutoff = Date.now() - minutes * 60 * 1000;
+    const stmt = this.db.prepare(`
+      SELECT * FROM wellness_events
+      WHERE timestamp >= ?
+      ORDER BY timestamp DESC
+    `);
+    return stmt.all(cutoff) as WellnessEvent[];
   }
 
   /**
