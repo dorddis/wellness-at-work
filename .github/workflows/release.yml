@@ -12,11 +12,13 @@ on:
         type: string
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '20'
   PNPM_VERSION: '9'
 
+permissions:
+  contents: write
+
 jobs:
-  # Build Windows installer
   build-windows:
     runs-on: windows-latest
     steps:
@@ -39,26 +41,36 @@ jobs:
         working-directory: lumina
         run: pnpm install --frozen-lockfile
 
-      - name: Build desktop app
+      - name: Build Desktop (Compile TS)
         working-directory: lumina
         run: pnpm build:desktop
 
-      - name: Package Windows installer
-        working-directory: lumina/apps/desktop
-        run: pnpm run package
+      - name: Package Windows Installer (Electron Builder)
+        working-directory: lumina
+        # FIX: Run from root using filter to ensure access to shared node_modules
+        run: pnpm --filter @lumina/desktop package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows artifact
+      - name: DEBUG - List Output Directory
+        working-directory: lumina/apps/desktop
+        run: |
+          echo "--- Listing dist folder ---"
+          ls dist -ErrorAction SilentlyContinue
+          echo "--- Listing release folder ---"
+          ls release -ErrorAction SilentlyContinue
+
+      - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
+          if-no-files-found: error
+          # FIX: Look in both common output folders (dist and release)
           path: |
+            lumina/apps/desktop/dist/*.exe
             lumina/apps/desktop/release/*.exe
-            lumina/apps/desktop/release/*.exe.blockmap
-          retention-days: 7
+          retention-days: 1
 
-  # Upload to Supabase Storage and update releases table
   upload-release:
     needs: [build-windows]
     runs-on: ubuntu-latest
@@ -66,98 +78,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download Windows artifact
+      - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-installer
           path: artifacts/windows
 
-      - name: Get version
+      - name: Get Version
         id: version
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            CLEAN_VERSION=$(echo "${{ inputs.version }}" | sed 's/^v//')
+            echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
           else
             echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: List artifacts
+      - name: Flatten Artifacts
         run: |
-          echo "Windows artifacts:"
-          ls -la artifacts/windows/ || echo "No Windows artifacts"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Upload to Supabase Storage and update database
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # Find the installer files
-          WINDOWS_FILE=$(find artifacts/windows -name "*.exe" -not -name "*.blockmap" | head -1)
-
-          echo "Windows file: $WINDOWS_FILE"
-
-          # Get file sizes
-          WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE" 2>/dev/null || echo "0")
-
-          echo "Windows size: $WINDOWS_SIZE bytes"
-
-          # Upload to Supabase Storage using curl
-          STORAGE_URL="${SUPABASE_URL}/storage/v1/object/releases/v${VERSION}"
-
-          # Upload Windows installer
-          WINDOWS_URL=""
-          if [ -n "$WINDOWS_FILE" ] && [ -f "$WINDOWS_FILE" ]; then
-            WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
-            echo "Uploading $WINDOWS_FILENAME..."
-            
-            # URL encode filename for curl (handle spaces and other characters)
-            ENCODED_FILENAME=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read().strip()))" <<< "$WINDOWS_FILENAME")
-            
-            curl -X POST "${STORAGE_URL}/${ENCODED_FILENAME}" \
-              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary "@${WINDOWS_FILE}"
-            
-            WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${ENCODED_FILENAME}"
-            echo "WINDOWS_URL=$WINDOWS_URL" >> $GITHUB_ENV
-          fi
-
-          # Insert/Update release in database
-          echo "Updating releases table..."
-          curl -X POST "${SUPABASE_URL}/rest/v1/releases?on_conflict=version" \
-            -H "apikey: ${SUPABASE_SERVICE_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: resolution=merge-duplicates" \
-            -d "{
-              \"version\": \"${VERSION}\",
-              \"windows_url\": \"${WINDOWS_URL:-null}\",
-              \"windows_size\": ${WINDOWS_SIZE:-0},
-              \"macos_url\": null,
-              \"macos_size\": 0,
-              \"release_notes\": \"Release v${VERSION}\" 
-            }"
-
-          echo "Release v${VERSION} uploaded successfully!"
-          echo "Windows: ${WINDOWS_URL:-'Not available'}"
+          find artifacts/windows -name "*.exe" -type f -exec mv {} artifacts/windows/ \;
+          ls -la artifacts/windows/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            artifacts/windows/*.exe
+          tag_name: v${{ steps.version.outputs.version }}
+          files: artifacts/windows/*.exe
           generate_release_notes: true
-          body: |
-            ## Download
-            - [Windows Installer](${{ env.WINDOWS_URL }})
-            
-            ## Release Notes
-            Automated release v${{ steps.version.outputs.version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
