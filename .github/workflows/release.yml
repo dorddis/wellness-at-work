@@ -58,49 +58,9 @@ jobs:
             lumina/apps/desktop/release/*.exe.blockmap
           retention-days: 7
 
-  # Build macOS installer
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-          cache-dependency-path: lumina/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: lumina
-        run: pnpm install --frozen-lockfile
-
-      - name: Build desktop app
-        working-directory: lumina
-        run: pnpm build:desktop
-
-      - name: Package macOS installer
-        working-directory: lumina/apps/desktop
-        run: pnpm run package
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload macOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-installer
-          path: lumina/apps/desktop/release/*.dmg
-          retention-days: 7
-
   # Upload to Supabase Storage and update releases table
   upload-release:
-    needs: [build-windows, build-macos]
+    needs: [build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -111,12 +71,6 @@ jobs:
         with:
           name: windows-installer
           path: artifacts/windows
-
-      - name: Download macOS artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: macos-installer
-          path: artifacts/macos
 
       - name: Get version
         id: version
@@ -131,8 +85,6 @@ jobs:
         run: |
           echo "Windows artifacts:"
           ls -la artifacts/windows/ || echo "No Windows artifacts"
-          echo "macOS artifacts:"
-          ls -la artifacts/macos/ || echo "No macOS artifacts"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -150,17 +102,13 @@ jobs:
         run: |
           # Find the installer files
           WINDOWS_FILE=$(find artifacts/windows -name "*.exe" -not -name "*.blockmap" | head -1)
-          MACOS_FILE=$(find artifacts/macos -name "*.dmg" | head -1)
 
           echo "Windows file: $WINDOWS_FILE"
-          echo "macOS file: $MACOS_FILE"
 
           # Get file sizes
           WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE" 2>/dev/null || echo "0")
-          MACOS_SIZE=$(stat -c%s "$MACOS_FILE" 2>/dev/null || echo "0")
 
           echo "Windows size: $WINDOWS_SIZE bytes"
-          echo "macOS size: $MACOS_SIZE bytes"
 
           # Upload to Supabase Storage using curl
           STORAGE_URL="${SUPABASE_URL}/storage/v1/object/releases/v${VERSION}"
@@ -176,17 +124,6 @@ jobs:
             WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${WINDOWS_FILENAME}"
           fi
 
-          # Upload macOS installer
-          if [ -n "$MACOS_FILE" ] && [ -f "$MACOS_FILE" ]; then
-            MACOS_FILENAME=$(basename "$MACOS_FILE")
-            echo "Uploading $MACOS_FILENAME..."
-            curl -X POST "${STORAGE_URL}/${MACOS_FILENAME}" \
-              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
-              -H "Content-Type: application/octet-stream" \
-              --data-binary "@${MACOS_FILE}"
-            MACOS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${MACOS_FILENAME}"
-          fi
-
           # Insert/Update release in database
           echo "Updating releases table..."
           curl -X POST "${SUPABASE_URL}/rest/v1/releases" \
@@ -198,26 +135,23 @@ jobs:
               \"version\": \"${VERSION}\",
               \"windows_url\": \"${WINDOWS_URL:-null}\",
               \"windows_size\": ${WINDOWS_SIZE:-0},
-              \"macos_url\": \"${MACOS_URL:-null}\",
-              \"macos_size\": ${MACOS_SIZE:-0},
-              \"release_notes\": \"Release v${VERSION}\"
+              \"macos_url\": null,
+              \"macos_size\": 0,
+              \"release_notes\": \"Release v${VERSION}\" 
             }"
 
           echo "Release v${VERSION} uploaded successfully!"
           echo "Windows: ${WINDOWS_URL:-'Not available'}"
-          echo "macOS: ${MACOS_URL:-'Not available'}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
             artifacts/windows/*.exe
-            artifacts/macos/*.dmg
           generate_release_notes: true
           body: |
             ## Download
             - [Windows Installer](${{ env.WINDOWS_URL }})
-            - [macOS Installer](${{ env.MACOS_URL }})
             
             ## Release Notes
             Automated release v${{ steps.version.outputs.version }}
