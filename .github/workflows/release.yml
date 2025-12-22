@@ -12,7 +12,7 @@ on:
         type: string
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   PNPM_VERSION: '9'
 
 jobs:
@@ -90,9 +90,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install Supabase CLI
-        run: npm install -g supabase
 
       - name: Upload to Supabase Storage and update database
         env:
