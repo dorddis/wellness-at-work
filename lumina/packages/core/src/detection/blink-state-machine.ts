@@ -7,7 +7,7 @@
  * This pattern-based approach is more robust than threshold-based detection.
  */
 
-import { BLINK_TIMING, BILATERAL, SLOW_BLINK } from './constants';
+import { BLINK_TIMING, BILATERAL, SLOW_BLINK, HYBRID_VALIDATION } from './constants';
 
 export enum BlinkPhase {
   /** Waiting for blink to start */
@@ -180,12 +180,51 @@ export class BlinkStateMachine {
           const durationMs = ts - this.closingStartMs;
           const dipMagnitude = this.baselineEar - this.minEarInBlink;
 
-          // Only validate dip magnitude (not duration - a blink is a blink)
-          const minDipRequired = this.baselineEar * BILATERAL.MIN_DIP_PERCENTAGE;
-          if (dipMagnitude < minDipRequired || dipMagnitude < BILATERAL.MIN_DIP_ABSOLUTE) {
-            rejectionReason = `shallow_dip_${dipMagnitude.toFixed(3)}_need_${minDipRequired.toFixed(3)}`;
-            this.phase = BlinkPhase.IDLE;
+          // VALIDATION: Verify the EAR dip was significant enough to be a real blink
+          //
+          // Two modes controlled by HYBRID_VALIDATION.ENABLED:
+          // - false (DEFAULT): Uses original BILATERAL validation (8% dip OR 0.015 absolute)
+          // - true (EXPERIMENTAL): Stricter validation to reject eye movements
+          //
+          // The original algorithm works well for most users. Only enable hybrid
+          // validation if you're seeing eye movements counted as false blinks.
+          let isValidBlink = false;
+
+          if (HYBRID_VALIDATION.ENABLED) {
+            // EXPERIMENTAL: Stricter validation for eye movement rejection
+            // Calculate validation metrics
+            const dipRatio = this.minEarInBlink / this.baselineEar;
+            const absoluteDip = dipMagnitude;
+
+            // Accept if ANY of these conditions are met:
+            // 1. EAR dropped to <= 75% of baseline (significant relative dip)
+            const relativelySignificant = dipRatio <= HYBRID_VALIDATION.MIN_DIP_RATIO;
+            // 2. EAR dropped by >= 0.06 absolute (for high-baseline users like 0.40)
+            const absolutelySignificant = absoluteDip >= HYBRID_VALIDATION.MIN_ABSOLUTE_DIP;
+            // 3. EAR reached truly closed level (<= 0.22 absolute)
+            const trulyClosed = this.minEarInBlink <= HYBRID_VALIDATION.ABSOLUTE_CLOSED_THRESHOLD;
+
+            isValidBlink = relativelySignificant || absolutelySignificant || trulyClosed;
+
+            if (!isValidBlink) {
+              rejectionReason = `eye_movement_not_blink: minEAR=${this.minEarInBlink.toFixed(3)}, ` +
+                `baseline=${this.baselineEar.toFixed(3)}, dipRatio=${dipRatio.toFixed(2)}, ` +
+                `absDip=${absoluteDip.toFixed(3)}`;
+              this.phase = BlinkPhase.IDLE;
+            }
           } else {
+            // ORIGINAL ALGORITHM (DEFAULT): Uses BILATERAL config unchanged
+            // This is the proven, working validation - do not modify
+            const minDipRequired = this.baselineEar * BILATERAL.MIN_DIP_PERCENTAGE;
+            if (dipMagnitude < minDipRequired || dipMagnitude < BILATERAL.MIN_DIP_ABSOLUTE) {
+              rejectionReason = `shallow_dip_${dipMagnitude.toFixed(3)}_need_${minDipRequired.toFixed(3)}`;
+              this.phase = BlinkPhase.IDLE;
+            } else {
+              isValidBlink = true;
+            }
+          }
+
+          if (isValidBlink) {
             // Valid blink! (duration tracked but not used for rejection)
             blinkDetected = true;
             blinkEvent = {

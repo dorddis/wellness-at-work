@@ -261,7 +261,16 @@ export class FaceLandmarkerManager {
 
     // Log rejections for debugging
     if (robustResult.rejectionReason) {
-      console.log('[BlinkDetector] Rejected:', robustResult.rejectionReason);
+      // Enhanced logging for eye movement rejections (hybrid validation)
+      if (robustResult.rejectionReason.startsWith('eye_movement')) {
+        console.log('[BlinkDetector] Eye movement rejected (not a blink):', {
+          reason: robustResult.rejectionReason,
+          avgEAR: robustResult.avgEar.toFixed(3),
+          baseline: robustResult.threshold.toFixed(3),
+        });
+      } else {
+        console.log('[BlinkDetector] Rejected:', robustResult.rejectionReason);
+      }
     }
 
     // Convert to BlinkDetectionResult format for compatibility

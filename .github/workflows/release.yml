@@ -19,7 +19,25 @@ permissions:
   contents: write
 
 jobs:
+  # Determine version once, share across jobs
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Get Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            CLEAN_VERSION=$(echo "${{ inputs.version }}" | sed 's/^v//')
+          else
+            CLEAN_VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $CLEAN_VERSION"
+
   build-windows:
+    needs: prepare
     runs-on: windows-latest
     steps:
       - name: Checkout code
@@ -36,6 +54,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
           cache-dependency-path: lumina/pnpm-lock.yaml
+
+      - name: Set Version in package.json
+        working-directory: lumina/apps/desktop
+        run: |
+          $version = "${{ needs.prepare.outputs.version }}"
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $pkg.version = $version
+          $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
+          Write-Host "Set version to $version"
 
       - name: Install dependencies
         working-directory: lumina
@@ -61,8 +88,65 @@ jobs:
             lumina/apps/desktop/release/*.exe
           retention-days: 1
 
+  build-macos:
+    needs: prepare
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: lumina/pnpm-lock.yaml
+
+      - name: Set Version in package.json
+        working-directory: lumina/apps/desktop
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          # Use node to update package.json (cross-platform safe)
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+          echo "Set version to $VERSION"
+
+      - name: Install dependencies
+        working-directory: lumina
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Desktop (Compile TS)
+        working-directory: lumina
+        run: pnpm build:desktop
+
+      - name: Package macOS DMG
+        working-directory: lumina
+        run: pnpm --filter @lumina/desktop package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Skip code signing for now (unsigned build)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          if-no-files-found: error
+          path: |
+            lumina/apps/desktop/release/*.dmg
+          retention-days: 1
+
   upload-release:
-    needs: [build-windows]
+    needs: [prepare, build-windows, build-macos]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -74,60 +158,77 @@ jobs:
           name: windows-installer
           path: artifacts/windows
 
-      - name: Get Version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            CLEAN_VERSION=$(echo "${{ inputs.version }}" | sed 's/^v//')
-            echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-          fi
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: artifacts/macos
 
       - name: Rename and Flatten Artifacts
-        # FIX: Rename file to replace spaces with dashes (Lumina-Setup.exe) to avoid URL mismatch
         run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+
+          # Windows: flatten and rename spaces to dashes
           find artifacts/windows -name "*.exe" -type f -exec mv {} artifacts/windows/ \;
-          
           cd artifacts/windows
-          ORIGINAL_FILE=$(ls *.exe | head -1)
-          # Replace spaces with dashes
-          NEW_FILENAME=$(echo "$ORIGINAL_FILE" | sed 's/ /-/g')
-          mv "$ORIGINAL_FILE" "$NEW_FILENAME"
-          
-          echo "Renamed $ORIGINAL_FILE to $NEW_FILENAME"
-          ls -la
+          WINDOWS_ORIGINAL=$(ls *.exe | head -1)
+          WINDOWS_NEW=$(echo "$WINDOWS_ORIGINAL" | sed 's/ /-/g')
+          mv "$WINDOWS_ORIGINAL" "$WINDOWS_NEW"
+          echo "Windows: $WINDOWS_ORIGINAL -> $WINDOWS_NEW"
+          cd ../..
+
+          # macOS: flatten and rename spaces to dashes
+          find artifacts/macos -name "*.dmg" -type f -exec mv {} artifacts/macos/ \;
+          cd artifacts/macos
+          MACOS_ORIGINAL=$(ls *.dmg | head -1)
+          MACOS_NEW=$(echo "$MACOS_ORIGINAL" | sed 's/ /-/g')
+          mv "$MACOS_ORIGINAL" "$MACOS_NEW"
+          echo "macOS: $MACOS_ORIGINAL -> $MACOS_NEW"
+          cd ../..
+
+          echo "=== Final artifacts ==="
+          ls -la artifacts/windows/
+          ls -la artifacts/macos/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          files: artifacts/windows/*.exe
+          tag_name: v${{ needs.prepare.outputs.version }}
+          files: |
+            artifacts/windows/*.exe
+            artifacts/macos/*.dmg
           generate_release_notes: true
+          body: |
+            ## Installation
+
+            **Windows:** Download the `.exe` installer and run it.
+
+            **macOS:** Download the `.dmg` file and drag Lumina to Applications.
+            > Note: This is an unsigned build. On first launch, right-click the app and select "Open" to bypass Gatekeeper.
 
       - name: Update Supabase Database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.prepare.outputs.version }}
           REPO: ${{ github.repository }}
         run: |
+          # Get Windows file info
           cd artifacts/windows
           WINDOWS_FILE=$(ls *.exe | head -1)
-          
-          if [ -z "$WINDOWS_FILE" ]; then
-            echo "Error: No .exe file found!"
-            exit 1
-          fi
-
           WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE")
-          # Filename now strictly has dashes, safe for URLs
-          WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
+          WINDOWS_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${WINDOWS_FILE}"
+          cd ../..
 
-          # Construct the clean GitHub URL
-          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${WINDOWS_FILENAME}"
-          
-          echo "Generated URL: $DOWNLOAD_URL"
+          # Get macOS file info
+          cd artifacts/macos
+          MACOS_FILE=$(ls *.dmg | head -1)
+          MACOS_SIZE=$(stat -c%s "$MACOS_FILE")
+          MACOS_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${MACOS_FILE}"
+          cd ../..
+
+          echo "Windows: $WINDOWS_URL ($WINDOWS_SIZE bytes)"
+          echo "macOS: $MACOS_URL ($MACOS_SIZE bytes)"
 
           echo "Updating Supabase..."
           curl --fail-with-body -X POST "${SUPABASE_URL}/rest/v1/releases" \
@@ -137,11 +238,11 @@ jobs:
             -H "Prefer: resolution=merge-duplicates" \
             -d "{
               \"version\": \"${VERSION}\",
-              \"windows_url\": \"${DOWNLOAD_URL}\",
+              \"windows_url\": \"${WINDOWS_URL}\",
               \"windows_size\": ${WINDOWS_SIZE},
-              \"macos_url\": null,
-              \"macos_size\": 0,
+              \"macos_url\": \"${MACOS_URL}\",
+              \"macos_size\": ${MACOS_SIZE},
               \"release_notes\": \"Release v${VERSION}\"
             }"
-            
-          echo "? Database updated with public link."
+
+          echo "Database updated with both download links."

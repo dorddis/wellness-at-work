@@ -305,3 +305,54 @@ export const BILATERAL = {
   /** Factor to consider eyes "open" (EAR > baseline * this) */
   EYES_OPEN_FACTOR: 0.85,
 } as const;
+
+// ============================================================================
+// Hybrid Validation Configuration (EXPERIMENTAL - DISABLED BY DEFAULT)
+// Prevents eye movements from being counted as blinks
+// ============================================================================
+
+/**
+ * Hybrid validation: Slope triggers + dip validation
+ *
+ * IMPORTANT: This is an EXPERIMENTAL feature. When ENABLED: false (default),
+ * the original algorithm in BILATERAL config is used unchanged.
+ *
+ * The original algorithm uses:
+ * - BILATERAL.MIN_DIP_PERCENTAGE (8% of baseline)
+ * - BILATERAL.MIN_DIP_ABSOLUTE (0.015)
+ *
+ * This hybrid validation was designed to reject eye movements but may be
+ * TOO STRICT for some users, potentially missing valid mini-blinks.
+ *
+ * When ENABLED: true, a blink is accepted if ANY of these conditions are met:
+ * 1. EAR dropped to <= MIN_DIP_RATIO of baseline (relative dip)
+ * 2. EAR dropped by >= MIN_ABSOLUTE_DIP (for high-baseline users)
+ * 3. EAR reached <= ABSOLUTE_CLOSED_THRESHOLD (truly closed eyes)
+ *
+ * Keep ENABLED: false unless you're experiencing false positives from
+ * eye movements being counted as blinks.
+ */
+export const HYBRID_VALIDATION = {
+  /**
+   * Feature flag: Set to true to enable stricter validation.
+   * DEFAULT: false (uses original BILATERAL-based validation)
+   *
+   * When false: Original algorithm unchanged (8% dip OR 0.015 absolute)
+   * When true: Stricter validation (25% dip OR 0.06 absolute OR EAR < 0.22)
+   */
+  ENABLED: false,
+
+  /** Minimum dip ratio: EAR must drop to this fraction of baseline or less
+   *  e.g., 0.75 means eyes must close to 75% of open EAR
+   *  For baseline 0.40: must reach 0.30 or lower */
+  MIN_DIP_RATIO: 0.75,
+
+  /** Minimum absolute dip in EAR units
+   *  Handles high-baseline users (0.38-0.42) where 25% drop might be too strict
+   *  e.g., 0.06 means EAR must drop by at least 0.06 */
+  MIN_ABSOLUTE_DIP: 0.06,
+
+  /** Absolute closed threshold: If EAR drops below this, always count as blink
+   *  Regardless of baseline, this represents truly closed eyes */
+  ABSOLUTE_CLOSED_THRESHOLD: 0.22,
+} as const;
