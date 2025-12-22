@@ -17,7 +17,7 @@
 | Setting | Value |
 |---------|-------|
 | **Root Directory** | `lumina` |
-| **Framework Preset** | Other |
+| **Framework Preset** | Next.js |
 | **Build Command** | `pnpm build:web` |
 | **Output Directory** | `apps/web/.next` |
 | **Install Command** | `pnpm install` |
