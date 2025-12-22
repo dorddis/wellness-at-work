@@ -29,13 +29,13 @@ const stats = [
 
 export function ProblemStats() {
   return (
-    <section className="py-20 sm:py-24 bg-foreground text-background">
+    <section className="py-20 sm:py-24 bg-gray-800 text-white">
       <div className="container">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
             The hidden cost of screen time
           </h2>
-          <p className="mt-4 text-lg text-background/70 max-w-2xl mx-auto">
+          <p className="mt-4 text-lg text-white/70 max-w-2xl mx-auto">
             Persistent digital eye strain leads to chronic discomfort, reduced vision quality,
             and degenerative changes in the cervical spine over time.
           </p>
@@ -49,18 +49,18 @@ export function ProblemStats() {
               </div>
               <div className="text-4xl font-bold text-primary mb-1">{item.stat}</div>
               <div className="text-sm font-medium mb-1">{item.label}</div>
-              <div className="text-sm text-background/60">{item.description}</div>
+              <div className="text-sm text-white/60">{item.description}</div>
             </div>
           ))}
         </div>
 
-        <p className="text-center text-sm text-background/50 mt-12">
+        <p className="text-center text-sm text-white/50 mt-12">
           Sources:{' '}
           <a
             href="https://pmc.ncbi.nlm.nih.gov/articles/PMC6020759/"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-background/70"
+            className="underline hover:text-white/70"
           >
             PMC
           </a>
@@ -69,7 +69,7 @@ export function ProblemStats() {
             href="https://smartergo.com/december-2024-digital-eye-strain-prevalence-and-mitigation-into-2025/"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-background/70"
+            className="underline hover:text-white/70"
           >
             SmartErgo 2024
           </a>

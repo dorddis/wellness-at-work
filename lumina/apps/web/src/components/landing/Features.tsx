@@ -56,18 +56,20 @@ export function Features() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group relative p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:border-primary/20 transition-all text-center"
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl hover:border-primary/20 transition-all text-center"
             >
-              <div className="relative w-48 h-48 mx-auto mb-6 overflow-hidden">
+              <div className="relative z-10 p-8 pb-32">
+                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                <p className="text-foreground/80 font-medium leading-relaxed">{feature.description}</p>
+              </div>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[30rem] h-72 opacity-40 group-hover:opacity-100 transition-opacity overflow-hidden">
                 <Image
                   src={feature.image}
                   alt={feature.title}
                   fill
-                  className="object-cover object-bottom opacity-80 group-hover:opacity-100 transition-opacity"
+                  className="object-cover object-bottom"
                 />
               </div>
-              <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-              <p className="text-muted-foreground">{feature.description}</p>
             </div>
           ))}
         </div>

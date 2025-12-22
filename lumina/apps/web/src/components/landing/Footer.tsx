@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Eye } from 'lucide-react';
+import Image from 'next/image';
 
 const footerLinks = {
   product: [
@@ -34,7 +34,13 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2">
-              <Eye className="w-6 h-6 text-primary" />
+              <Image
+                src="/images/illustrations/logo-circular.png"
+                alt="Lumina"
+                width={40}
+                height={40}
+                className="w-10 h-10"
+              />
               <span className="text-xl font-bold">Lumina</span>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">

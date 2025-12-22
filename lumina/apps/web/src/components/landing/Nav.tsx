@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Eye, Menu, X } from 'lucide-react';
+import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const navLinks = [
@@ -19,7 +20,13 @@ export function Nav() {
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Eye className="w-6 h-6 text-primary" />
+          <Image
+            src="/images/illustrations/logo-circular.png"
+            alt="Lumina"
+            width={36}
+            height={36}
+            className="w-9 h-9"
+          />
           <span className="text-xl font-bold">Lumina</span>
         </Link>
 

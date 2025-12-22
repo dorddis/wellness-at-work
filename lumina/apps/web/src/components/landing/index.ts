@@ -8,3 +8,4 @@ export { BlogPreview } from './BlogPreview';
 export { PricingPreview } from './PricingPreview';
 export { CTASection } from './CTASection';
 export { Footer } from './Footer';
+export { CurvedFeature } from './CurvedFeature';
