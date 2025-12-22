@@ -1,22 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { initializeSupabase, isSupabaseInitialized } from '@lumina/api';
-
-// Supabase config - in production these would be environment variables
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://acvmkigubzldhpyrlail.supabase.co';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjdm1raWd1YnpsZGhweXJsYWlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNDI0ODIsImV4cCI6MjA4MTcxODQ4Mn0.K9qSjNvjl1Nmro06J5pDbWaWK3jcSGWOgigxe35fZ0k';
+import { useEffect, useState, useMemo } from 'react';
+import { setSupabaseClient, isSupabaseInitialized } from '@lumina/api';
+import { createClient } from '@/lib/supabase/client';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
+  // Create browser client once - this has proper cookie/session support
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    // Initialize Supabase client if not already initialized
+    // Share the browser client with the API package
+    // This ensures all queries use the authenticated session
     if (!isSupabaseInitialized()) {
-      initializeSupabase(SUPABASE_URL, SUPABASE_ANON_KEY);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setSupabaseClient(supabase as any);
     }
     setIsReady(true);
-  }, []);
+  }, [supabase]);
 
   // Show nothing while initializing to prevent hydration mismatch
   if (!isReady) {

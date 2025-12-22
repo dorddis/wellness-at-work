@@ -39,13 +39,13 @@ export async function GET(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        const { data: membership } = await supabase
+        const { data: memberships } = await supabase
           .from('org_members')
           .select('org_id, role')
           .eq('user_id', user.id)
-          .single();
+          .limit(1);
 
-        if (!membership) {
+        if (!memberships || memberships.length === 0) {
           // User needs to join or create an organization
           return NextResponse.redirect(`${origin}/onboarding`);
         }

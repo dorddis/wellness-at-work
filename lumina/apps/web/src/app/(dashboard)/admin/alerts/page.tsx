@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Filter, CheckCircle, AlertTriangle, Info, Clock } from 'lucide-react';
+import { Filter, CheckCircle, AlertTriangle, Info, Clock, Bell } from 'lucide-react';
 import { useAuth } from '../../../contexts/auth-context';
 import { getSupabase } from '@lumina/api';
+import { Select } from '../../../../components/ui';
 
 interface Alert {
   id: string;
@@ -172,26 +173,28 @@ export default function AlertsPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
-          <select
+          <Select
+            options={[
+              { value: 'all', label: 'All Alerts', icon: <Bell className="w-4 h-4 text-gray-400" /> },
+              { value: 'unacknowledged', label: 'Unacknowledged' },
+              { value: 'acknowledged', label: 'Acknowledged' },
+            ]}
             value={filter}
-            onChange={(e) => setFilter(e.target.value as typeof filter)}
-            className="input w-48"
-          >
-            <option value="all">All Alerts</option>
-            <option value="unacknowledged">Unacknowledged</option>
-            <option value="acknowledged">Acknowledged</option>
-          </select>
+            onChange={(val) => setFilter(val as typeof filter)}
+            className="w-44"
+          />
         </div>
-        <select
+        <Select
+          options={[
+            { value: 'all', label: 'All Severities' },
+            { value: 'critical', label: 'Critical', icon: <AlertTriangle className="w-4 h-4 text-red-500" /> },
+            { value: 'warning', label: 'Warning', icon: <AlertTriangle className="w-4 h-4 text-amber-500" /> },
+            { value: 'info', label: 'Info', icon: <Info className="w-4 h-4 text-blue-500" /> },
+          ]}
           value={severityFilter}
-          onChange={(e) => setSeverityFilter(e.target.value as typeof severityFilter)}
-          className="input w-40"
-        >
-          <option value="all">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="warning">Warning</option>
-          <option value="info">Info</option>
-        </select>
+          onChange={(val) => setSeverityFilter(val as typeof severityFilter)}
+          className="w-40"
+        />
       </div>
 
       {/* Alerts list */}

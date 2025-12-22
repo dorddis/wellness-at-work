@@ -24,9 +24,9 @@ RIGHT_FACE_CORNER_INDEX = 454  # Right cheek
 
 # Slope thresholds (EAR change per millisecond)
 # Negative slope = eyes closing, Positive slope = eyes opening
-CLOSING_SLOPE_THRESHOLD = -0.0005  # Minimum negative slope to detect closing (was -0.0015)
-OPENING_SLOPE_THRESHOLD = 0.0005   # Minimum positive slope to detect opening (was 0.0015)
-SLOPE_NEAR_ZERO = 0.0003           # Slope magnitude considered "near zero" (at minimum)
+CLOSING_SLOPE_THRESHOLD = -0.0003  # Minimum negative slope to detect closing (was -0.0005, more sensitive)
+OPENING_SLOPE_THRESHOLD = 0.0003   # Minimum positive slope to detect opening (was 0.0005, more sensitive)
+SLOPE_NEAR_ZERO = 0.0002           # Slope magnitude considered "near zero" (was 0.0003, tighter)
 
 # Derivative calculation
 SLOPE_WINDOW_FRAMES = 3  # Number of frames for slope calculation (smooths noise)
@@ -38,7 +38,7 @@ SLOPE_WINDOW_FRAMES = 3  # Number of frames for slope calculation (smooths noise
 
 # Blink duration constraints (milliseconds)
 MIN_BLINK_DURATION_MS = 75    # Fastest physiological blink
-MAX_BLINK_DURATION_MS = 400   # Slower = voluntary close, not reflex blink
+MAX_BLINK_DURATION_MS = 800   # Allow slower intentional blinks (was 400, increased for slow blinks)
 
 # Cooldown after valid blink detection (prevents double-counting)
 COOLDOWN_MS = 150
@@ -69,8 +69,8 @@ BILATERAL_RATIO_MIN = 0.4  # At least 40% symmetry required (was 0.6, relaxed fo
 
 # Minimum dip magnitude from baseline
 # Using percentage instead of absolute value for different eye shapes
-MIN_DIP_PERCENTAGE = 0.12  # Must drop at least 12% of baseline EAR
-MIN_DIP_ABSOLUTE = 0.02    # Also require minimum absolute drop (noise floor)
+MIN_DIP_PERCENTAGE = 0.08  # Must drop at least 8% of baseline EAR (was 0.12, lowered for small blinks)
+MIN_DIP_ABSOLUTE = 0.012   # Also require minimum absolute drop (was 0.02, lowered for small blinks)
 
 
 # =============================================================================
@@ -92,6 +92,11 @@ BASELINE_INIT_FRAMES = 30  # Frames to initialize baseline
 
 # Consider eyes "open" if EAR > baseline * this factor
 EYES_OPEN_FACTOR = 0.85
+
+# Slow blink threshold detection (hybrid approach)
+# When EAR drops below this factor of baseline, consider it a slow blink start
+SLOW_BLINK_EAR_THRESHOLD = 0.75  # EAR < 75% of baseline = eyes closing slowly
+SLOW_BLINK_RECOVERY_THRESHOLD = 0.85  # EAR > 85% of baseline = eyes opened again
 
 
 # =============================================================================

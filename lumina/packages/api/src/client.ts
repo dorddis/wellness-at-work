@@ -32,6 +32,14 @@ export function initializeSupabase(url: string, anonKey: string): SupabaseClient
 }
 
 /**
+ * Set an externally-created Supabase client
+ * Use this when you need to share a client with SSR/cookie support
+ */
+export function setSupabaseClient(client: SupabaseClient<Database>): void {
+  supabaseClient = client;
+}
+
+/**
  * Get the Supabase client instance
  * Throws if not initialized
  */

@@ -1,6 +1,6 @@
 /**
  * StreakBadge Component
- * Displays streak count with flame animation
+ * Displays streak count with flame animation and progress indicators
  * "Streaks create psychological investment - users don't want to break the chain"
  */
 
@@ -16,6 +16,8 @@ export interface StreakBadgeProps {
   count: number;
   /** Personal best streak */
   bestStreak?: number;
+  /** Daily goal (for progress indicator) */
+  goal?: number;
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
   /** Show detailed info */
@@ -29,37 +31,68 @@ const streakConfig: Record<StreakType, {
   icon: string;
   unit: string;
   color: string;
+  defaultGoal: number;
+  emptyMessage: string;
 }> = {
   daily_use: {
     label: 'Daily Streak',
     icon: 'flame',
     unit: 'days',
     color: 'orange',
+    defaultGoal: 7,
+    emptyMessage: 'Start today!',
   },
   healthy_blink: {
     label: 'Healthy Eyes',
     icon: 'eye',
     unit: 'hours',
     color: 'green',
+    defaultGoal: 8,
+    emptyMessage: 'Begin tracking',
   },
   break_compliance: {
     label: 'Break Master',
     icon: 'check',
     unit: 'breaks',
     color: 'blue',
+    defaultGoal: 4,
+    emptyMessage: 'Take a break!',
   },
   good_posture: {
     label: 'Good Posture',
     icon: 'spine',
     unit: 'minutes',
     color: 'purple',
+    defaultGoal: 60,
+    emptyMessage: 'Sit up straight!',
   },
 };
 
 const sizeConfig = {
-  sm: { container: 'p-2', icon: 'w-4 h-4', text: 'text-lg', label: 'text-xs' },
-  md: { container: 'p-3', icon: 'w-5 h-5', text: 'text-2xl', label: 'text-sm' },
-  lg: { container: 'p-4', icon: 'w-6 h-6', text: 'text-3xl', label: 'text-base' },
+  sm: {
+    container: 'p-3',
+    icon: 'w-5 h-5',
+    number: 'text-2xl',
+    unit: 'text-xs',
+    label: 'text-xs',
+    best: 'text-[10px]',
+  },
+  md: {
+    container: 'p-4',
+    icon: 'w-6 h-6',
+    number: 'text-3xl',
+    unit: 'text-sm',
+    label: 'text-sm',
+    best: 'text-xs',
+  },
+  lg: {
+    container: 'p-5',
+    icon: 'w-7 h-7',
+    number: 'text-4xl',
+    unit: 'text-base',
+    label: 'text-base',
+    best: 'text-sm',
+  },
 };
 
 // Flame icon with animation
@@ -107,26 +140,99 @@ function SpineIcon({ className }: { className?: string }) {
   );
 }
 
+// Progress Ring Component
+function ProgressRing({
+  progress,
+  size,
+  strokeColor,
+  bgColor,
+}: {
+  progress: number;
+  size: number;
+  strokeColor: string;
+  bgColor: string;
+}) {
+  const radius = (size - 8) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (Math.min(progress, 1) * circumference);
+
+  return (
+    <svg width={size} height={size} className="transform -rotate-90">
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={bgColor}
+        strokeWidth="4"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        className="transition-all duration-500 ease-out"
+      />
+    </svg>
+  );
+}
+
 export function StreakBadge({
   type,
   count,
   bestStreak,
+  goal,
   size = 'md',
   showDetails = false,
   className,
 }: StreakBadgeProps) {
   const config = streakConfig[type];
   const sizes = sizeConfig[size];
+  const targetGoal = goal ?? config.defaultGoal;
 
   // Get color classes based on type
   const colorMap = {
-    orange: { bg: 'bg-orange-100', text: 'text-orange-600', icon: 'text-orange-500' },
-    green: { bg: 'bg-green-100', text: 'text-green-600', icon: 'text-green-500' },
-    blue: { bg: 'bg-blue-100', text: 'text-blue-600', icon: 'text-blue-500' },
-    purple: { bg: 'bg-purple-100', text: 'text-purple-600', icon: 'text-purple-500' },
+    orange: {
+      bg: 'bg-gradient-to-br from-orange-50 to-orange-100',
+      text: 'text-orange-600',
+      icon: 'text-orange-500',
+      ring: '#f97316',
+      ringBg: '#fed7aa',
+    },
+    green: {
+      bg: 'bg-gradient-to-br from-green-50 to-green-100',
+      text: 'text-green-600',
+      icon: 'text-green-500',
+      ring: '#22c55e',
+      ringBg: '#bbf7d0',
+    },
+    blue: {
+      bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
+      text: 'text-blue-600',
+      icon: 'text-blue-500',
+      ring: '#3b82f6',
+      ringBg: '#bfdbfe',
+    },
+    purple: {
+      bg: 'bg-gradient-to-br from-purple-50 to-purple-100',
+      text: 'text-purple-600',
+      icon: 'text-purple-500',
+      ring: '#a855f7',
+      ringBg: '#e9d5ff',
+    },
   } as const;
 
   const colorClasses = colorMap[config.color as keyof typeof colorMap] ?? colorMap.orange;
+
+  // Calculate progress
+  const progress = targetGoal > 0 ? count / targetGoal : 0;
+  const isComplete = progress >= 1;
+  const isEmpty = count === 0;
 
   // Render appropriate icon
   const renderIcon = () => {
@@ -143,9 +249,12 @@ export function StreakBadge({
   // Is this a milestone? (7, 14, 30, 100, etc.)
   const isMilestone = [7, 14, 30, 50, 100].includes(count);
 
+  // Ring size based on component size
+  const ringSize = size === 'sm' ? 40 : size === 'md' ? 48 : 56;
+
   return (
     <div className={cn(
-      'rounded-xl border transition-all',
+      'rounded-xl transition-all relative overflow-hidden',
       sizes.container,
       colorClasses.bg,
       isMilestone && 'ring-2 ring-offset-2',
@@ -153,45 +262,97 @@ export function StreakBadge({
       isMilestone && config.color === 'green' && 'ring-green-400',
       isMilestone && config.color === 'blue' && 'ring-blue-400',
       isMilestone && config.color === 'purple' && 'ring-purple-400',
-      'border-transparent',
+      'border border-white/50 shadow-sm',
       className
     )}>
-      <div className="flex items-center gap-2">
-        {/* Icon */}
-        {renderIcon()}
+      {/* Subtle left accent border */}
+      <div
+        className={cn(
+          'absolute left-0 top-0 bottom-0 w-1 rounded-l-xl',
+          config.color === 'orange' && 'bg-orange-400',
+          config.color === 'green' && 'bg-green-400',
+          config.color === 'blue' && 'bg-blue-400',
+          config.color === 'purple' && 'bg-purple-400',
+        )}
+      />
 
-        {/* Count */}
-        <div>
-          <div className="flex items-baseline gap-1">
-            <span className={cn('font-bold', sizes.text, colorClasses.text)}>
-              {count}
-            </span>
-            {showDetails && (
-              <span className={cn('text-gray-500', sizes.label)}>
-                {config.unit}
-              </span>
-            )}
+      <div className="flex items-center gap-3 pl-2">
+        {/* Progress Ring with Icon */}
+        <div className="relative flex-shrink-0">
+          <ProgressRing
+            progress={progress}
+            size={ringSize}
+            strokeColor={colorClasses.ring}
+            bgColor={colorClasses.ringBg}
+          />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {renderIcon()}
           </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Number display - HERO element */}
+          <div className="flex items-baseline gap-1">
+            <span className={cn(
+              'font-bold leading-none',
+              sizes.number,
+              isEmpty ? 'text-gray-400' : colorClasses.text
+            )}>
+              {isEmpty ? '-' : count}
+            </span>
+            <span className={cn('text-gray-400 font-medium', sizes.unit)}>
+              {config.unit}
+            </span>
+          </div>
+
+          {/* Label - secondary */}
           {showDetails && (
-            <p className={cn('text-gray-600', sizes.label)}>
+            <p className={cn('text-gray-500 font-medium mt-0.5', sizes.label)}>
               {config.label}
+            </p>
+          )}
+
+          {/* Empty state message */}
+          {isEmpty && showDetails && (
+            <p className={cn('font-medium mt-0.5', sizes.best, colorClasses.text)}>
+              {config.emptyMessage}
+            </p>
+          )}
+
+          {/* Best streak - always show if available and count > 0 */}
+          {showDetails && bestStreak !== undefined && bestStreak > 0 && !isEmpty && (
+            <p className={cn('text-gray-400 mt-0.5', sizes.best)}>
+              Best: {bestStreak}
+            </p>
+          )}
+
+          {/* Goal progress for non-empty states */}
+          {showDetails && !isEmpty && !isComplete && targetGoal > 0 && (
+            <p className={cn('text-gray-400 mt-0.5', sizes.best)}>
+              {Math.round(progress * 100)}% to goal
+            </p>
+          )}
+
+          {/* Completion celebration */}
+          {isComplete && showDetails && (
+            <p className={cn('font-medium mt-0.5', sizes.best, colorClasses.text)}>
+              Goal reached!
             </p>
           )}
         </div>
       </div>
 
-      {/* Best streak */}
-      {showDetails && bestStreak !== undefined && bestStreak > count && (
-        <p className={cn('mt-1 text-gray-500', sizes.label)}>
-          Best: {bestStreak} {config.unit}
-        </p>
-      )}
-
       {/* Milestone celebration */}
       {isMilestone && (
-        <p className={cn('mt-1 font-medium', sizes.label, colorClasses.text)}>
-          Milestone reached!
-        </p>
+        <div className={cn(
+          'mt-2 pt-2 border-t border-white/50 text-center',
+          'animate-pulse'
+        )}>
+          <span className={cn('font-semibold', sizes.best, colorClasses.text)}>
+            {count}-{config.unit.slice(0, -1)} milestone!
+          </span>
+        </div>
       )}
     </div>
   );

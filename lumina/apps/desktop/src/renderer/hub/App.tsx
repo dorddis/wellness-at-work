@@ -1090,24 +1090,31 @@ function DashboardView({
               type="daily_use"
               count={streaks.daily_use.currentCount}
               bestStreak={streaks.daily_use.longestCount}
+              goal={7}
               size="sm"
               showDetails
             />
             <StreakBadge
               type="break_compliance"
               count={todayProgress.breaksTaken}
+              bestStreak={streaks.break_compliance.longestCount}
+              goal={4}
               size="sm"
               showDetails
             />
             <StreakBadge
               type="healthy_blink"
               count={streaks.healthy_blink.currentCount}
+              bestStreak={streaks.healthy_blink.longestCount}
+              goal={8}
               size="sm"
               showDetails
             />
             <StreakBadge
               type="good_posture"
               count={streaks.good_posture.currentCount}
+              bestStreak={streaks.good_posture.longestCount}
+              goal={60}
               size="sm"
               showDetails
             />
@@ -1137,7 +1144,7 @@ function DashboardView({
               <span className="text-gray-400">/min</span>
             </div>
             <p className={`text-xs mt-1 ${blinkRate >= 15 ? 'text-green-600' : 'text-yellow-600'}`}>
-              {blinkRate >= 15 ? 'Healthy' : 'Below average'}
+              {blinkRate >= 15 ? 'Great job!' : 'Eyes working hard'}
             </p>
           </div>
 
@@ -1175,7 +1182,7 @@ function DashboardView({
               <div className={`w-3 h-3 rounded-full ${faceDetected ? 'bg-green-500' : 'bg-yellow-500'}`} />
               <span className="text-lg font-medium">{faceDetected ? 'Face Found' : 'No Face'}</span>
             </div>
-            <p className="text-xs text-gray-500 mt-1">EAR: 0.21 threshold</p>
+            <p className="text-xs text-gray-500 mt-1">Multi-stage adaptive detection</p>
           </div>
         </div>
       </div>
@@ -1247,7 +1254,7 @@ function DashboardView({
           <div className="mt-4 flex items-center gap-2 text-sm">
             <div className={`w-2 h-2 rounded-full ${faceDetected ? 'bg-green-500' : 'bg-yellow-500'}`} />
             <span className="text-gray-600">
-              {faceDetected ? 'Face detected - tracking blinks' : 'No face detected - position yourself in front of camera'}
+              {faceDetected ? 'Looking after your eyes' : 'Ready when you are - just look at the camera'}
             </span>
           </div>
         )}
@@ -1267,7 +1274,7 @@ function DashboardView({
             />
           </div>
           <p className="text-sm text-purple-700">
-            Learning your natural blink rate. This takes about 2 hours.
+            Learning your unique patterns to give you personalized care. This takes about 2 hours.
           </p>
         </div>
       )}
@@ -1427,7 +1434,7 @@ function MonitorView({
               <span className="text-gray-400">/min</span>
             </div>
             <p className={`text-sm mt-1 ${blinkRate >= 15 ? 'text-green-600' : 'text-yellow-600'}`}>
-              {blinkRate >= 15 ? 'Healthy' : 'Below average'}
+              {blinkRate >= 15 ? 'Great job!' : 'Eyes working hard'}
             </p>
           </div>
 
@@ -1441,7 +1448,7 @@ function MonitorView({
 
           <div className="bg-gray-100 rounded-xl p-4 text-sm text-gray-600">
             <p className="font-medium mb-2">Detection Info</p>
-            <p>EAR Threshold: 0.21</p>
+            <p>Algorithm: Multi-stage adaptive</p>
             <p>Frame Rate: 30 FPS</p>
             <p>Processing: GPU</p>
           </div>
@@ -1537,7 +1544,7 @@ function HistoryView() {
       }
 
       // Generate CSV content
-      const headers = ['Timestamp', 'Blink Count', 'Average EAR', 'Synced'];
+      const headers = ['Timestamp', 'Blink Count', 'Eye Openness', 'Synced'];
       const rows = rollups.map((r) => [
         new Date(r.timestamp).toISOString(),
         r.blink_count.toString(),
@@ -1601,7 +1608,7 @@ function HistoryView() {
           <p className="text-2xl font-bold mt-1">{stats?.totalBlinks ?? 0}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <p className="text-sm text-gray-500">Average EAR</p>
+          <p className="text-sm text-gray-500">Eye Openness</p>
           <p className="text-2xl font-bold mt-1">{stats?.avgEar?.toFixed(3) ?? '0.000'}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -1644,7 +1651,7 @@ function HistoryView() {
               <span className="text-right">Blinks</span>
               <span className="text-right">Minutes</span>
               <span className="text-right">Rate/min</span>
-              <span className="text-right">Avg EAR</span>
+              <span className="text-right">Openness</span>
             </div>
             {weeklyData.filter((d) => d.totalBlinks > 0).map((day, i) => (
               <div
@@ -1678,7 +1685,6 @@ interface SettingsViewProps {
 
 function SettingsView({ user, onSignOut }: SettingsViewProps) {
   const {
-    earThreshold,
     alertCooldownMinutes,
     notifications,
     showFloatingStatus,
@@ -1690,7 +1696,6 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     postureMonitoringEnabled,
     postureSensitivity,
     theme,
-    setEarThreshold,
     setAlertCooldownMinutes,
     setNotifications,
     setShowFloatingStatus,
@@ -1739,21 +1744,12 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">EAR Threshold</p>
-                <p className="text-sm text-gray-500">Eye Aspect Ratio threshold for blink detection (0.15-0.30)</p>
+                <p className="font-medium">Detection Sensitivity</p>
+                <p className="text-sm text-gray-500">Blink detection uses adaptive multi-stage algorithm with auto-calibration</p>
               </div>
               <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="0.15"
-                  max="0.30"
-                  step="0.01"
-                  value={earThreshold}
-                  onChange={(e) => setEarThreshold(parseFloat(e.target.value))}
-                  className="w-24"
-                />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
-                  {earThreshold.toFixed(2)}
+                <span className="bg-gray-100 px-3 py-1 rounded text-sm">
+                  Auto
                 </span>
               </div>
             </div>
@@ -1835,7 +1831,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <select
                 value={soundPreference}
                 onChange={(e) => setSoundPreference(e.target.value as any)}
-                className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+                className="select select-minimal"
               >
                 <option value="silence">Silence</option>
                 <option value="chime">Chime</option>
@@ -1965,7 +1961,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
                 <select
                   value={postureSensitivity}
                   onChange={(e) => setPostureSensitivity(e.target.value as any)}
-                  className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+                  className="select select-minimal"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -1988,7 +1984,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <select
                 value={theme}
                 onChange={(e) => setTheme(e.target.value as any)}
-                className="px-3 py-2 bg-gray-100 rounded-lg border-0 focus:ring-2 focus:ring-black"
+                className="select select-minimal"
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>

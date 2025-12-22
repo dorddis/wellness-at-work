@@ -49,7 +49,51 @@ const createInitialStreak = (type: StreakType): Streak => ({
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
-const initialState = {
+// Demo mode: Read from environment variable (set in .env file)
+// Falls back to false if not set
+const DEMO_MODE = typeof import.meta !== 'undefined'
+  ? import.meta.env?.VITE_DEMO_MODE === 'true'
+  : false;
+
+const initialState = DEMO_MODE ? {
+  streaks: {
+    daily_use: {
+      type: 'daily_use' as StreakType,
+      currentCount: 5,
+      longestCount: 12,
+      lastUpdated: Date.now(),
+      brokenAt: null,
+    },
+    healthy_blink: {
+      type: 'healthy_blink' as StreakType,
+      currentCount: 3,
+      longestCount: 8,
+      lastUpdated: Date.now(),
+      brokenAt: null,
+    },
+    break_compliance: {
+      type: 'break_compliance' as StreakType,
+      currentCount: 2,
+      longestCount: 5,
+      lastUpdated: Date.now(),
+      brokenAt: null,
+    },
+    good_posture: {
+      type: 'good_posture' as StreakType,
+      currentCount: 45,
+      longestCount: 90,
+      lastUpdated: Date.now(),
+      brokenAt: null,
+    },
+  },
+  todayProgress: {
+    breaksTaken: 2,
+    breaksScheduled: 4,
+    healthyBlinkMinutes: 35,
+    goodPostureMinutes: 45,
+    lastResetDate: getTodayDate(),
+  },
+} : {
   streaks: {
     daily_use: createInitialStreak('daily_use'),
     healthy_blink: createInitialStreak('healthy_blink'),
@@ -58,7 +102,7 @@ const initialState = {
   },
   todayProgress: {
     breaksTaken: 0,
-    breaksScheduled: 4, // Default 4 breaks per day
+    breaksScheduled: 4,
     healthyBlinkMinutes: 0,
     goodPostureMinutes: 0,
     lastResetDate: getTodayDate(),

@@ -60,6 +60,7 @@ export interface LuminaAPI {
     show: (alert: AlertData) => void;
     dismiss: () => void;
     snooze: (alertId: string, minutes: number) => void;
+    openHub: () => Promise<void>;
     onShow: (callback: (alert: AlertData) => void) => () => void;
     sync: (
       alertType: string,
@@ -115,7 +116,13 @@ interface SyncResult {
 // Type definitions
 interface AlertData {
   id: string;
-  type?: 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture' | 'break_reminder' | 'posture' | 'session_start' | 'custom' | 'calibration_complete' | 'break_complete';
+  type?:
+    | 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture'
+    | 'break_reminder' | 'posture' | 'session_start' | 'custom'
+    | 'calibration_complete' | 'break_complete'
+    // New wellness alert types
+    | 'too_close' | 'too_far' | 'head_tilt' | 'forward_lean'
+    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning';
   severity: 'info' | 'warning' | 'critical';
   message: string;
   action?: string;
@@ -307,6 +314,7 @@ const luminaAPI: LuminaAPI = {
     show: (alert) => ipcRenderer.send('alert:show', alert),
     dismiss: () => ipcRenderer.send('alert:dismiss'),
     snooze: (alertId, minutes) => ipcRenderer.send('alert:snooze', alertId, minutes),
+    openHub: () => ipcRenderer.invoke('window:show-hub'),
     onShow: (callback) => {
       const handler = (_: any, alert: AlertData) => callback(alert);
       ipcRenderer.on('show-alert', handler);

@@ -79,7 +79,7 @@ export function PrivacyIndicator({
           'font-medium transition-colors',
           isActive ? 'text-green-700' : 'text-gray-500'
         )}>
-          {isActive ? 'Private' : 'Camera Off'}
+          {isActive ? '100% Private' : 'Camera Off'}
         </span>
       )}
     </div>

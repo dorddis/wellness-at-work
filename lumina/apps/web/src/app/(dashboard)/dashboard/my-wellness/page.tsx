@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Calendar, TrendingUp, Download, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { Eye, TrendingUp, Download, Trash2, Loader2, AlertTriangle, Activity, Clock, Shield, Target, Calendar } from 'lucide-react';
 import { BlinkRateTrendChart } from '../../../../components/charts';
 import { useAuth } from '../../../contexts/auth-context';
 import { exportUserData, requestAccountDeletion, getMyWellnessData, getMyDailyStats } from '@lumina/api';
+import { StreakBadge, useStreakStore } from '@lumina/ui';
 
 interface DailyData {
   day: string;
@@ -33,9 +34,19 @@ export default function MyWellnessPage() {
   const [deletionScheduled, setDeletionScheduled] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Streak store for gamification
+  const streaks = useStreakStore((state) => state.streaks);
+  const todayProgress = useStreakStore((state) => state.todayProgress);
+
   // Real data states
   const [weeklyData, setWeeklyData] = useState<DailyData[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [todayStats, setTodayStats] = useState({
+    blinkRate: 0,
+    wellnessScore: 0,
+    activeMinutes: 0,
+    sessionsToday: 0,
+  });
   const [baseline, setBaseline] = useState<Baseline>({
     p25: 12,
     p50: 15,
@@ -119,6 +130,18 @@ export default function MyWellnessPage() {
             calibratedAt: new Date().toISOString().split('T')[0],
           });
         }
+
+        // Get today's stats
+        const today = new Date().toISOString().split('T')[0];
+        const todayDayStats = dailyStats.find((d) => d.date === today);
+        if (todayDayStats) {
+          setTodayStats({
+            blinkRate: Math.round(todayDayStats.avgBlinkRate * 10) / 10,
+            wellnessScore: calculateWellnessScore(todayDayStats.avgBlinkRate),
+            activeMinutes: Math.round(todayDayStats.totalBlinks / (todayDayStats.avgBlinkRate || 15)),
+            sessionsToday: todayDayStats.sessionCount || 1,
+          });
+        }
       } catch (error) {
         console.error('Failed to load wellness data:', error);
       } finally {
@@ -196,78 +219,144 @@ export default function MyWellnessPage() {
     );
   }
 
+  // Get today's day name for highlighting
+  const todayDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+
   return (
     <div className="space-y-6">
-      {/* Page header */}
+      {/* Page header with privacy indicator */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">My Wellness</h1>
           <p className="text-muted-foreground">Your personal wellness insights and history</p>
         </div>
-        <button
-          className="btn btn-outline"
-          onClick={handleExportData}
-          disabled={isExporting}
-        >
-          {isExporting ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4 mr-2" />
-          )}
-          {isExporting ? 'Exporting...' : 'Export Data'}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Privacy indicator */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span className="text-xs font-medium text-green-700">100% On-Device</span>
+          </div>
+          <button
+            className="btn btn-outline"
+            onClick={handleExportData}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export Data'}
+          </button>
+        </div>
       </div>
 
-      {/* Personal baseline */}
-      <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Your Baseline</h2>
-          <span className="text-sm text-muted-foreground">
-            Calibrated: {baseline.calibratedAt}
-          </span>
+      {/* Today's Status - Clean stat row without nested cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+          <div className="p-2 rounded-lg bg-gray-100">
+            <Target className={`w-5 h-5 ${todayStats.wellnessScore >= 70 ? 'text-green-600' : todayStats.wellnessScore >= 50 ? 'text-amber-600' : 'text-gray-400'}`} />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Wellness Score</p>
+            <p className={`text-xl font-bold ${todayStats.wellnessScore >= 70 ? 'text-green-600' : todayStats.wellnessScore >= 50 ? 'text-amber-600' : 'text-gray-400'}`}>
+              {todayStats.wellnessScore}<span className="text-sm font-normal text-muted-foreground">/100</span>
+            </p>
+          </div>
         </div>
-        <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <BaselineCard
-              label="Low Range (P25)"
-              value={baseline.p25}
-              description="Below this may indicate eye strain"
-              color="text-amber-600"
-            />
-            <BaselineCard
-              label="Normal (P50)"
-              value={baseline.p50}
-              description="Your typical blink rate"
-              color="text-green-600"
-            />
-            <BaselineCard
-              label="High Range (P75)"
-              value={baseline.p75}
-              description="Healthy active range"
-              color="text-blue-600"
-            />
+        <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+          <div className="p-2 rounded-lg bg-gray-100">
+            <Eye className={`w-5 h-5 ${todayStats.blinkRate >= 15 ? 'text-green-600' : todayStats.blinkRate >= 10 ? 'text-amber-600' : 'text-gray-400'}`} />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Blink Rate</p>
+            <p className={`text-xl font-bold ${todayStats.blinkRate >= 15 ? 'text-green-600' : todayStats.blinkRate >= 10 ? 'text-amber-600' : 'text-gray-400'}`}>
+              {todayStats.blinkRate}<span className="text-sm font-normal text-muted-foreground">/min</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+          <div className="p-2 rounded-lg bg-gray-100">
+            <Clock className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Active Time</p>
+            <p className="text-xl font-bold text-blue-600">
+              {todayStats.activeMinutes}<span className="text-sm font-normal text-muted-foreground">min</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-4 bg-white rounded-lg border">
+          <div className="p-2 rounded-lg bg-gray-100">
+            <Activity className="w-5 h-5 text-purple-600" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Sessions</p>
+            <p className="text-xl font-bold text-purple-600">{todayStats.sessionsToday}</p>
           </div>
         </div>
       </div>
 
-      {/* Weekly trend */}
-      <div className="card">
-        <div className="card-header flex items-center justify-between">
-          <h2 className="text-lg font-semibold">This Week</h2>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="w-4 h-4" />
-            Last 5 weekdays
+      {/* Baseline + Streaks side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Your Baseline - Takes 3 columns */}
+        <div className="lg:col-span-3 card">
+          <div className="card-header flex items-center justify-between py-3">
+            <h2 className="font-semibold">Your Baseline</h2>
+            <span className="text-xs text-muted-foreground">Calibrated: {baseline.calibratedAt}</span>
+          </div>
+          <div className="px-6 pb-5">
+            <div className="flex items-center justify-between">
+              <div className="text-center flex-1">
+                <p className="text-xs text-muted-foreground mb-1">Low (P25)</p>
+                <p className="text-2xl font-bold text-amber-600">{baseline.p25}</p>
+                <p className="text-xs text-muted-foreground">blinks/min</p>
+              </div>
+              <div className="w-px h-12 bg-gray-200" />
+              <div className="text-center flex-1">
+                <p className="text-xs text-muted-foreground mb-1">Normal (P50)</p>
+                <p className="text-2xl font-bold text-green-600">{baseline.p50}</p>
+                <p className="text-xs text-muted-foreground">blinks/min</p>
+              </div>
+              <div className="w-px h-12 bg-gray-200" />
+              <div className="text-center flex-1">
+                <p className="text-xs text-muted-foreground mb-1">High (P75)</p>
+                <p className="text-2xl font-bold text-blue-600">{baseline.p75}</p>
+                <p className="text-xs text-muted-foreground">blinks/min</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="card-body">
+
+        {/* Streaks - Takes 2 columns */}
+        <div className="lg:col-span-2 card">
+          <div className="card-header py-3">
+            <h2 className="font-semibold">Your Streaks</h2>
+          </div>
+          <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+            <StreakBadge type="daily_use" count={streaks.daily_use.currentCount} size="sm" />
+            <StreakBadge type="healthy_blink" count={streaks.healthy_blink.currentCount} size="sm" />
+            <StreakBadge type="break_compliance" count={streaks.break_compliance.currentCount} size="sm" />
+            <StreakBadge type="good_posture" count={streaks.good_posture.currentCount} size="sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly trend - Simplified */}
+      <div className="card">
+        <div className="card-header flex items-center justify-between py-3">
+          <h2 className="font-semibold">This Week</h2>
+          <span className="text-xs text-muted-foreground">Last 5 weekdays</span>
+        </div>
+        <div className="px-6 pb-5">
           {weeklyData.length > 0 ? (
-            <div className="grid grid-cols-5 gap-4">
+            <div className="flex items-end justify-between gap-2">
               {weeklyData.map((day, i) => (
-                <DayCard key={i} {...day} />
+                <DayCard key={i} {...day} isToday={day.day === todayDayName} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-6 text-muted-foreground text-sm">
               No data available for this week
             </div>
           )}
@@ -462,46 +551,45 @@ function calculateWellnessScore(blinkRate: number): number {
   return 100;
 }
 
-function BaselineCard({
-  label,
-  value,
-  description,
-  color,
-}: {
-  label: string;
-  value: number;
-  description: string;
-  color: string;
-}) {
-  return (
-    <div className="text-center p-4 rounded-lg bg-secondary/30">
-      <p className="text-sm text-muted-foreground mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-muted-foreground mt-1">blinks/min</p>
-      <p className="text-xs text-muted-foreground mt-2">{description}</p>
-    </div>
-  );
-}
-
 function DayCard({
   day,
   blinkRate,
   score,
+  isToday = false,
 }: {
   day: string;
   blinkRate: number;
   score: number;
+  isToday?: boolean;
 }) {
   const scoreColor =
-    score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-500';
+    score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-600' : 'text-red-500';
+  const barColor =
+    score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-amber-500' : 'bg-red-400';
+  const barHeight = Math.max(20, (score / 100) * 60);
 
   return (
-    <div className="text-center p-4 rounded-lg bg-secondary/30">
-      <p className="text-sm font-medium mb-2">{day}</p>
-      <div className={`w-3 h-3 rounded-full ${scoreColor} mx-auto mb-2`} />
-      <p className="text-lg font-bold">{blinkRate}</p>
-      <p className="text-xs text-muted-foreground">/min</p>
-      <p className="text-sm text-muted-foreground mt-2">Score: {score}</p>
+    <div className={`flex-1 text-center ${isToday ? 'relative' : ''}`}>
+      {isToday && (
+        <div className="absolute -inset-2 bg-gray-100 rounded-lg -z-10" />
+      )}
+      <p className={`text-xs mb-2 ${isToday ? 'font-semibold' : 'text-muted-foreground'}`}>
+        {isToday ? 'Today' : day}
+      </p>
+
+      {/* Simple bar visualization */}
+      <div className="flex flex-col items-center gap-1">
+        <div className="h-16 w-8 bg-gray-100 rounded-t-sm flex items-end justify-center relative">
+          <div
+            className={`w-full rounded-t-sm transition-all duration-300 ${barColor}`}
+            style={{ height: `${barHeight}px` }}
+          />
+        </div>
+        <p className={`text-xs font-medium ${scoreColor}`}>{score}</p>
+      </div>
+
+      <p className="text-sm font-semibold mt-2">{blinkRate}</p>
+      <p className="text-[10px] text-muted-foreground">/min</p>
     </div>
   );
 }
@@ -548,3 +636,4 @@ function RecommendationCard({
     </div>
   );
 }
+

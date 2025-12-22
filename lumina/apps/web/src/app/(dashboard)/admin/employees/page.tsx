@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, Filter, TrendingUp, TrendingDown, Minus, Eye, Lock, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, Eye, Lock, Loader2, AlertCircle, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import { getOrgSettings, getOrgMembers, getSupabase, type TeamMember } from '@lumina/api';
 import { useAuth } from '../../../providers';
+import { Select, type SelectOption } from '../../../../components/ui';
 
 interface EmployeeStats {
   score: number;
@@ -14,12 +15,11 @@ interface EmployeeStats {
 }
 
 function calculateWellnessScore(blinkRate: number): number {
-  if (blinkRate < 5) return 30;
-  if (blinkRate < 10) return 50;
-  if (blinkRate < 15) return 75;
-  if (blinkRate < 20) return 90;
-  return 100;
+  // Continuous scale: score = blinkRate * 4 + 20, clamped to 25-100
+  return Math.min(100, Math.max(25, Math.round(blinkRate * 4 + 20)));
 }
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
 export default function EmployeesPage() {
   const { user } = useAuth();
@@ -29,6 +29,8 @@ export default function EmployeesPage() {
   const [privacyMode, setPrivacyMode] = useState<'anonymous' | 'named' | 'manager_only'>('anonymous');
   const [employees, setEmployees] = useState<TeamMember[]>([]);
   const [employeeStats, setEmployeeStats] = useState<Map<string, EmployeeStats>>(new Map());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const orgId = user?.organization?.id;
   const userRole = user?.organization?.role;
@@ -127,7 +129,13 @@ export default function EmployeesPage() {
     privacyMode === 'named' ||
     (privacyMode === 'manager_only' && (userRole === 'admin' || userRole === 'manager'));
 
-  const departments = ['all', ...new Set(employees.map((e) => e.department).filter(Boolean) as string[])];
+  const departmentOptions: SelectOption[] = useMemo(() => {
+    const uniqueDepts = [...new Set(employees.map((e) => e.department).filter(Boolean) as string[])];
+    return [
+      { value: 'all', label: 'All Departments', icon: <Building2 className="w-4 h-4 text-gray-400" /> },
+      ...uniqueDepts.map((dept) => ({ value: dept, label: dept })),
+    ];
+  }, [employees]);
 
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
@@ -136,6 +144,17 @@ export default function EmployeesPage() {
       departmentFilter === 'all' || employee.department === departmentFilter;
     return matchesSearch && matchesDepartment;
   });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, departmentFilter, itemsPerPage]);
 
   if (loading) {
     return (
@@ -194,17 +213,12 @@ export default function EmployeesPage() {
         </div>
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
-          <select
+          <Select
+            options={departmentOptions}
             value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="input w-40"
-          >
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept === 'all' ? 'All Departments' : dept}
-              </option>
-            ))}
-          </select>
+            onChange={setDepartmentFilter}
+            className="w-48"
+          />
         </div>
       </div>
 
@@ -225,7 +239,7 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map((employee) => {
+              {paginatedEmployees.map((employee) => {
                 const stats = employeeStats.get(employee.userId);
                 return (
                   <tr key={employee.userId} className="border-b border-border last:border-0 hover:bg-secondary/30">
@@ -289,6 +303,77 @@ export default function EmployeesPage() {
         {filteredEmployees.length === 0 && (
           <div className="p-12 text-center text-muted-foreground">
             No employees found matching your search.
+          </div>
+        )}
+
+        {/* Pagination controls */}
+        {filteredEmployees.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border">
+            {/* Items per page selector */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Show</span>
+              <Select
+                options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) }))}
+                value={String(itemsPerPage)}
+                onChange={(val) => setItemsPerPage(Number(val))}
+                size="sm"
+                className="w-20"
+              />
+              <span className="text-muted-foreground">per page</span>
+            </div>
+
+            {/* Page info */}
+            <div className="text-sm text-muted-foreground">
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredEmployees.length)} of {filteredEmployees.length}
+            </div>
+
+            {/* Page navigation */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-outline px-2 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`btn min-w-[36px] px-2 py-1.5 text-sm ${
+                        currentPage === pageNum
+                          ? 'btn-primary'
+                          : 'btn-outline'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="btn btn-outline px-2 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

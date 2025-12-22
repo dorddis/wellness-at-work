@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, Users, Loader2, CheckCircle } from 'lucide-react';
-import { getSupabase, isSupabaseInitialized, initializeSupabase } from '@lumina/api';
+import { createClient } from '@/lib/supabase/client';
 
 export default function JoinPage() {
   const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [inviteCode, setInviteCode] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,15 +22,6 @@ export default function JoinPage() {
     setError(null);
 
     try {
-      // Initialize Supabase if needed
-      if (!isSupabaseInitialized()) {
-        initializeSupabase(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-      }
-
-      const supabase = getSupabase();
 
       // Query organization by slug (invite code = slug in uppercase)
       const { data: org, error: orgError } = await supabase
@@ -68,8 +60,6 @@ export default function JoinPage() {
     setError(null);
 
     try {
-      const supabase = getSupabase();
-
       // Send magic link (OTP) to email
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,

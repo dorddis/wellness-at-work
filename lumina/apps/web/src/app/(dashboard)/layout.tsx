@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Eye,
@@ -16,6 +17,11 @@ import {
   User,
   Building2,
   Loader2,
+  Activity,
+  Timer,
+  Trophy,
+  Plug,
+  TrendingUp,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from '../providers';
 
@@ -26,13 +32,41 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-const navItems: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
-  { href: '/dashboard/my-wellness', label: 'My Wellness', icon: <User className="w-5 h-5" /> },
-  { href: '/admin', label: 'Team Overview', icon: <BarChart3 className="w-5 h-5" />, adminOnly: true },
-  { href: '/admin/employees', label: 'Employees', icon: <Users className="w-5 h-5" />, adminOnly: true },
-  { href: '/admin/alerts', label: 'Alerts', icon: <Bell className="w-5 h-5" />, adminOnly: true },
-  { href: '/admin/settings', label: 'Settings', icon: <Settings className="w-5 h-5" />, adminOnly: true },
+interface NavSection {
+  title: string;
+  adminOnly?: boolean;
+  items: NavItem[];
+}
+
+const navSections: NavSection[] = [
+  {
+    title: 'Personal',
+    items: [
+      { href: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+      { href: '/dashboard/my-wellness', label: 'My Wellness', icon: <Activity className="w-5 h-5" /> },
+      { href: '/dashboard/exercises', label: 'Eye Exercises', icon: <Eye className="w-5 h-5" /> },
+      { href: '/dashboard/breaks', label: 'Break Timer', icon: <Timer className="w-5 h-5" /> },
+    ],
+  },
+  {
+    title: 'Team',
+    adminOnly: true,
+    items: [
+      { href: '/admin', label: 'Team Overview', icon: <BarChart3 className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/employees', label: 'Employees', icon: <Users className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/challenges', label: 'Team Challenges', icon: <Trophy className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/analytics', label: 'Analytics', icon: <TrendingUp className="w-5 h-5" />, adminOnly: true },
+    ],
+  },
+  {
+    title: 'System',
+    adminOnly: true,
+    items: [
+      { href: '/admin/alerts', label: 'Alerts', icon: <Bell className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/integrations', label: 'Integrations', icon: <Plug className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/settings', label: 'Settings', icon: <Settings className="w-5 h-5" />, adminOnly: true },
+    ],
+  },
 ];
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -52,16 +86,40 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // No user - will redirect via AuthProvider
+  // No user or no org - AuthProvider will redirect, show loading in meantime
   if (!user || !user.organization) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-secondary/30">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   const isAdmin = user.organization.role === 'admin' || user.organization.role === 'manager';
 
-  const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || isAdmin
-  );
+  // Filter sections based on admin status
+  const filteredSections = navSections
+    .filter((section) => !section.adminOnly || isAdmin)
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => !item.adminOnly || isAdmin),
+    }));
+
+  // Improved isActive check - exact match for base routes, prefix match for sub-routes
+  const checkIsActive = (href: string): boolean => {
+    // Exact match for dashboard home
+    if (href === '/dashboard' && pathname === '/dashboard') return true;
+    // Exact match for admin home (Team Overview)
+    if (href === '/admin' && pathname === '/admin') return true;
+    // For other routes, check if pathname matches exactly or is a direct child
+    if (href !== '/dashboard' && href !== '/admin') {
+      return pathname === href || pathname.startsWith(href + '/');
+    }
+    return false;
+  };
 
   return (
     <div className="min-h-screen bg-secondary/30">
@@ -82,7 +140,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-border">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <Eye className="w-6 h-6 text-primary" />
+            <Image src="/icon.png" alt="Lumina" width={24} height={24} className="w-6 h-6" />
             <span className="text-lg font-bold">Lumina</span>
           </Link>
           <button
@@ -102,26 +160,38 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
-          {filteredNavItems.map((item) => {
-            const isActive = pathname === item.href ||
-              (item.href !== '/dashboard' && pathname.startsWith(item.href));
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                  isActive
-                    ? 'bg-primary/10 text-primary font-medium'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="p-4 pb-32 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
+          {filteredSections.map((section, sectionIndex) => (
+            <div key={section.title}>
+              {/* Section header */}
+              <h3 className="px-3 mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                {section.title}
+              </h3>
+              {/* Section items */}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const isActive = checkIsActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground font-medium shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      <span className={isActive ? 'opacity-100' : 'opacity-70'}>
+                        {item.icon}
+                      </span>
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* User section */}
@@ -157,12 +227,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           </button>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            <button className="relative text-muted-foreground hover:text-foreground">
+            <Link
+              href="/admin/alerts"
+              className="relative text-muted-foreground hover:text-foreground transition-colors"
+              title="View alerts"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                 3
               </span>
-            </button>
+            </Link>
           </div>
         </header>
 

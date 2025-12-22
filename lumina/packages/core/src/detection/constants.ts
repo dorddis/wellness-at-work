@@ -11,8 +11,8 @@ export const LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144] as const;
 // [inner corner, upper inner, upper outer, outer corner, lower outer, lower inner]
 export const RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380] as const;
 
-// Eye Aspect Ratio threshold - below this indicates closed eyes
-export const EAR_THRESHOLD = 0.21;
+// Eye Aspect Ratio threshold - below this indicates closed eyes (more sensitive: 0.18 vs 0.21)
+export const EAR_THRESHOLD = 0.18;
 
 // Consecutive frames required to confirm a blink
 // Set to 1 for fast blink detection (research shows 2-4 is typical)
@@ -67,8 +67,8 @@ export const EAR_CALIBRATION = {
   OPEN_EYE_PERCENTILE: 75,
   /** Percentile for typical closed eye EAR */
   CLOSED_EYE_PERCENTILE: 10,
-  /** Fallback threshold if calibration fails */
-  FALLBACK_THRESHOLD: 0.21,
+  /** Fallback threshold if calibration fails (more sensitive: 0.18 vs 0.21) */
+  FALLBACK_THRESHOLD: 0.18,
 } as const;
 
 /**
@@ -178,8 +178,8 @@ export const YAWN = {
 export const DROWSINESS = {
   /** Time window for PERCLOS calculation (ms) */
   PERCLOS_WINDOW_MS: 60_000,
-  /** EAR below this is considered "eyes closed" for PERCLOS */
-  CLOSED_THRESHOLD: 0.2,
+  /** EAR below this is considered "eyes closed" for PERCLOS (consistent with EAR_THRESHOLD) */
+  CLOSED_THRESHOLD: 0.18,
   /** Time window for counting yawns (ms) - 5 minutes */
   YAWN_WINDOW_MS: 300_000,
   /** PERCLOS percentage thresholds for drowsiness levels */
@@ -218,4 +218,90 @@ export const WELLNESS_ALERT_COOLDOWN = {
   DROWSY_MILD: 20 * 60 * 1000,    // 20 minutes
   /** Cooldown for severe drowsiness alerts */
   DROWSY_SEVERE: 30 * 60 * 1000,  // 30 minutes
+} as const;
+
+// ============================================================================
+// Slope-Based Blink Detection Configuration
+// More robust detection using EAR derivative (rate of change)
+// ============================================================================
+
+/**
+ * Slope detection thresholds (EAR change per millisecond)
+ * Negative slope = eyes closing, Positive slope = eyes opening
+ *
+ * TUNED FOR SENSITIVITY: Lower thresholds detect smaller/faster blinks
+ */
+export const SLOPE = {
+  /** Minimum negative slope to detect eyes closing (more sensitive: -0.0003 vs -0.0005) */
+  CLOSING_THRESHOLD: -0.0003,
+  /** Minimum positive slope to detect eyes opening (more sensitive: 0.0003 vs 0.0005) */
+  OPENING_THRESHOLD: 0.0003,
+  /** Slope magnitude considered "near zero" (at blink minimum) */
+  NEAR_ZERO: 0.0002,
+  /** Number of frames for slope calculation window */
+  WINDOW_FRAMES: 3,
+} as const;
+
+/**
+ * Blink timing constraints (milliseconds)
+ *
+ * TUNED FOR SENSITIVITY: Accept faster mini-blinks and slower intentional blinks
+ */
+export const BLINK_TIMING = {
+  /** Fastest physiological blink (more sensitive: 50ms vs 75ms for mini-blinks) */
+  MIN_DURATION_MS: 50,
+  /** Slowest - increased for slow intentional blinks (was 400) */
+  MAX_DURATION_MS: 800,
+  /** Cooldown after valid blink (prevents double-counting) */
+  COOLDOWN_MS: 150,
+  /** Timeout if stuck in CLOSING too long (abort blink) */
+  CLOSING_TIMEOUT_MS: 500,
+} as const;
+
+/**
+ * Slow blink threshold detection (hybrid approach)
+ * Catches slow blinks where EAR crosses threshold but slope is gradual
+ */
+export const SLOW_BLINK = {
+  /** EAR below this factor of baseline = eyes closing slowly */
+  EAR_THRESHOLD: 0.75,
+  /** EAR above this factor of baseline = eyes opened again */
+  RECOVERY_THRESHOLD: 0.85,
+} as const;
+
+/**
+ * Head motion gating configuration
+ * Suppresses blink detection during head movement
+ *
+ * TUNED: Less aggressive gating to allow more blinks through
+ */
+export const HEAD_MOTION = {
+  /** Velocity threshold (face-widths per frame) - less aggressive: 0.03 vs 0.02 */
+  THRESHOLD: 0.03,
+  /** Smoothing factor for head position (0 = no smoothing, 1 = no memory) */
+  SMOOTHING_ALPHA: 0.3,
+  /** Landmark indices for head tracking */
+  LEFT_FACE_CORNER_INDEX: 234,
+  RIGHT_FACE_CORNER_INDEX: 454,
+} as const;
+
+/**
+ * Bilateral verification configuration
+ * Ensures both eyes show same blink pattern
+ *
+ * TUNED FOR SENSITIVITY: Accept smaller dips and more asymmetry (glasses)
+ */
+export const BILATERAL = {
+  /** Minimum ratio of left/right eye dip magnitudes (more relaxed: 0.3 vs 0.4 for glasses) */
+  RATIO_MIN: 0.3,
+  /** EMA update rate for baseline (slow adaptation) */
+  BASELINE_ALPHA: 0.02,
+  /** Frames to initialize baseline */
+  BASELINE_INIT_FRAMES: 30,
+  /** Minimum dip as percentage of baseline EAR (more sensitive: 8% vs 12%) */
+  MIN_DIP_PERCENTAGE: 0.08,
+  /** Minimum absolute dip (noise floor - more sensitive: 0.015 vs 0.02) */
+  MIN_DIP_ABSOLUTE: 0.015,
+  /** Factor to consider eyes "open" (EAR > baseline * this) */
+  EYES_OPEN_FACTOR: 0.85,
 } as const;

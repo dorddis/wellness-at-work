@@ -3,6 +3,7 @@
  * Uses @mediapipe/tasks-vision for face landmark detection
  *
  * Enhanced with:
+ * - Robust slope-based blink detection (more accurate for mini blinks)
  * - Automatic EAR calibration for per-user threshold optimization
  * - Posture detection (distance, tilt, lean)
  * - Yawn detection (MAR-based)
@@ -15,7 +16,9 @@ import {
   FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
 import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE, EAR_CALIBRATION } from './constants';
-import { BlinkDetector, BlinkDetectionResult, Point2D } from './blink';
+import { BlinkDetectionResult, Point2D } from './blink';
+import { RobustBlinkDetector, RobustBlinkResult } from './robust-blink-detector';
+import { BlinkPhase } from './blink-state-machine';
 import { EARCalibrator, CalibrationState, EARCalibration } from './ear-calibrator';
 import { PostureAnalyzer, PostureResult } from './posture';
 import { YawnDetector, YawnResult } from './yawn';
@@ -61,7 +64,7 @@ export interface FrameResult {
  */
 export class FaceLandmarkerManager {
   private faceLandmarker: FaceLandmarker | null = null;
-  private blinkDetector: BlinkDetector;
+  private robustBlinkDetector: RobustBlinkDetector;
   private earCalibrator: EARCalibrator | null = null;
   private postureAnalyzer: PostureAnalyzer;
   private yawnDetector: YawnDetector;
@@ -70,10 +73,11 @@ export class FaceLandmarkerManager {
   private lastVideoTime = -1;
   private useCalibration: boolean;
   private frameWidth: number = 640;
+  private debugFrameCount: number = 0;
 
   constructor() {
-    // Use enhanced detection with Kalman filter, spike detection, and eye quality tracking
-    this.blinkDetector = BlinkDetector.createEnhanced();
+    // Use robust slope-based detection for better mini blink accuracy
+    this.robustBlinkDetector = new RobustBlinkDetector();
     this.postureAnalyzer = new PostureAnalyzer();
     this.yawnDetector = new YawnDetector();
     this.drowsinessDetector = new DrowsinessDetector();
@@ -113,7 +117,7 @@ export class FaceLandmarkerManager {
       // Load existing calibration if provided
       if (existingCalibration) {
         this.earCalibrator.loadCalibration(existingCalibration);
-        this.blinkDetector.setThreshold(existingCalibration.threshold);
+        // Note: RobustBlinkDetector uses bilateral baseline instead of manual threshold
       }
     }
 
@@ -148,7 +152,7 @@ export class FaceLandmarkerManager {
       return {
         state: 'calibrated',
         progress: 1,
-        threshold: this.blinkDetector.getThreshold(),
+        threshold: this.robustBlinkDetector.getThreshold(),
         isCalibrated: true,
       };
     }
@@ -203,7 +207,7 @@ export class FaceLandmarkerManager {
           avgEAR: 0,
           smoothedEAR: 0,
           confidence: 0,
-          threshold: this.blinkDetector.getThreshold(),
+          threshold: this.robustBlinkDetector.getThreshold(),
         },
         posture: null,
         yawn: null,
@@ -227,17 +231,53 @@ export class FaceLandmarkerManager {
       0
     ) / result.faceLandmarks[0].length;
 
-    // Run blink detection
-    const blinkResult = this.blinkDetector.detect(landmarks, confidence);
+    // Run robust slope-based blink detection
+    const robustResult = this.robustBlinkDetector.detect(landmarks, confidence, timestamp);
+
+    // Debug logging (every 30 frames to avoid spam)
+    if (this.debugFrameCount % 30 === 0) {
+      console.log('[BlinkDetector]', {
+        avgEAR: robustResult.avgEar.toFixed(3),
+        slope: robustResult.slope.slope.toFixed(6),
+        phase: robustResult.phaseName,
+        isClosing: robustResult.slope.isClosing,
+        isOpening: robustResult.slope.isOpening,
+        isSymmetric: robustResult.bilateral.isSymmetric,
+        headMoving: robustResult.headIsMoving,
+        baseline: robustResult.threshold.toFixed(3),
+        calibrating: robustResult.bilateral.leftEye.baseline === 0.3,
+        blinkCount: this.robustBlinkDetector.getBlinkCount(),
+      });
+    }
+    this.debugFrameCount++;
+
+    // Log blink events
+    if (robustResult.isBlink) {
+      console.log('[BlinkDetector] BLINK DETECTED!', {
+        blinkEvent: robustResult.blinkEvent,
+        count: this.robustBlinkDetector.getBlinkCount(),
+      });
+    }
+
+    // Log rejections for debugging
+    if (robustResult.rejectionReason) {
+      console.log('[BlinkDetector] Rejected:', robustResult.rejectionReason);
+    }
+
+    // Convert to BlinkDetectionResult format for compatibility
+    const blinkResult: BlinkDetectionResult = {
+      isBlink: robustResult.isBlink,
+      leftEAR: robustResult.leftEar,
+      rightEAR: robustResult.rightEar,
+      avgEAR: robustResult.avgEar,
+      smoothedEAR: robustResult.smoothedEar,
+      confidence: robustResult.confidence,
+      threshold: robustResult.threshold,
+    };
 
     // Feed EAR to calibrator if enabled and not yet calibrated
     if (this.earCalibrator && !this.earCalibrator.isCalibrated()) {
-      const newThreshold = this.earCalibrator.addSample(blinkResult.smoothedEAR);
-
-      // Update detector threshold if calibration just completed
-      if (this.earCalibrator.isCalibrated()) {
-        this.blinkDetector.setThreshold(newThreshold);
-      }
+      this.earCalibrator.addSample(blinkResult.smoothedEAR);
     }
 
     // Run posture detection
@@ -269,14 +309,14 @@ export class FaceLandmarkerManager {
    * Get current blink count
    */
   getBlinkCount(): number {
-    return this.blinkDetector.getBlinkCount();
+    return this.robustBlinkDetector.getBlinkCount();
   }
 
   /**
    * Get current EAR threshold
    */
   getThreshold(): number {
-    return this.blinkDetector.getThreshold();
+    return this.robustBlinkDetector.getThreshold();
   }
 
   /**
@@ -306,7 +346,7 @@ export class FaceLandmarkerManager {
    * Reset blink counter
    */
   resetBlinkCount(): void {
-    this.blinkDetector.reset();
+    this.robustBlinkDetector.resetCount();
   }
 
   /**
@@ -348,7 +388,7 @@ export class FaceLandmarkerManager {
    * Reset all detectors
    */
   resetAll(): void {
-    this.blinkDetector.reset();
+    this.robustBlinkDetector.reset();
     this.postureAnalyzer.reset();
     this.yawnDetector.reset();
     this.drowsinessDetector.reset();
@@ -365,11 +405,18 @@ export class FaceLandmarkerManager {
     }
     this.isInitialized = false;
     this.lastVideoTime = -1;
-    this.blinkDetector.reset();
+    this.robustBlinkDetector.reset();
     this.earCalibrator?.reset();
     this.postureAnalyzer.reset();
     this.yawnDetector.reset();
     this.drowsinessDetector.reset();
+  }
+
+  /**
+   * Get the robust blink detector for advanced diagnostics
+   */
+  getRobustBlinkDetector(): RobustBlinkDetector {
+    return this.robustBlinkDetector;
   }
 }
 

@@ -77,7 +77,49 @@ export interface SettingsState {
   reset: () => void;
 }
 
-const initialState = {
+// Demo mode: Read from environment variable (set in .env file)
+// Falls back to false if not set
+const DEMO_MODE = typeof import.meta !== 'undefined'
+  ? import.meta.env?.VITE_DEMO_MODE === 'true'
+  : false;
+
+const initialState = DEMO_MODE ? {
+  // Demo: All features enabled, onboarding complete
+  notifications: true,
+  soundEffects: true,
+  autoStart: true,
+  showFloatingStatus: true,
+  earThreshold: 0.21,
+  alertCooldownMinutes: 10,
+  // Break settings
+  breakIntervalMinutes: 20,
+  breakDurationSeconds: 20,
+  longBreakIntervalMinutes: 60,
+  longBreakDurationMinutes: 5,
+  preNotificationSeconds: 30,
+  maxPostpones: 2,
+  // Sound settings
+  soundPreference: 'chime' as const,
+  soundVolume: 70,
+  // Posture settings
+  postureMonitoringEnabled: true,
+  postureSensitivity: 'medium' as const,
+  // Onboarding - COMPLETE in demo mode
+  hasCompletedOnboarding: true,
+  onboardingStep: 7,
+  // Wellness goals - all selected
+  wellnessGoals: {
+    reduceEyeStrain: true,
+    improvePosture: true,
+    takeRegularBreaks: true,
+  },
+  // Appearance
+  theme: 'light' as const,
+  // Demo organization
+  orgId: 'demo-org-123',
+  orgName: 'Acme Corporation',
+  userRole: 'employee' as const,
+} : {
   notifications: true,
   soundEffects: true,
   autoStart: false,

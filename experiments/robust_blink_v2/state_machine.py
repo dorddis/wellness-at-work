@@ -19,6 +19,8 @@ from constants import (
     CLOSING_TIMEOUT_MS,
     MIN_DIP_PERCENTAGE,
     MIN_DIP_ABSOLUTE,
+    SLOW_BLINK_EAR_THRESHOLD,
+    SLOW_BLINK_RECOVERY_THRESHOLD,
 )
 
 
@@ -69,6 +71,8 @@ class BlinkStateMachine:
         self.baseline_ear: float = 0.3  # Will be updated externally
         self.min_ear_in_blink: float = 1.0
         self.last_blink_ms: float = 0
+        self.prev_ear: float = 0.3  # Track previous EAR for threshold crossing detection
+        self.is_slow_blink: bool = False  # Track if current blink is slow (threshold-based)
 
     def update(
         self,
@@ -104,9 +108,25 @@ class BlinkStateMachine:
         if self.phase in (BlinkPhase.CLOSING, BlinkPhase.MINIMUM, BlinkPhase.OPENING):
             self.min_ear_in_blink = min(self.min_ear_in_blink, current_ear)
 
+        # Calculate threshold-based triggers for slow blinks
+        slow_blink_threshold = self.baseline_ear * SLOW_BLINK_EAR_THRESHOLD
+        slow_recovery_threshold = self.baseline_ear * SLOW_BLINK_RECOVERY_THRESHOLD
+        ear_below_threshold = current_ear < slow_blink_threshold
+        ear_above_recovery = current_ear > slow_recovery_threshold
+
         # State transitions
         if self.phase == BlinkPhase.IDLE:
+            # Trigger on slope (fast blink) OR threshold crossing (slow blink)
+            start_blink = False
             if is_closing and not head_is_moving:
+                start_blink = True
+                self.is_slow_blink = False
+            elif ear_below_threshold and not head_is_moving:
+                # Slow blink: EAR dropped below threshold without significant slope
+                start_blink = True
+                self.is_slow_blink = True
+
+            if start_blink:
                 # Start of potential blink
                 self.phase = BlinkPhase.CLOSING
                 self.phase_start_ms = timestamp_ms
@@ -135,7 +155,12 @@ class BlinkStateMachine:
                 rejection_reason = "head_motion_at_minimum"
 
             elif is_opening:
-                # Eyes starting to open
+                # Eyes starting to open (fast blink via slope)
+                self.phase = BlinkPhase.OPENING
+                self.phase_start_ms = timestamp_ms
+
+            elif self.is_slow_blink and ear_above_recovery:
+                # Slow blink: EAR recovered above threshold
                 self.phase = BlinkPhase.OPENING
                 self.phase_start_ms = timestamp_ms
 
@@ -148,39 +173,37 @@ class BlinkStateMachine:
                 self.phase = BlinkPhase.IDLE
                 rejection_reason = "head_motion_during_opening"
 
-            elif not is_opening and not is_closing:
-                # Slope stabilized - blink complete!
+            # Complete blink when:
+            # - Fast blink: slope stabilizes (neither opening nor closing)
+            # - Slow blink: EAR recovered above threshold and slope is not strongly closing
+            blink_complete = False
+            if not is_opening and not is_closing:
+                blink_complete = True
+            elif self.is_slow_blink and ear_above_recovery and not is_closing:
+                blink_complete = True
+
+            if blink_complete:
+                # Blink complete! Calculate metrics
                 duration_ms = timestamp_ms - self.closing_start_ms
                 dip_magnitude = self.baseline_ear - self.min_ear_in_blink
 
-                # Validate blink
-                if duration_ms < MIN_BLINK_DURATION_MS:
-                    rejection_reason = f"too_fast_{duration_ms:.0f}ms"
+                # Only validate dip magnitude (not duration - a blink is a blink)
+                min_dip_required = self.baseline_ear * MIN_DIP_PERCENTAGE
+                if dip_magnitude < min_dip_required or dip_magnitude < MIN_DIP_ABSOLUTE:
+                    rejection_reason = f"shallow_dip_{dip_magnitude:.3f}_need_{min_dip_required:.3f}"
                     self.phase = BlinkPhase.IDLE
-
-                elif duration_ms > MAX_BLINK_DURATION_MS:
-                    rejection_reason = f"too_slow_{duration_ms:.0f}ms"
-                    self.phase = BlinkPhase.IDLE
-
                 else:
-                    # Check dip using both percentage and absolute thresholds
-                    min_dip_required = self.baseline_ear * MIN_DIP_PERCENTAGE
-                    if dip_magnitude < min_dip_required or dip_magnitude < MIN_DIP_ABSOLUTE:
-                        rejection_reason = f"shallow_dip_{dip_magnitude:.3f}_need_{min_dip_required:.3f}"
-                        self.phase = BlinkPhase.IDLE
-
-                    else:
-                        # Valid blink!
-                        blink_detected = True
-                        blink_event = BlinkEvent(
-                            timestamp_ms=timestamp_ms,
-                            duration_ms=duration_ms,
-                            min_ear=self.min_ear_in_blink,
-                            dip_magnitude=dip_magnitude,
-                        )
-                        self.phase = BlinkPhase.COOLDOWN
-                        self.phase_start_ms = timestamp_ms
-                        self.last_blink_ms = timestamp_ms
+                    # Valid blink! (duration tracked but not used for rejection)
+                    blink_detected = True
+                    blink_event = BlinkEvent(
+                        timestamp_ms=timestamp_ms,
+                        duration_ms=duration_ms,
+                        min_ear=self.min_ear_in_blink,
+                        dip_magnitude=dip_magnitude,
+                    )
+                    self.phase = BlinkPhase.COOLDOWN
+                    self.phase_start_ms = timestamp_ms
+                    self.last_blink_ms = timestamp_ms
 
         elif self.phase == BlinkPhase.COOLDOWN:
             if timestamp_ms - self.phase_start_ms > COOLDOWN_MS:
@@ -203,6 +226,8 @@ class BlinkStateMachine:
         self.phase_start_ms = 0
         self.closing_start_ms = 0
         self.min_ear_in_blink = 1.0
+        self.prev_ear = 0.3
+        self.is_slow_blink = False
 
     def get_phase_name(self) -> str:
         """Get current phase name as string."""

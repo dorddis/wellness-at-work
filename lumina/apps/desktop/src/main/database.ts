@@ -243,14 +243,199 @@ export class DatabaseManager {
     `);
 
     // Insert default streaks if not exist
-    const streakTypes = ['daily_use', 'healthy_blink', 'break_compliance', 'good_posture'];
-    const insertStreak = this.db.prepare(`
-      INSERT OR IGNORE INTO user_streaks (type, current_count, longest_count, last_updated)
-      VALUES (?, 0, 0, ?)
-    `);
+    // DEMO_MODE: Read from environment variable (set in .env file)
+    const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
     const now = Date.now();
-    for (const type of streakTypes) {
-      insertStreak.run(type, now);
+
+    if (DEMO_MODE) {
+      // Demo streaks data
+      const demoStreaks = [
+        { type: 'daily_use', current: 5, longest: 12 },
+        { type: 'healthy_blink', current: 3, longest: 8 },
+        { type: 'break_compliance', current: 2, longest: 5 },
+        { type: 'good_posture', current: 45, longest: 90 },
+      ];
+
+      const upsertStreak = this.db.prepare(`
+        INSERT INTO user_streaks (type, current_count, longest_count, last_updated)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(type) DO UPDATE SET
+          current_count = excluded.current_count,
+          longest_count = excluded.longest_count,
+          last_updated = excluded.last_updated
+      `);
+
+      for (const streak of demoStreaks) {
+        upsertStreak.run(streak.type, streak.current, streak.longest, now);
+      }
+
+      // Demo achievements data
+      const demoAchievements = [
+        { badge_id: 'first_steps', unlocked_at: now - 7 * 24 * 60 * 60 * 1000 },
+        { badge_id: 'perfect_day', unlocked_at: now - 5 * 24 * 60 * 60 * 1000 },
+        { badge_id: 'blink_master', unlocked_at: now - 3 * 24 * 60 * 60 * 1000 },
+        { badge_id: 'early_bird', unlocked_at: now - 6 * 24 * 60 * 60 * 1000 },
+      ];
+
+      const upsertAchievement = this.db.prepare(`
+        INSERT INTO user_achievements (badge_id, unlocked_at, progress)
+        VALUES (?, ?, 100)
+        ON CONFLICT(badge_id) DO UPDATE SET
+          unlocked_at = excluded.unlocked_at,
+          progress = 100
+      `);
+
+      for (const achievement of demoAchievements) {
+        upsertAchievement.run(achievement.badge_id, achievement.unlocked_at);
+      }
+
+      // Demo daily progress for last 14 days
+      const upsertDailyProgress = this.db.prepare(`
+        INSERT INTO daily_progress (date, breaks_taken, breaks_scheduled, healthy_blink_minutes, good_posture_minutes, total_session_minutes)
+        VALUES (?, ?, 4, ?, ?, ?)
+        ON CONFLICT(date) DO UPDATE SET
+          breaks_taken = excluded.breaks_taken,
+          healthy_blink_minutes = excluded.healthy_blink_minutes,
+          good_posture_minutes = excluded.good_posture_minutes,
+          total_session_minutes = excluded.total_session_minutes
+      `);
+
+      // Generate 14 days of daily progress
+      for (let i = 13; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        // Varying data - weekends have less activity
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        const breaksTaken = isWeekend ? Math.floor(Math.random() * 2) + 1 : Math.floor(Math.random() * 3) + 2;
+        const healthyMinutes = isWeekend ? Math.floor(Math.random() * 60) + 30 : Math.floor(Math.random() * 120) + 180;
+        const postureMinutes = isWeekend ? Math.floor(Math.random() * 40) + 20 : Math.floor(Math.random() * 100) + 150;
+        const sessionMinutes = isWeekend ? Math.floor(Math.random() * 60) + 60 : Math.floor(Math.random() * 120) + 300;
+
+        upsertDailyProgress.run(dateStr, breaksTaken, healthyMinutes, postureMinutes, sessionMinutes);
+      }
+
+      // Seed minute rollups for last 7 days (comprehensive blink data)
+      // This creates realistic data patterns for the History view
+      const insertRollup = this.db.prepare(`
+        INSERT OR IGNORE INTO minute_rollups (timestamp, blink_count, avg_ear, synced)
+        VALUES (?, ?, ?, 1)
+      `);
+
+      for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        const dayStart = new Date();
+        dayStart.setDate(dayStart.getDate() - dayOffset);
+        dayStart.setHours(9, 0, 0, 0); // Start at 9 AM
+
+        // Work hours: 9 AM to 6 PM (9 hours = 540 minutes)
+        const isWeekend = dayStart.getDay() === 0 || dayStart.getDay() === 6;
+        const workMinutes = isWeekend ? 120 : 480; // 2 hours weekend, 8 hours weekday
+
+        for (let minute = 0; minute < workMinutes; minute++) {
+          const timestamp = dayStart.getTime() + (minute * 60 * 1000);
+
+          // Simulate realistic blink patterns:
+          // - Morning: higher blink rate (16-20)
+          // - Afternoon: lower blink rate (10-14) - eye strain
+          // - After breaks: temporary spike
+          const hourOfDay = new Date(timestamp).getHours();
+          let baseBlinks = 15;
+          if (hourOfDay < 12) {
+            baseBlinks = 17; // Morning - fresher
+          } else if (hourOfDay < 15) {
+            baseBlinks = 12; // Early afternoon - eye strain
+          } else {
+            baseBlinks = 14; // Late afternoon - moderate
+          }
+
+          // Add randomness
+          const blinkCount = baseBlinks + Math.floor(Math.random() * 6) - 3;
+          const avgEar = 0.25 + (Math.random() * 0.08) - 0.04; // 0.21 - 0.29
+
+          insertRollup.run(timestamp, Math.max(5, blinkCount), avgEar);
+        }
+      }
+
+      // Seed wellness events for last 7 days
+      const insertWellnessEvent = this.db.prepare(`
+        INSERT OR IGNORE INTO wellness_events (timestamp, event_type, payload)
+        VALUES (?, ?, ?)
+      `);
+
+      const wellnessEventTypes: WellnessEventType[] = [
+        'yawn',
+        'posture_too_close',
+        'posture_head_tilt',
+        'posture_forward_lean',
+        'drowsiness_mild',
+      ];
+
+      for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        const dayStart = new Date();
+        dayStart.setDate(dayStart.getDate() - dayOffset);
+
+        const isWeekend = dayStart.getDay() === 0 || dayStart.getDay() === 6;
+        const eventsPerDay = isWeekend ? 3 : 12; // Fewer events on weekends
+
+        for (let i = 0; i < eventsPerDay; i++) {
+          // Random time during work hours (9 AM - 6 PM)
+          const hour = 9 + Math.floor(Math.random() * 9);
+          const minute = Math.floor(Math.random() * 60);
+          dayStart.setHours(hour, minute, 0, 0);
+          const timestamp = dayStart.getTime();
+
+          // Pick random event type, weighted towards yawns and posture
+          const weights = [4, 2, 2, 2, 1]; // yawn most common
+          const totalWeight = weights.reduce((a, b) => a + b, 0);
+          let random = Math.random() * totalWeight;
+          let eventTypeIndex = 0;
+          for (let j = 0; j < weights.length; j++) {
+            random -= weights[j];
+            if (random <= 0) {
+              eventTypeIndex = j;
+              break;
+            }
+          }
+          const eventType = wellnessEventTypes[eventTypeIndex];
+
+          // Create appropriate payload
+          let payload: object | null = null;
+          if (eventType === 'yawn') {
+            payload = { mar: 0.5 + Math.random() * 0.3 };
+          } else if (eventType.startsWith('posture_')) {
+            payload = { severity: Math.random() > 0.7 ? 'high' : 'medium' };
+          } else if (eventType.startsWith('drowsiness_')) {
+            payload = { perclos: 0.15 + Math.random() * 0.15, recentYawns: Math.floor(Math.random() * 3) + 1 };
+          }
+
+          insertWellnessEvent.run(timestamp, eventType, payload ? JSON.stringify(payload) : null);
+        }
+      }
+
+      // Seed user baseline (calibrated)
+      this.db.exec(`
+        UPDATE user_baseline
+        SET blink_p25 = 12.5,
+            blink_p50 = 15.8,
+            blink_p75 = 19.2,
+            calibrated_at = ${now - 5 * 24 * 60 * 60 * 1000},
+            samples_count = 120
+        WHERE id = 1
+      `);
+
+      console.log('[Database] Demo data seeded: 14 days progress, 7 days rollups, wellness events');
+
+    } else {
+      // Production: just insert empty streaks
+      const streakTypes = ['daily_use', 'healthy_blink', 'break_compliance', 'good_posture'];
+      const insertStreak = this.db.prepare(`
+        INSERT OR IGNORE INTO user_streaks (type, current_count, longest_count, last_updated)
+        VALUES (?, 0, 0, ?)
+      `);
+      for (const type of streakTypes) {
+        insertStreak.run(type, now);
+      }
     }
   }
 

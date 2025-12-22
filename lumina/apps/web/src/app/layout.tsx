@@ -8,6 +8,10 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Lumina - AI Wellness Platform',
   description: 'B2B AI wellness platform for enterprises. Track eye strain, prevent fatigue, and boost team productivity.',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({

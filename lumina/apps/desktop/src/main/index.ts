@@ -3,7 +3,7 @@
  * Entry point for Lumina Desktop App
  */
 
-import { app, BrowserWindow, ipcMain, nativeImage, session, systemPreferences } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, session, systemPreferences } from 'electron';
 import path from 'path';
 import { WindowManager } from './windows';
 import { TrayManager } from './tray';
@@ -43,6 +43,9 @@ if (process.defaultApp) {
 }
 
 async function createApp() {
+  // Remove default menu bar (File, Edit, View, etc.)
+  Menu.setApplicationMenu(null);
+
   // Initialize database
   database = new DatabaseManager();
   await database.initialize();
@@ -112,6 +115,29 @@ app.on('before-quit', () => {
   database?.close();
   trayManager?.destroy();
 });
+
+// Force quit on SIGINT/SIGTERM (dev server stopped)
+process.on('SIGINT', () => {
+  console.log('SIGINT received, quitting...');
+  app.quit();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, quitting...');
+  app.quit();
+  process.exit(0);
+});
+
+// Windows: handle CTRL+C
+if (process.platform === 'win32') {
+  process.on('message', (msg) => {
+    if (msg === 'graceful-exit') {
+      app.quit();
+      process.exit(0);
+    }
+  });
+}
 
 // Prevent multiple instances
 const gotTheLock = app.requestSingleInstanceLock();

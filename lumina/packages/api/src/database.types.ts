@@ -9,6 +9,225 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      break_events: {
+        Row: {
+          id: string
+          user_id: string
+          org_id: string
+          scheduled_at: string
+          started_at: string | null
+          completed_at: string | null
+          postponed_count: number
+          status: string
+          break_type: string
+          duration_seconds: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          org_id: string
+          scheduled_at: string
+          started_at?: string | null
+          completed_at?: string | null
+          postponed_count?: number
+          status: string
+          break_type?: string
+          duration_seconds?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          org_id?: string
+          scheduled_at?: string
+          started_at?: string | null
+          completed_at?: string | null
+          postponed_count?: number
+          status?: string
+          break_type?: string
+          duration_seconds?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      challenge_participants: {
+        Row: {
+          id: string
+          challenge_id: string
+          user_id: string
+          department: string | null
+          joined_at: string
+          current_progress: number
+          last_updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          challenge_id: string
+          user_id: string
+          department?: string | null
+          joined_at?: string
+          current_progress?: number
+          last_updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          challenge_id?: string
+          user_id?: string
+          department?: string | null
+          joined_at?: string
+          current_progress?: number
+          last_updated_at?: string | null
+        }
+        Relationships: []
+      }
+      exercise_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          org_id: string
+          exercise_id: string
+          started_at: string
+          completed_at: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          org_id: string
+          exercise_id: string
+          started_at: string
+          completed_at?: string | null
+          status: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          org_id?: string
+          exercise_id?: string
+          started_at?: string
+          completed_at?: string | null
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      eye_exercises: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          duration_seconds: number
+          instructions: Json
+          category: string
+          difficulty: string
+          icon_name: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description: string
+          duration_seconds: number
+          instructions: Json
+          category: string
+          difficulty?: string
+          icon_name?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          duration_seconds?: number
+          instructions?: Json
+          category?: string
+          difficulty?: string
+          icon_name?: string | null
+          is_active?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      integrations: {
+        Row: {
+          id: string
+          org_id: string
+          integration_type: string
+          status: string
+          credentials: Json | null
+          config: Json
+          last_synced_at: string | null
+          error_message: string | null
+          connected_by: string | null
+          connected_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          integration_type: string
+          status?: string
+          credentials?: Json | null
+          config?: Json
+          last_synced_at?: string | null
+          error_message?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          integration_type?: string
+          status?: string
+          credentials?: Json | null
+          config?: Json
+          last_synced_at?: string | null
+          error_message?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      member_details: {
+        Row: {
+          user_id: string
+          email: string | null
+          full_name: string | null
+          department: string | null
+          role: string
+          joined_at: string
+          org_id: string
+        }
+        Insert: {
+          user_id: string
+          email?: string | null
+          full_name?: string | null
+          department?: string | null
+          role?: string
+          joined_at?: string
+          org_id: string
+        }
+        Update: {
+          user_id?: string
+          email?: string | null
+          full_name?: string | null
+          department?: string | null
+          role?: string
+          joined_at?: string
+          org_id?: string
+        }
+        Relationships: []
+      }
       org_alerts: {
         Row: {
           acknowledged: boolean
@@ -115,6 +334,51 @@ export type Database = {
           privacy_mode?: string
           slug?: string
           subscription_tier?: string
+        }
+        Relationships: []
+      }
+      team_challenges: {
+        Row: {
+          id: string
+          org_id: string
+          name: string
+          description: string | null
+          challenge_type: string
+          start_date: string
+          end_date: string
+          target_metric: Json
+          status: string
+          prize_description: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          name: string
+          description?: string | null
+          challenge_type: string
+          start_date: string
+          end_date: string
+          target_metric: Json
+          status?: string
+          prize_description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          name?: string
+          description?: string | null
+          challenge_type?: string
+          start_date?: string
+          end_date?: string
+          target_metric?: Json
+          status?: string
+          prize_description?: string | null
+          created_by?: string | null
+          created_at?: string
         }
         Relationships: []
       }

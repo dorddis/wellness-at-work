@@ -6,6 +6,7 @@
 // Client
 export {
   initializeSupabase,
+  setSupabaseClient,
   getSupabase,
   isSupabaseInitialized,
   type Database,
@@ -36,6 +37,7 @@ export {
 
 // Queries
 export {
+  // Existing
   getMyWellnessData,
   getMyDailyStats,
   getOrgMembers,
@@ -49,10 +51,46 @@ export {
   exportUserData,
   requestAccountDeletion,
   cancelAccountDeletion,
+  // Break Events
+  getMyBreakEvents,
+  getMyBreakStats,
+  createBreakEvent,
+  updateBreakEvent,
+  // Eye Exercises
+  getEyeExercises,
+  getMyExerciseSessions,
+  startExerciseSession,
+  completeExerciseSession,
+  // Team Challenges
+  getTeamChallenges,
+  getChallengeLeaderboard,
+  createTeamChallenge,
+  joinChallenge,
+  // Analytics
+  getOrgAnalytics,
+  // Integrations
+  getOrgIntegrations,
+  connectIntegration,
+  updateIntegrationConfig,
+  disconnectIntegration,
+  // Types - Existing
   type WellnessRollup,
   type DailyStats,
   type TeamMember,
   type DepartmentStats,
   type OrgSettings,
   type AlertSettings,
+  // Types - Break Events
+  type BreakEvent,
+  type BreakStats,
+  // Types - Eye Exercises
+  type EyeExercise,
+  type ExerciseSession,
+  // Types - Team Challenges
+  type TeamChallenge,
+  type ChallengeParticipant,
+  // Types - Analytics
+  type AnalyticsMetrics,
+  // Types - Integrations
+  type Integration,
 } from './queries';

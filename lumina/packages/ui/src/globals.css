@@ -86,4 +86,78 @@
   .text-wellness-poor {
     color: rgb(239 68 68);
   }
+
+  /* Elegant Select/Dropdown Component */
+  .select {
+    @apply appearance-none cursor-pointer;
+    @apply px-4 py-2.5 pr-10;
+    @apply bg-white border border-gray-200;
+    @apply rounded-xl;
+    @apply text-sm font-medium text-gray-700;
+    @apply shadow-sm;
+    @apply transition-all duration-200 ease-out;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+  }
+
+  .select:hover {
+    @apply border-gray-300 bg-gray-50/50;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .select:focus {
+    @apply outline-none border-gray-400 bg-white;
+    @apply ring-2 ring-gray-900/5;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .select:disabled {
+    @apply opacity-50 cursor-not-allowed bg-gray-50;
+  }
+
+  /* Dark mode support */
+  .dark .select {
+    @apply bg-gray-800 border-gray-700 text-gray-200;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  }
+
+  .dark .select:hover {
+    @apply border-gray-600 bg-gray-700/70;
+  }
+
+  .dark .select:focus {
+    @apply border-gray-500;
+    @apply ring-2 ring-white/10;
+  }
+
+  /* Compact variant for inline use */
+  .select-sm {
+    @apply px-3 py-1.5 pr-8 text-xs;
+    @apply rounded-lg;
+    background-position: right 0.5rem center;
+    background-size: 0.875rem;
+  }
+
+  /* Minimal variant - less visual weight */
+  .select-minimal {
+    @apply border-transparent bg-gray-100/80 shadow-none;
+  }
+
+  .select-minimal:hover {
+    @apply bg-gray-100 border-transparent shadow-none;
+  }
+
+  .select-minimal:focus {
+    @apply bg-white border-gray-300;
+  }
+
+  .dark .select-minimal {
+    @apply bg-gray-800/50;
+  }
+
+  .dark .select-minimal:hover {
+    @apply bg-gray-700/70;
+  }
 }

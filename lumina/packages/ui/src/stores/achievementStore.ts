@@ -115,7 +115,23 @@ const ALL_ACHIEVEMENT_IDS: AchievementId[] = [
   'posture_pro',
 ];
 
-const initialUnlocked: Record<AchievementId, UnlockedAchievement | null> = {
+// Demo mode: Read from environment variable (set in .env file)
+// Falls back to false if not set
+const DEMO_MODE = typeof import.meta !== 'undefined'
+  ? import.meta.env?.VITE_DEMO_MODE === 'true'
+  : false;
+
+const initialUnlocked: Record<AchievementId, UnlockedAchievement | null> = DEMO_MODE ? {
+  first_steps: { id: 'first_steps', unlockedAt: Date.now() - 7 * 24 * 60 * 60 * 1000, progress: 100 },
+  perfect_day: { id: 'perfect_day', unlockedAt: Date.now() - 5 * 24 * 60 * 60 * 1000, progress: 100 },
+  week_warrior: null,
+  blink_master: { id: 'blink_master', unlockedAt: Date.now() - 3 * 24 * 60 * 60 * 1000, progress: 100 },
+  flow_state: null,
+  wellness_champion: null,
+  early_bird: { id: 'early_bird', unlockedAt: Date.now() - 6 * 24 * 60 * 60 * 1000, progress: 100 },
+  night_owl: null,
+  posture_pro: null,
+} : {
   first_steps: null,
   perfect_day: null,
   week_warrior: null,
@@ -127,7 +143,16 @@ const initialUnlocked: Record<AchievementId, UnlockedAchievement | null> = {
   posture_pro: null,
 };
 
-const initialProgress: AchievementProgress = {
+const initialProgress: AchievementProgress = DEMO_MODE ? {
+  sessionsCompleted: 12,
+  perfectDays: 3,
+  consecutiveDays: 5,  // 5/7 for week_warrior (71%)
+  healthyBlinkMinutes: 85,
+  longestSession: 75,  // 75/120 for flow_state (62%)
+  goodPostureMinutes: 180,  // 180/240 for posture_pro (75%)
+  hasEarlySession: true,
+  hasLateSession: false,
+} : {
   sessionsCompleted: 0,
   perfectDays: 0,
   consecutiveDays: 0,

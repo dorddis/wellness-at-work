@@ -247,6 +247,65 @@ FROM wellness_events GROUP BY user_id, bucket;
 | 10K | 20 GB | $27 | $0.003 |
 | 100K | 200 GB | $60 (self-host) | $0.0006 |
 
+## Demo Mode (IMPORTANT)
+
+The app has a comprehensive **DEMO_MODE** controlled by a single environment variable.
+
+### Enabling/Disabling Demo Mode
+
+Edit `lumina/apps/desktop/.env`:
+```bash
+# Set to 'true' for demo, 'false' for production
+VITE_DEMO_MODE=true
+```
+
+This single variable controls demo data in:
+
+| Component | What it controls |
+|-----------|------------------|
+| **SQLite Database** | Streaks, achievements, 14 days of daily progress, 7 days of minute rollups (~3000 records), wellness events, calibrated baseline |
+| **streakStore.ts** | UI streak badges (localStorage) |
+| **achievementStore.ts** | UI achievement badges (localStorage) |
+| **settingsStore.ts** | Settings, onboarding complete, organization |
+
+### Demo Data Included
+
+**Achievements (4/9 unlocked):**
+- First Steps, Perfect Day, Blink Master, Early Bird
+
+**Streaks:**
+- Daily Use: 5 days (best: 12)
+- Healthy Eyes: 3 hours (best: 8)
+- Break Master: 2 breaks (best: 5)
+- Good Posture: 45 min (best: 90)
+
+**Historical Data (SQLite):**
+- 14 days of daily progress (breaks, blink minutes, posture minutes)
+- 7 days of minute rollups (~480 per weekday, ~120 per weekend day)
+- Realistic blink patterns: higher morning, lower afternoon
+- Wellness events: yawns, posture issues, drowsiness
+- Pre-calibrated baseline (P25=12.5, P50=15.8, P75=19.2)
+
+**Settings:**
+- Onboarding complete
+- All features enabled
+- Demo organization: "Acme Corporation"
+
+### Resetting Demo Data
+
+Since Zustand stores persist to localStorage:
+1. Delete `%APPDATA%/lumina/lumina.db` (SQLite)
+2. Clear localStorage keys: `lumina-streaks`, `lumina-achievements`, `lumina-settings`
+3. Restart the app
+
+### For Production
+
+Set `VITE_DEMO_MODE=false` in `.env` before release. The app will start fresh with:
+- Empty streaks/achievements
+- Onboarding flow shown
+- No historical data
+- Needs calibration
+
 ## Development Notes
 
 - **Windows UTF-8:** Always run `python -X utf8` to avoid Unicode issues

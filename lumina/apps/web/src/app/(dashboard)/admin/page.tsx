@@ -118,8 +118,8 @@ export default function AdminOverviewPage() {
               id: a.id,
               employee: settings?.privacyMode === 'anonymous'
                 ? `Employee ${index + 1}`
-                : a.userId?.slice(0, 8) || 'Unknown',
-              department: 'General',
+                : a.userName || a.userEmail?.split('@')[0] || 'Unknown',
+              department: a.department || 'General',
               type: a.alertType,
               severity: a.severity,
               time: formatTimeAgo(new Date(a.createdAt)),

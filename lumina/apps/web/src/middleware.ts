@@ -66,13 +66,13 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/login' || pathname === '/join' || pathname.startsWith('/join/')) {
     if (user) {
       // Check if user has an organization
-      const { data: membership } = await supabase
+      const { data: memberships } = await supabase
         .from('org_members')
         .select('org_id')
         .eq('user_id', user.id)
-        .single();
+        .limit(1);
 
-      if (!membership) {
+      if (!memberships || memberships.length === 0) {
         return NextResponse.redirect(new URL('/onboarding', request.url));
       }
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -86,15 +86,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
     // Check if user already has an org
-    const { data: membership } = await supabase
+    const { data: memberships, error: onboardingError } = await supabase
       .from('org_members')
       .select('org_id')
       .eq('user_id', user.id)
-      .single();
+      .limit(1);
 
-    if (membership) {
+    console.log('[Middleware] Onboarding check:', {
+      userId: user.id,
+      memberships,
+      error: onboardingError?.message
+    });
+
+    if (memberships && memberships.length > 0) {
+      console.log('[Middleware] User has org, redirecting from onboarding to dashboard');
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+    console.log('[Middleware] No org found, staying on onboarding');
     return response;
   }
 
@@ -106,17 +114,29 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Get user's organization membership
-    const { data: membership } = await supabase
+    // Get user's organization membership (most recent if multiple)
+    const { data: memberships, error: membershipError } = await supabase
       .from('org_members')
       .select('role, org_id')
       .eq('user_id', user.id)
-      .single();
+      .order('joined_at', { ascending: false })
+      .limit(1);
+
+    console.log('[Middleware] Dashboard check:', {
+      userId: user.id,
+      memberships,
+      error: membershipError?.message
+    });
+
+    const membership = memberships?.[0];
 
     // User needs to join or create an org first
     if (!membership) {
+      console.log('[Middleware] No membership found, redirecting to onboarding');
       return NextResponse.redirect(new URL('/onboarding', request.url));
     }
+
+    console.log('[Middleware] User has org, allowing dashboard access');
 
     // Admin routes - require admin or manager role
     if (pathname.startsWith('/admin')) {

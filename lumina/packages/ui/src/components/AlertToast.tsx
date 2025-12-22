@@ -11,6 +11,7 @@ export interface AlertToastProps {
   action?: string;
   onDismiss: (id: string) => void;
   onSnooze: (id: string, minutes: number) => void;
+  onDoubleClick?: () => void;
   className?: string;
 }
 
@@ -37,6 +38,7 @@ export function AlertToast({
   action,
   onDismiss,
   onSnooze,
+  onDoubleClick,
   className,
 }: AlertToastProps) {
   return (
@@ -45,11 +47,13 @@ export function AlertToast({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.2 }}
+      onDoubleClick={onDoubleClick}
       className={cn(
-        'p-4 rounded-lg border shadow-lg max-w-sm',
+        'p-4 rounded-lg border shadow-lg max-w-sm cursor-pointer',
         severityStyles[severity],
         className
       )}
+      title="Double-click to open Lumina"
     >
       <div className="flex items-start gap-3">
         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-current/10 flex items-center justify-center text-xs font-bold">

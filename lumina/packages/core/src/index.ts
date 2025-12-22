@@ -15,6 +15,13 @@ export * from './detection/posture';
 export * from './detection/yawn';
 export * from './detection/drowsiness';
 
+// Robust blink detection (slope-based)
+export * from './detection/slope-detector';
+export * from './detection/head-motion';
+export * from './detection/bilateral';
+export * from './detection/blink-state-machine';
+export * from './detection/robust-blink-detector';
+
 // Alerts
 export * from './alerts/rules';
 export * from './alerts/engine';

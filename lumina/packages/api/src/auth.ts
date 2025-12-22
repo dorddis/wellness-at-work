@@ -70,13 +70,15 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   const supabase = getSupabase();
 
   const { data: { user } } = await supabase.auth.getUser();
+  console.log('[getCurrentUser] Auth user:', user?.id);
   if (!user) return null;
 
-  // Get organization membership
-  const { data: membership } = await supabase
+  // Get organization membership (most recent if multiple)
+  const { data: memberships, error } = await supabase
     .from('org_members')
     .select(`
       role,
+      joined_at,
       organizations (
         id,
         name,
@@ -84,13 +86,20 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       )
     `)
     .eq('user_id', user.id)
-    .single();
+    .order('joined_at', { ascending: false })
+    .limit(1);
+
+  console.log('[getCurrentUser] Memberships query result:', { memberships, error });
+
+  const membership = memberships?.[0];
+  console.log('[getCurrentUser] First membership:', membership);
 
   const org = membership?.organizations as {
     id: string;
     name: string;
     slug: string;
   } | null;
+  console.log('[getCurrentUser] Org:', org);
 
   return {
     id: user.id,

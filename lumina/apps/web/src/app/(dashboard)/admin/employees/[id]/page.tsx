@@ -42,11 +42,8 @@ interface TrendDataPoint {
 }
 
 function calculateWellnessScore(blinkRate: number): number {
-  if (blinkRate < 5) return 30;
-  if (blinkRate < 10) return 50;
-  if (blinkRate < 15) return 75;
-  if (blinkRate < 20) return 90;
-  return 100;
+  // Continuous scale: score = blinkRate * 4 + 20, clamped to 25-100
+  return Math.min(100, Math.max(25, Math.round(blinkRate * 4 + 20)));
 }
 
 function formatTimeAgo(dateString: string): string {
@@ -97,18 +94,10 @@ export default function EmployeeDetailPage() {
       try {
         const supabase = getSupabase();
 
-        // Get employee info from org_members
+        // Get employee info from member_details view
         const { data: memberData, error: memberError } = await supabase
-          .from('org_members')
-          .select(`
-            user_id,
-            role,
-            department,
-            joined_at,
-            users:user_id (
-              email
-            )
-          `)
+          .from('member_details')
+          .select('user_id, email, full_name, role, department, joined_at')
           .eq('org_id', orgId)
           .eq('user_id', employeeId)
           .single();
@@ -171,8 +160,8 @@ export default function EmployeeDetailPage() {
         // Build employee object
         const employeeInfo: Employee = {
           id: memberData.user_id,
-          name: (memberData.users as any)?.email?.split('@')[0] ?? 'Unknown',
-          email: (memberData.users as any)?.email ?? 'unknown@example.com',
+          name: memberData.full_name || memberData.email?.split('@')[0] || 'Unknown',
+          email: memberData.email ?? 'unknown@example.com',
           department: memberData.department ?? 'Unassigned',
           joinedAt: memberData.joined_at,
           score: calculateWellnessScore(avgBlinkRate),

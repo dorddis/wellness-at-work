@@ -4,7 +4,13 @@ import { AnimatePresence } from 'motion/react';
 
 interface AlertData {
   id: string;
-  type?: 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture' | 'break_reminder' | 'posture' | 'session_start' | 'custom' | 'calibration_complete' | 'break_complete';
+  type?:
+    | 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture'
+    | 'break_reminder' | 'posture' | 'session_start' | 'custom'
+    | 'calibration_complete' | 'break_complete'
+    // New wellness alert types
+    | 'too_close' | 'too_far' | 'head_tilt' | 'forward_lean'
+    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning';
   severity: AlertSeverity;
   message: string;
   action?: string;
@@ -32,6 +38,11 @@ export default function OverlayApp() {
     window.lumina?.alerts.snooze(id, minutes);
   };
 
+  const handleDoubleClick = () => {
+    setAlert(null);
+    window.lumina?.alerts.openHub();
+  };
+
   return (
     <div className="h-full flex items-start justify-end p-2">
       <AnimatePresence mode="wait">
@@ -44,6 +55,7 @@ export default function OverlayApp() {
             action={alert.action}
             onDismiss={handleDismiss}
             onSnooze={handleSnooze}
+            onDoubleClick={handleDoubleClick}
           />
         )}
       </AnimatePresence>
