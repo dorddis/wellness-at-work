@@ -45,27 +45,19 @@ jobs:
         working-directory: lumina
         run: pnpm build:desktop
 
-      - name: Package Windows Installer (Electron Builder)
+      - name: Package Windows Installer
         working-directory: lumina
-        # FIX: Run from root using filter to ensure access to shared node_modules
+        # FIX: Runs from root with filter to avoid path length issues
         run: pnpm --filter @lumina/desktop package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: DEBUG - List Output Directory
-        working-directory: lumina/apps/desktop
-        run: |
-          echo "--- Listing dist folder ---"
-          ls dist -ErrorAction SilentlyContinue
-          echo "--- Listing release folder ---"
-          ls release -ErrorAction SilentlyContinue
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
           if-no-files-found: error
-          # FIX: Look in both common output folders (dist and release)
+          # Captures the exe from either possible output location
           path: |
             lumina/apps/desktop/dist/*.exe
             lumina/apps/desktop/release/*.exe
@@ -95,9 +87,64 @@ jobs:
           fi
 
       - name: Flatten Artifacts
+        # Moves the file from subfolders to the root of artifacts/windows for easy finding
         run: |
           find artifacts/windows -name "*.exe" -type f -exec mv {} artifacts/windows/ \;
           ls -la artifacts/windows/
+
+      - name: Upload to Supabase Storage and DB
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # 1. Locate the file
+          WINDOWS_FILE=$(ls artifacts/windows/*.exe | head -1)
+          if [ -z "$WINDOWS_FILE" ]; then
+            echo "Error: No .exe file found in artifacts folder!"
+            exit 1
+          fi
+
+          echo "Found Windows installer: $WINDOWS_FILE"
+          WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE")
+          WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
+
+          # 2. URL Encode filename (handles spaces safely)
+          ENCODED_FILENAME=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read().strip()))" <<< "$WINDOWS_FILENAME")
+          
+          # 3. Define Supabase Storage Paths
+          STORAGE_PATH="releases/v${VERSION}/${ENCODED_FILENAME}"
+          STORAGE_URL="${SUPABASE_URL}/storage/v1/object/${STORAGE_PATH}"
+          PUBLIC_URL="${SUPABASE_URL}/storage/v1/object/public/${STORAGE_PATH}"
+
+          echo "Uploading $WINDOWS_FILENAME to Supabase Storage..."
+          
+          # 4. Upload File
+          curl --fail-with-body -X POST "$STORAGE_URL" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${WINDOWS_FILE}"
+
+          echo "File uploaded. Public URL: $PUBLIC_URL"
+
+          echo "Updating Supabase 'releases' table..."
+          
+          # 5. Update Database (using upsert/merge logic)
+          curl --fail-with-body -X POST "${SUPABASE_URL}/rest/v1/releases" \
+            -H "apikey: ${SUPABASE_SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{
+              \"version\": \"${VERSION}\",
+              \"windows_url\": \"${PUBLIC_URL}\",
+              \"windows_size\": ${WINDOWS_SIZE},
+              \"macos_url\": null,
+              \"macos_size\": 0,
+              \"release_notes\": \"Release v${VERSION}\"
+            }"
+            
+          echo "? Database updated successfully."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
