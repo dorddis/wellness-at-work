@@ -1,8 +1,9 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { Nav, Footer } from '@/components/landing';
 import { DownloadButtons } from './DownloadButtons';
-import { Monitor, Apple, CheckCircle, AlertCircle, Download } from 'lucide-react';
+import { Monitor, Apple, CheckCircle, AlertCircle, Download, Sparkles, ChevronRight, Eye, Zap, Video } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Download Lumina - Desktop App',
@@ -27,6 +28,26 @@ function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
+
+
+// Latest release highlights - update these when releasing new versions
+const latestHighlights = [
+  {
+    icon: <Apple className="w-5 h-5" />,
+    title: 'macOS Support',
+    description: 'Native app with Apple Silicon optimization',
+  },
+  {
+    icon: <Video className="w-5 h-5" />,
+    title: 'Meeting Mode',
+    description: 'Eye tracking during Zoom, Teams & Meet calls',
+  },
+  {
+    icon: <Zap className="w-5 h-5" />,
+    title: '40% Faster',
+    description: 'Optimized frame processing for lower CPU usage',
+  },
+];
 
 export default async function DownloadPage() {
   const supabase = await createServerClient();
@@ -151,6 +172,44 @@ export default async function DownloadPage() {
           </div>
         </section>
 
+        {/* Whats New Section */}
+        <section className="py-16 border-t border-border">
+          <div className="container">
+            <div className="mx-auto max-w-3xl">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Whats New</h2>
+                </div>
+                <Link
+                  href="/changelog"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  Full changelog
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                {latestHighlights.map((item) => (
+                  <div
+                    key={item.title}
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/30 transition-colors"
+                  >
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit mb-3">
+                      {item.icon}
+                    </div>
+                    <h3 className="font-semibold mb-1">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Features Summary */}
         <section className="py-16 border-t border-border bg-muted/30">
           <div className="container">
@@ -187,23 +246,7 @@ export default async function DownloadPage() {
           </div>
         </section>
 
-        {/* Release Notes (if available) */}
-        {hasRelease && release.release_notes && (
-          <section className="py-16 border-t border-border">
-            <div className="container">
-              <div className="mx-auto max-w-3xl">
-                <h2 className="text-2xl font-bold mb-6">
-                  Release Notes - v{release.version}
-                </h2>
-                <div className="prose prose-sm max-w-none text-muted-foreground">
-                  <pre className="whitespace-pre-wrap bg-muted/50 p-4 rounded-lg text-sm">
-                    {release.release_notes}
-                  </pre>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
+        
       </main>
 
       <Footer />
