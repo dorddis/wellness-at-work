@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, Users, Loader2, CheckCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { getBaseUrl } from '@/lib/utils/url';
 
 export default function JoinPage() {
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function JoinPage() {
             org_id: orgInfo.id,
             org_name: orgInfo.name,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback?org_id=${orgInfo.id}`,
+          emailRedirectTo: `${getBaseUrl()}/auth/callback?org_id=${orgInfo.id}`,
         },
       });
 

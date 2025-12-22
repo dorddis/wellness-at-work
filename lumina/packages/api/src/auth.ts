@@ -20,12 +20,12 @@ export interface AuthUser {
 /**
  * Sign up with email (magic link)
  */
-export async function signUpWithEmail(email: string): Promise<{ error: Error | null }> {
+export async function signUpWithEmail(email: string, redirectTo?: string): Promise<{ error: Error | null }> {
   const supabase = getSupabase();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: redirectTo ?? (typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined),
     },
   });
   return { error: error ? new Error(error.message) : null };
@@ -34,12 +34,12 @@ export async function signUpWithEmail(email: string): Promise<{ error: Error | n
 /**
  * Sign in with Google
  */
-export async function signInWithGoogle(): Promise<{ error: Error | null }> {
+export async function signInWithGoogle(redirectTo?: string): Promise<{ error: Error | null }> {
   const supabase = getSupabase();
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: redirectTo ?? (typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined),
     },
   });
   return { error: error ? new Error(error.message) : null };
