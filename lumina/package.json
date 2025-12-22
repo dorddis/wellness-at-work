@@ -1,8 +1,13 @@
 {
   "name": "lumina",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "B2B AI wellness platform for enterprises",
+  "author": "Lumina Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dorddis/wellness-at-work.git"
+  },
   "scripts": {
     "dev": "turbo dev",
     "dev:desktop": "turbo dev --filter=@lumina/desktop",

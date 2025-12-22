@@ -1,14 +1,10 @@
 {
   "name": "@lumina/desktop",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
-  "description": "Lumina Desktop - AI Wellness Coach",
+  "description": "Lumina Desktop - AI wellness coach",
   "author": "Lumina Team",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dorddis/wellness-at-work.git",
-    "directory": "lumina/apps/desktop"
-  },
+  "repository": "https://github.com/dorddis/wellness-at-work.git",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",
@@ -58,6 +54,13 @@
     "directories": {
       "output": "release"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dorddis",
+        "repo": "wellness-at-work"
+      }
+    ],
     "files": [
       "dist/**/*"
     ],
