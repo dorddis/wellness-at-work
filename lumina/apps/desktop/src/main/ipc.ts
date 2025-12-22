@@ -358,6 +358,40 @@ export function setupIPC(
   // Authentication
   // ============================================================================
 
+  // Google OAuth - opens browser, redirects to web callback, then deep links back
+  // Flow: Desktop -> Browser -> Google -> Web callback page -> Deep link -> Desktop
+  const WEB_CALLBACK_URL = 'https://lumina-rho-sandy.vercel.app/auth/desktop-callback';
+
+  ipcMain.handle('auth:sign-in-with-google', async () => {
+    try {
+      const supabase = getSupabase();
+
+      // Get the OAuth URL - redirect to web callback page (not deep link directly)
+      // The web page will show "Open in Lumina?" and trigger the deep link
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: WEB_CALLBACK_URL,
+          skipBrowserRedirect: true, // We'll open the browser ourselves
+        },
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      if (data.url) {
+        // Open OAuth URL in system browser
+        shell.openExternal(data.url);
+        return { success: true };
+      }
+
+      return { success: false, error: 'No OAuth URL returned' };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
   // Send OTP code to email
   // NOTE: For this to send a 6-digit code instead of a magic link,
   // configure the email template in Supabase Dashboard > Auth > Email Templates

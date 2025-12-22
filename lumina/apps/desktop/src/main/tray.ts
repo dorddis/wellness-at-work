@@ -4,6 +4,7 @@
  */
 
 import { Tray, Menu, app, nativeImage, NativeImage } from 'electron';
+import path from 'path';
 import { WindowManager } from './windows';
 
 /**
@@ -38,11 +39,43 @@ export class TrayManager {
   private windowManager: WindowManager;
   private currentState: TrayIconState = 'paused';
   private iconCache: Map<TrayIconState, NativeImage> = new Map();
+  private baseIcon: NativeImage | null = null;
 
   constructor(windowManager: WindowManager) {
     this.windowManager = windowManager;
+    this.loadBaseIcon();
     this.initializeIconCache();
     this.createTray();
+  }
+
+  /**
+   * Load the base Lumina icon from the build folder
+   */
+  private loadBaseIcon(): void {
+    // Try multiple paths for dev vs production
+    const iconPaths = [
+      path.join(__dirname, '../../build/icon.png'),           // Dev
+      path.join(__dirname, '../../../build/icon.png'),        // Production
+      path.join(process.resourcesPath || '', 'icon.png'),     // Packaged
+    ];
+
+    for (const iconPath of iconPaths) {
+      try {
+        const icon = nativeImage.createFromPath(iconPath);
+        if (!icon.isEmpty()) {
+          // Resize for tray (16x16 Windows, 22x22 macOS)
+          const size = process.platform === 'darwin' ? 22 : 16;
+          this.baseIcon = icon.resize({ width: size, height: size });
+          return;
+        }
+      } catch {
+        // Try next path
+      }
+    }
+
+    // Fallback: create a simple icon if file not found
+    console.warn('Could not load tray icon from file, using fallback');
+    this.baseIcon = null;
   }
 
   /**
@@ -59,8 +92,8 @@ export class TrayManager {
    * Create the system tray icon
    */
   private createTray(): void {
-    // Start with paused state icon
-    const trayIcon = this.iconCache.get('paused') || this.createStateIcon('paused');
+    // Use base Lumina icon, fall back to generated icon
+    const trayIcon = this.baseIcon || this.iconCache.get('paused') || this.createStateIcon('paused');
 
     this.tray = new Tray(trayIcon);
     this.tray.setToolTip(STATE_TOOLTIPS.paused);
@@ -129,7 +162,8 @@ export class TrayManager {
     if (this.currentState === state && !customTooltip) return;
 
     this.currentState = state;
-    const icon = this.iconCache.get(state) || this.createStateIcon(state);
+    // Use base icon if available, otherwise fall back to generated state icon
+    const icon = this.baseIcon || this.iconCache.get(state) || this.createStateIcon(state);
     this.tray?.setImage(icon);
     this.tray?.setToolTip(customTooltip || STATE_TOOLTIPS[state]);
   }

@@ -3,7 +3,7 @@
  * Creates and manages Electron BrowserWindows
  */
 
-import { BrowserWindow, screen, shell } from 'electron';
+import { BrowserWindow, screen, shell, app } from 'electron';
 import path from 'path';
 
 export class WindowManager {
@@ -11,9 +11,15 @@ export class WindowManager {
   private statusWindow: BrowserWindow | null = null;
   private overlayWindow: BrowserWindow | null = null;
   private isDev: boolean;
+  private isQuitting: boolean = false;
 
   constructor(isDev: boolean) {
     this.isDev = isDev;
+
+    // Track when app is quitting to allow windows to close
+    app.on('before-quit', () => {
+      this.isQuitting = true;
+    });
   }
 
   /**
@@ -99,9 +105,9 @@ export class WindowManager {
       return { action: 'deny' };
     });
 
-    // Handle close - hide instead of destroy
+    // Handle close - hide instead of destroy (unless quitting)
     this.hubWindow.on('close', (event) => {
-      if (!this.hubWindow?.isDestroyed()) {
+      if (!this.isQuitting && !this.hubWindow?.isDestroyed()) {
         event.preventDefault();
         this.hubWindow?.hide();
       }

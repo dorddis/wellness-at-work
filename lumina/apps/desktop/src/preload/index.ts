@@ -11,6 +11,7 @@ export interface LuminaAPI {
   auth: {
     sendOtp: (email: string) => Promise<AuthResult>;
     verifyOtp: (email: string, token: string) => Promise<AuthVerifyResult>;
+    signInWithGoogle: () => Promise<AuthResult>;
     getSession: () => Promise<SessionResult>;
     getUser: () => Promise<UserResult>;
     signOut: () => Promise<AuthResult>;
@@ -321,6 +322,7 @@ const luminaAPI: LuminaAPI = {
   auth: {
     sendOtp: (email) => ipcRenderer.invoke('auth:send-otp', email),
     verifyOtp: (email, token) => ipcRenderer.invoke('auth:verify-otp', email, token),
+    signInWithGoogle: () => ipcRenderer.invoke('auth:sign-in-with-google'),
     getSession: () => ipcRenderer.invoke('auth:get-session'),
     getUser: () => ipcRenderer.invoke('auth:get-user'),
     signOut: () => ipcRenderer.invoke('auth:sign-out'),

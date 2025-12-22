@@ -155,8 +155,10 @@ const Icons = {
   ),
 };
 
-// Web dashboard URL (Vercel deployment)
-const WEB_DASHBOARD_URL = 'https://lumina-rho-sandy.vercel.app';
+// Web dashboard URL (dev vs production)
+const WEB_DASHBOARD_URL = import.meta.env.DEV
+  ? 'http://localhost:3000'
+  : 'https://lumina.app';
 
 // Detection manager (singleton)
 const landmarkerManager = new FaceLandmarkerManager();
@@ -1188,6 +1190,15 @@ function DashboardView({
         isVisible={showPreBreakToast}
       />
 
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 p-6 pb-0 bg-gray-50">
+        {/* Welcome Header */}
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Welcome back, {userName}
+          </h1>
+        </div>
+
       {/* Break Overlay Modal */}
       {isOnBreak && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1242,23 +1253,18 @@ function DashboardView({
         </div>
       )}
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Welcome Hero Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {userName}! <span className="inline-block origin-[70%_70%] animate-wave">👋</span>
-          </h1>
-          <p className="text-lg text-gray-500">
-            {(() => {
-              const hour = new Date().getHours();
-              if (hour < 12) return "Good morning! Ready to take care of your eyes today?";
-              if (hour < 17) return "Good afternoon! Keep up the great work on your eye health.";
-              return "Good evening! Let's wind down and give your eyes some rest.";
-            })()}
-          </p>
+        {/* Header with Privacy Indicator */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">My Wellness Dashboard</h2>
+            <p className="text-gray-500 text-sm">Track your eye health and prevent strain</p>
+          </div>
+          <PrivacyIndicator isActive={isDetecting} />
         </div>
+      </div>
 
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto p-6 pt-4">
         {/* Top Row: Wellness Score + Daily Streak */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Wellness Score Card */}
@@ -1594,6 +1600,11 @@ function MonitorView({
 
   return (
     <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Live Monitor</h1>
+        <p className="text-gray-500">Real-time blink detection and eye tracking</p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Camera view */}
         <div className="lg:col-span-2">
@@ -1879,6 +1890,14 @@ function ExercisesView() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Eye Exercises</h1>
+        <p className="text-gray-500 text-sm">
+          Guided exercises to reduce eye strain and improve eye health
+        </p>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-4 border border-gray-200">
@@ -2216,6 +2235,12 @@ function HistoryView() {
   if (isLoading) {
     return (
       <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">History</h1>
+            <p className="text-gray-500">View your wellness data over time</p>
+          </div>
+        </div>
         <HistorySkeleton />
       </div>
     );
@@ -2223,8 +2248,11 @@ function HistoryView() {
 
   return (
     <div className="p-6">
-      {/* Action bar */}
-      <div className="flex justify-end mb-4">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">History</h1>
+          <p className="text-gray-500">View your wellness data over time</p>
+        </div>
         <button
           onClick={handleExportCSV}
           disabled={isExporting}
@@ -2449,7 +2477,12 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-y-auto max-h-[calc(100vh-80px)]">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+        <p className="text-gray-500">Configure your Lumina experience</p>
+      </div>
+
       <div className="space-y-6">
         {/* Detection Settings */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
