@@ -173,8 +173,12 @@ jobs:
           cd artifacts/windows
           WINDOWS_ORIGINAL=$(ls *.exe | head -1)
           WINDOWS_NEW=$(echo "$WINDOWS_ORIGINAL" | sed 's/ /-/g')
-          mv "$WINDOWS_ORIGINAL" "$WINDOWS_NEW"
-          echo "Windows: $WINDOWS_ORIGINAL -> $WINDOWS_NEW"
+          if [ "$WINDOWS_ORIGINAL" != "$WINDOWS_NEW" ]; then
+            mv "$WINDOWS_ORIGINAL" "$WINDOWS_NEW"
+            echo "Windows: $WINDOWS_ORIGINAL -> $WINDOWS_NEW"
+          else
+            echo "Windows: $WINDOWS_ORIGINAL (no rename needed)"
+          fi
           cd ../..
 
           # macOS: flatten and rename spaces to dashes
@@ -182,8 +186,12 @@ jobs:
           cd artifacts/macos
           MACOS_ORIGINAL=$(ls *.dmg | head -1)
           MACOS_NEW=$(echo "$MACOS_ORIGINAL" | sed 's/ /-/g')
-          mv "$MACOS_ORIGINAL" "$MACOS_NEW"
-          echo "macOS: $MACOS_ORIGINAL -> $MACOS_NEW"
+          if [ "$MACOS_ORIGINAL" != "$MACOS_NEW" ]; then
+            mv "$MACOS_ORIGINAL" "$MACOS_NEW"
+            echo "macOS: $MACOS_ORIGINAL -> $MACOS_NEW"
+          else
+            echo "macOS: $MACOS_ORIGINAL (no rename needed)"
+          fi
           cd ../..
 
           echo "=== Final artifacts ==="
