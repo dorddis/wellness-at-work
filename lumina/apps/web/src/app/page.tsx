@@ -1,7 +1,6 @@
 import {
   Nav,
   Hero,
-  CurvedFeature,
   ProblemStats,
   Features,
   HowItWorks,
@@ -16,7 +15,6 @@ export default function LandingPage() {
     <div className="min-h-screen bg-background">
       <Nav />
       <Hero />
-      <CurvedFeature />
       <ProblemStats />
       <Features />
       <HowItWorks />
