@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import {
   LineChart,
   Line,
@@ -11,19 +11,12 @@ import {
   ReferenceArea,
 } from 'recharts';
 import { cn } from '../lib/utils';
+import { useSessionStore, EarDataPoint } from '../stores/sessionStore';
 
-export interface EarDataPoint {
-  timestamp: number;
-  ear: number;
-  isBlink?: boolean;
-  phase?: 'open' | 'closing' | 'closed' | 'opening';
-  /** Rate of change of EAR (for slope visualization) */
-  slope?: number;
-}
+// Re-export for backward compatibility
+export type { EarDataPoint };
 
 export interface EarWaveformProps {
-  /** Current EAR data point to add */
-  currentData?: EarDataPoint;
   /** Number of data points to display (window size) */
   windowSize?: number;
   /** EAR threshold for blink detection */
@@ -36,50 +29,40 @@ export interface EarWaveformProps {
   showBlinkMarkers?: boolean;
   /** Additional CSS classes */
   className?: string;
+  /** Pause rendering updates when not visible (performance optimization) */
+  paused?: boolean;
+  /** Display slope values instead of EAR values (for rate-of-change visualization) */
+  useSlope?: boolean;
 }
 
 /**
  * Real-time EAR (Eye Aspect Ratio) Waveform Component
  * Displays a scrolling waveform like an ECG/heart monitor for eye data
+ *
+ * Data is read from the Zustand sessionStore, which persists across navigation.
+ * Use the paused prop to skip rendering when the component is not visible.
  */
 export function EarWaveform({
-  currentData,
   windowSize = 150, // ~5 seconds at 30fps
   threshold = 0.21,
   height = 120,
   showThreshold = true,
   showBlinkMarkers = true,
   className,
+  paused = false,
+  useSlope = false,
 }: EarWaveformProps) {
-  const [data, setData] = useState<EarDataPoint[]>([]);
-  const [blinkPositions, setBlinkPositions] = useState<number[]>([]);
-  const lastTimestampRef = useRef<number>(0);
+  // Read waveform data from Zustand store (persists across navigation)
+  const storeData = useSessionStore((state) => state.waveformData);
+  const blinkPositions = useSessionStore((state) => state.blinkPositions);
 
-  // Add new data point when currentData changes
-  useEffect(() => {
-    if (!currentData || currentData.timestamp === lastTimestampRef.current) {
-      return;
-    }
-    lastTimestampRef.current = currentData.timestamp;
+  // When paused, show empty; otherwise show live data from store
+  const rawData = paused ? [] : storeData.slice(-windowSize);
 
-    setData((prev) => {
-      const newData = [...prev, currentData];
-      // Keep only the last windowSize points
-      if (newData.length > windowSize) {
-        return newData.slice(-windowSize);
-      }
-      return newData;
-    });
-
-    // Track blink positions for markers
-    if (currentData.isBlink) {
-      setBlinkPositions((prev) => {
-        const newPositions = [...prev, currentData.timestamp];
-        // Keep only recent blinks
-        return newPositions.slice(-10);
-      });
-    }
-  }, [currentData, windowSize]);
+  // If useSlope is true, map slope values to ear field for chart display
+  const data = useSlope
+    ? rawData.map((d) => ({ ...d, ear: d.slope ?? 0 }))
+    : rawData;
 
   // Calculate y-axis domain with padding
   const earValues = data.map((d) => d.ear);
@@ -199,8 +182,8 @@ export function EarWaveform({
           </div>
         )}
 
-        {/* Blink flash effect */}
-        {currentData?.isBlink && (
+        {/* Blink flash effect - check if latest point is a blink */}
+        {data.length > 0 && data[data.length - 1]?.isBlink && (
           <div className="absolute inset-0 bg-green-500/20 animate-ping pointer-events-none" />
         )}
       </div>

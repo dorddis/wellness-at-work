@@ -15,7 +15,7 @@
     "package": "electron-builder",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
     "test:integration": "cross-env ELECTRON_RUN_AS_NODE=true electron node_modules/vitest/vitest.mjs --config vitest.integration.config.ts"
   },
   "dependencies": {

@@ -619,4 +619,39 @@ export function setupIPC(
       return { success: false, error: String(err) };
     }
   });
+
+  // ============================================================================
+  // Meeting Mode
+  // ============================================================================
+
+  // Detect if a meeting app is currently running
+  ipcMain.handle('meeting:detect-app', async () => {
+    const { detectMeetingApp } = await import('./meetingMode');
+    return detectMeetingApp();
+  });
+
+  // Get available screen capture sources
+  ipcMain.handle('meeting:get-sources', async () => {
+    const { getScreenSources } = await import('./meetingMode');
+    const sources = await getScreenSources();
+    // Convert to serializable format (thumbnails are NativeImage)
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      displayId: s.display_id,
+      thumbnail: s.thumbnail.toDataURL(),
+    }));
+  });
+
+  // Get source ID for a specific display
+  ipcMain.handle('meeting:get-source-id', async (_, displayId?: number) => {
+    const { getSourceIdForDisplay } = await import('./meetingMode');
+    return getSourceIdForDisplay(displayId);
+  });
+
+  // Get all available displays
+  ipcMain.handle('meeting:get-displays', async () => {
+    const { getDisplays } = await import('./meetingMode');
+    return getDisplays();
+  });
 }

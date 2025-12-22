@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, Mail, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { getBaseUrl } from '@/lib/utils/url';
 
@@ -81,7 +82,13 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Eye className="w-8 h-8 text-primary" />
+            <Image
+              src="/images/illustrations/logo-circular.png"
+              alt="Lumina"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
             <span className="text-2xl font-bold">Lumina</span>
           </Link>
           <h1 className="text-2xl font-bold">Welcome back</h1>

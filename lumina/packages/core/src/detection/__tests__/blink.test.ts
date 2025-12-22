@@ -103,8 +103,8 @@ describe('calculateEAR', () => {
     expect(ear).toBeLessThan(EAR_THRESHOLD)
   })
 
-  it('EAR threshold is 0.21', () => {
-    expect(EAR_THRESHOLD).toBe(0.21)
+  it('EAR threshold is 0.18 (more sensitive for accurate detection)', () => {
+    expect(EAR_THRESHOLD).toBe(0.18)
   })
 })
 
@@ -305,8 +305,8 @@ describe('BlinkDetector', () => {
     expect(detector.getCurrentEAR()).toBe(1.0)
   })
 
-  it('CONSEC_FRAMES is 2', () => {
-    expect(CONSEC_FRAMES).toBe(2)
+  it('CONSEC_FRAMES is 1 (fast blink detection)', () => {
+    expect(CONSEC_FRAMES).toBe(1)
   })
 
   it('GLASSES_CONFIDENCE_THRESHOLD is 0.7', () => {
@@ -321,18 +321,20 @@ describe('BlinkDetector edge cases', () => {
     detector = new BlinkDetector()
   })
 
-  it('handles rapid eye flutter without false positives', () => {
-    // Simulate rapid opening/closing that doesn't meet CONSEC_FRAMES
+  it('handles rapid eye flutter (with CONSEC_FRAMES=1, each close-open is a blink)', () => {
+    // With CONSEC_FRAMES=1, each close->open transition counts as a blink
+    // This is by design for fast blink detection
     const closedLandmarks = createMockLandmarks(0.1)
     const openLandmarks = createMockLandmarks(0.35)
 
-    // Rapid flutter: close, open, close, open (never stays closed for CONSEC_FRAMES)
-    detector.detect(closedLandmarks, 0.9)
-    detector.detect(openLandmarks, 0.9)
-    detector.detect(closedLandmarks, 0.9)
-    detector.detect(openLandmarks, 0.9)
+    // Rapid flutter: close, open, close, open
+    // With CONSEC_FRAMES=1: each "close, open" = 1 blink
+    detector.detect(closedLandmarks, 0.9) // close (1 frame)
+    detector.detect(openLandmarks, 0.9)   // open -> blink 1
+    detector.detect(closedLandmarks, 0.9) // close (1 frame)
+    detector.detect(openLandmarks, 0.9)   // open -> blink 2
 
-    expect(detector.getBlinkCount()).toBe(0)
+    expect(detector.getBlinkCount()).toBe(2)
   })
 
   it('handles EAR exactly at threshold', () => {

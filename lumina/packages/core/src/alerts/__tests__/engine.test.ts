@@ -472,15 +472,27 @@ describe('AlertEngine', () => {
 })
 
 describe('DEFAULT_ALERT_RULES', () => {
-  it('has 3 default rules', () => {
-    expect(DEFAULT_ALERT_RULES).toHaveLength(3)
+  it('has 11 default rules (blink, posture, drowsiness, yawn)', () => {
+    expect(DEFAULT_ALERT_RULES).toHaveLength(11)
   })
 
-  it('includes low_blink, critical_blink, and long_session', () => {
+  it('includes all expected alert types', () => {
     const types = DEFAULT_ALERT_RULES.map(r => r.type)
+    // Original blink/session rules
     expect(types).toContain('low_blink')
     expect(types).toContain('critical_blink')
     expect(types).toContain('long_session')
+    // Posture rules
+    expect(types).toContain('too_close')
+    expect(types).toContain('too_far')
+    expect(types).toContain('head_tilt')
+    expect(types).toContain('forward_lean')
+    // Drowsiness rules
+    expect(types).toContain('drowsy_mild')
+    expect(types).toContain('drowsy_moderate')
+    expect(types).toContain('drowsy_severe')
+    // Yawn rules
+    expect(types).toContain('frequent_yawning')
   })
 
   it('low_blink has correct configuration', () => {

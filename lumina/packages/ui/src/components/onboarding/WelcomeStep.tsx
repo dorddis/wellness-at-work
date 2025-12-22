@@ -9,9 +9,11 @@ import { motion } from 'motion/react';
 export interface WelcomeStepProps {
   onNext: () => void;
   onSkip?: () => void;
+  /** Optional logo image source. If not provided, uses a default eye icon */
+  logoSrc?: string;
 }
 
-export function WelcomeStep({ onNext, onSkip }: WelcomeStepProps) {
+export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
   return (
     <div className="h-full flex flex-col items-center justify-center px-8 text-center">
       {/* Logo animation */}
@@ -21,11 +23,15 @@ export function WelcomeStep({ onNext, onSkip }: WelcomeStepProps) {
         transition={{ type: 'spring', duration: 0.8 }}
         className="mb-8"
       >
-        <div className="w-24 h-24 bg-black rounded-2xl flex items-center justify-center">
-          <svg className="w-14 h-14 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-          </svg>
-        </div>
+        {logoSrc ? (
+          <img src={logoSrc} alt="Lumina" className="w-24 h-24 rounded-2xl" />
+        ) : (
+          <div className="w-24 h-24 bg-black rounded-2xl flex items-center justify-center">
+            <svg className="w-14 h-14 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+          </div>
+        )}
       </motion.div>
 
       <motion.h1

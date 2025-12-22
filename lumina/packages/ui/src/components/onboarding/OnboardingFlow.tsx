@@ -32,6 +32,8 @@ export interface OnboardingFlowProps {
     improvePosture: boolean;
     takeRegularBreaks: boolean;
   }) => void;
+  /** Optional logo image source for welcome screen */
+  logoSrc?: string;
 }
 
 type OnboardingStep = 'welcome' | 'privacy' | 'camera' | 'calibration' | 'goals' | 'complete';
@@ -52,6 +54,7 @@ export function OnboardingFlow({
   onRequestCameraPermission,
   onCalibrationComplete,
   onGoalsSelected,
+  logoSrc,
 }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [cameraGranted, setCameraGranted] = useState(hasCameraPermission);
@@ -110,7 +113,7 @@ export function OnboardingFlow({
   const renderStep = () => {
     switch (currentStep) {
       case 'welcome':
-        return <WelcomeStep onNext={goToNextStep} onSkip={onSkip} />;
+        return <WelcomeStep onNext={goToNextStep} onSkip={onSkip} logoSrc={logoSrc} />;
       case 'privacy':
         return <PrivacyStep onNext={goToNextStep} onBack={goToPrevStep} />;
       case 'camera':

@@ -119,6 +119,14 @@ export interface LuminaAPI {
     getSessions: (days?: number) => Promise<ExerciseSession[]>;
     getStats: (days?: number) => Promise<ExerciseStats>;
   };
+
+  // Meeting Mode
+  meetingMode: {
+    detectApp: () => Promise<MeetingDetectionResult>;
+    getSources: () => Promise<ScreenSource[]>;
+    getSourceId: (displayId?: number) => Promise<string | null>;
+    getDisplays: () => Promise<DisplayInfo[]>;
+  };
 }
 
 interface SyncStatus {
@@ -317,6 +325,27 @@ interface ExerciseStats {
   totalSessions: number;
 }
 
+// Meeting Mode types
+interface MeetingDetectionResult {
+  isDetected: boolean;
+  appName: string | null;
+  processName?: string;
+}
+
+interface ScreenSource {
+  id: string;
+  name: string;
+  displayId: string;
+  thumbnail: string; // Base64 data URL
+}
+
+interface DisplayInfo {
+  id: number;
+  label: string;
+  bounds: { x: number; y: number; width: number; height: number };
+  isPrimary: boolean;
+}
+
 // Expose API to renderer
 const luminaAPI: LuminaAPI = {
   auth: {
@@ -452,6 +481,13 @@ const luminaAPI: LuminaAPI = {
     cancelSession: (sessionId) => ipcRenderer.invoke('exercises:cancel-session', sessionId),
     getSessions: (days) => ipcRenderer.invoke('exercises:get-sessions', days),
     getStats: (days) => ipcRenderer.invoke('exercises:get-stats', days),
+  },
+
+  meetingMode: {
+    detectApp: () => ipcRenderer.invoke('meeting:detect-app'),
+    getSources: () => ipcRenderer.invoke('meeting:get-sources'),
+    getSourceId: (displayId) => ipcRenderer.invoke('meeting:get-source-id', displayId),
+    getDisplays: () => ipcRenderer.invoke('meeting:get-displays'),
   },
 };
 

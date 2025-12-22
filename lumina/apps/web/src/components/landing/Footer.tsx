@@ -7,6 +7,7 @@ const footerLinks = {
     { label: 'Pricing', href: '/pricing' },
     { label: 'How It Works', href: '/#how-it-works' },
     { label: 'Download', href: '/download' },
+    { label: 'Changelog', href: '/changelog' },
   ],
   resources: [
     { label: 'Blog', href: 'https://www.wellnessatwork.ai/blog', external: true },

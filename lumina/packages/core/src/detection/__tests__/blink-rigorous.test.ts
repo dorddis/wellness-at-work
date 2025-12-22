@@ -426,17 +426,19 @@ describe('BlinkDetector - Rigorous State Machine Tests', () => {
   })
 
   describe('Oscillating at threshold (unstable readings)', () => {
-    it('alternating above/below threshold every frame does not count as blinks', () => {
+    it('alternating above/below threshold counts blinks with CONSEC_FRAMES=1', () => {
       const justAbove = createLandmarks(EAR_THRESHOLD + 0.01)
       const justBelow = createLandmarks(EAR_THRESHOLD - 0.01)
 
-      // Oscillate 20 times
+      // Oscillate 20 times: 10 below followed by 10 above transitions
+      // Pattern: below(0), above(1), below(2), above(3), ...
+      // With CONSEC_FRAMES=1: each below->above = 1 blink
       for (let i = 0; i < 20; i++) {
         detector.detect(i % 2 === 0 ? justBelow : justAbove, 0.9)
       }
 
-      // Each "below" is only 1 frame, never reaches CONSEC_FRAMES
-      expect(detector.getBlinkCount()).toBe(0)
+      // 10 complete close->open cycles = 10 blinks
+      expect(detector.getBlinkCount()).toBe(10)
     })
 
     it('alternating 2 below, 1 above pattern counts blinks correctly', () => {
@@ -579,7 +581,7 @@ describe('BlinkDetector - Rigorous State Machine Tests', () => {
       const closedLandmarks = createLandmarks(0.1)
       const openLandmarks = createLandmarks(0.35)
 
-      // Close for 1 frame (not enough for blink)
+      // Close for 1 frame
       detector.detect(closedLandmarks, 0.9)
 
       // Reset mid-closure
@@ -589,8 +591,9 @@ describe('BlinkDetector - Rigorous State Machine Tests', () => {
       detector.detect(closedLandmarks, 0.9)
       detector.detect(openLandmarks, 0.9)
 
-      // Should NOT count as blink (only 1 frame after reset)
-      expect(detector.getBlinkCount()).toBe(0)
+      // With CONSEC_FRAMES=1: 1 frame closed + open = 1 blink
+      // Reset clears count but the new close->open cycle after reset counts
+      expect(detector.getBlinkCount()).toBe(1)
     })
   })
 

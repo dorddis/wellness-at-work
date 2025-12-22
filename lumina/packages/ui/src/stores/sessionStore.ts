@@ -1,5 +1,18 @@
 import { create } from 'zustand';
 
+/**
+ * Data point for EAR waveform visualization
+ * Stored in rolling window for live graph display
+ */
+export interface EarDataPoint {
+  timestamp: number;
+  ear: number;
+  isBlink?: boolean;
+  phase?: 'open' | 'closing' | 'closed' | 'opening';
+  /** Rate of change of EAR (for slope visualization) */
+  slope?: number;
+}
+
 export interface SessionState {
   // Session info
   sessionId: string | null;
@@ -19,6 +32,11 @@ export interface SessionState {
   isDetecting: boolean;
   faceDetected: boolean;
 
+  // Waveform history (rolling window - persists across navigation)
+  waveformData: EarDataPoint[];
+  waveformWindowSize: number;
+  blinkPositions: number[];  // Timestamps of recent blinks for markers
+
   // Actions
   startSession: () => void;
   endSession: () => void;
@@ -30,6 +48,10 @@ export interface SessionState {
   setFaceDetected: (detected: boolean) => void;
   setCalibrationProgress: (progress: number) => void;
   reset: () => void;
+
+  // Waveform actions
+  addWaveformPoint: (point: EarDataPoint) => void;
+  clearWaveform: () => void;
 }
 
 const initialState = {
@@ -43,6 +65,10 @@ const initialState = {
   calibrationProgress: 0,
   isDetecting: false,
   faceDetected: false,
+  // Waveform history (persists across navigation)
+  waveformData: [] as EarDataPoint[],
+  waveformWindowSize: 150, // ~5 seconds at 30fps
+  blinkPositions: [] as number[],
 };
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -103,5 +129,31 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   reset: () => {
     set(initialState);
+  },
+
+  // Waveform actions - data persists across navigation
+  addWaveformPoint: (point: EarDataPoint) => {
+    set((state) => {
+      const newData = [...state.waveformData, point];
+      // Trim to window size (rolling window)
+      const trimmedData = newData.length > state.waveformWindowSize
+        ? newData.slice(-state.waveformWindowSize)
+        : newData;
+
+      // Track blink positions for markers (keep last 10)
+      const newBlinkPositions = point.isBlink
+        ? [...state.blinkPositions, point.timestamp].slice(-10)
+        : state.blinkPositions;
+
+      return {
+        waveformData: trimmedData,
+        blinkPositions: newBlinkPositions,
+        currentEAR: point.ear,
+      };
+    });
+  },
+
+  clearWaveform: () => {
+    set({ waveformData: [], blinkPositions: [] });
   },
 }));
