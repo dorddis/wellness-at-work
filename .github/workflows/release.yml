@@ -47,7 +47,6 @@ jobs:
 
       - name: Package Windows Installer
         working-directory: lumina
-        # FIX: Runs from root with filter to avoid path length issues
         run: pnpm --filter @lumina/desktop package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,7 +56,6 @@ jobs:
         with:
           name: windows-installer
           if-no-files-found: error
-          # Captures the exe from either possible output location
           path: |
             lumina/apps/desktop/dist/*.exe
             lumina/apps/desktop/release/*.exe
@@ -86,47 +84,52 @@ jobs:
             echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Flatten Artifacts
+      - name: Rename and Flatten Artifacts
+        # FIX: Rename file to replace spaces with dashes (Lumina-Setup.exe) to avoid URL mismatch
         run: |
           find artifacts/windows -name "*.exe" -type f -exec mv {} artifacts/windows/ \;
-          ls -la artifacts/windows/
+          
+          cd artifacts/windows
+          ORIGINAL_FILE=$(ls *.exe | head -1)
+          # Replace spaces with dashes
+          NEW_FILENAME=$(echo "$ORIGINAL_FILE" | sed 's/ /-/g')
+          mv "$ORIGINAL_FILE" "$NEW_FILENAME"
+          
+          echo "Renamed $ORIGINAL_FILE to $NEW_FILENAME"
+          ls -la
 
       - name: Create GitHub Release
-        # We create the release FIRST so the link is valid
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.version.outputs.version }}
           files: artifacts/windows/*.exe
           generate_release_notes: true
 
-      - name: Update Supabase Database (Link Only)
+      - name: Update Supabase Database
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
           REPO: ${{ github.repository }}
         run: |
-          # 1. Locate the file
-          WINDOWS_FILE=$(ls artifacts/windows/*.exe | head -1)
+          cd artifacts/windows
+          WINDOWS_FILE=$(ls *.exe | head -1)
+          
           if [ -z "$WINDOWS_FILE" ]; then
             echo "Error: No .exe file found!"
             exit 1
           fi
 
           WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE")
+          # Filename now strictly has dashes, safe for URLs
           WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
 
-          # 2. Construct the GitHub Release URL (Free hosting)
-          # URL Encode filename to handle spaces (Lumina Setup -> Lumina%20Setup)
-          ENCODED_FILENAME=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read().strip()))" <<< "$WINDOWS_FILENAME")
+          # Construct the clean GitHub URL
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${WINDOWS_FILENAME}"
           
-          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ENCODED_FILENAME}"
-          
-          echo "Generated GitHub Download URL: $DOWNLOAD_URL"
+          echo "Generated URL: $DOWNLOAD_URL"
 
-          echo "Updating Supabase 'releases' table..."
-          
-          # 3. Update Database to point to GitHub
+          echo "Updating Supabase..."
           curl --fail-with-body -X POST "${SUPABASE_URL}/rest/v1/releases" \
             -H "apikey: ${SUPABASE_SERVICE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
@@ -141,4 +144,4 @@ jobs:
               \"release_notes\": \"Release v${VERSION}\"
             }"
             
-          echo "? Database updated. Your website will now serve the file from GitHub."
+          echo "? Database updated with public link."
