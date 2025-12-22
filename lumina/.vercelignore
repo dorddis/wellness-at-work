@@ -1,9 +1,14 @@
 # Ignore desktop app (not needed for web deployment)
 apps/desktop
 
-# Ignore large development files
+# Ignore large cache files (>100MB limit)
+.turbo
+**/.next/cache
 node_modules/.cache
 *.log
+*.pack
+*.pack.gz
+*.tar.zst
 
 # Ignore test files
 **/*.test.ts

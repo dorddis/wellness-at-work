@@ -1,16 +1,25 @@
-import { Eye, Activity, Shield, Bell, BarChart3, Smile } from 'lucide-react';
+import Image from 'next/image';
+import { Shield, Bell, BarChart3 } from 'lucide-react';
 
 const features = [
   {
-    icon: Eye,
+    image: '/images/illustrations/eye-icon.png',
     title: 'Smart Blink Detection',
     description: 'Lumina analyzes your blink patterns and sends gentle reminders to blink optimally, maintaining healthy eye moisture and comfort.',
   },
   {
-    icon: Activity,
+    image: '/images/illustrations/neck-icon.png',
     title: 'Posture Monitoring',
     description: 'Track your sitting posture in real-time. Get quick tips to reduce neck, shoulder, and back strain before it becomes chronic.',
   },
+  {
+    image: '/images/illustrations/forehead-icon.png',
+    title: 'Fatigue Detection',
+    description: 'Advanced algorithms detect signs of drowsiness and eye fatigue, suggesting breaks before exhaustion sets in.',
+  },
+];
+
+const additionalFeatures = [
   {
     icon: Shield,
     title: 'Privacy by Design',
@@ -19,17 +28,12 @@ const features = [
   {
     icon: Bell,
     title: 'Intelligent Reminders',
-    description: 'Context-aware alerts that respect your focus. Syncs with your calendar to pause during meetings and important work.',
+    description: 'Context-aware alerts that respect your focus. Syncs with your calendar to pause during meetings.',
   },
   {
     icon: BarChart3,
     title: 'Wellness Analytics',
-    description: 'Track your daily, weekly, and monthly wellness trends. Understand your patterns and see improvement over time.',
-  },
-  {
-    icon: Smile,
-    title: 'Fatigue Detection',
-    description: 'Advanced algorithms detect signs of drowsiness and eye fatigue, suggesting breaks before exhaustion sets in.',
+    description: 'Track your daily, weekly, and monthly wellness trends. Understand your patterns over time.',
   },
 ];
 
@@ -47,17 +51,41 @@ export function Features() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {/* Main features with illustrations */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="relative p-6 rounded-2xl border border-border bg-card hover:shadow-lg hover:border-primary/20 transition-all"
+              className="group relative p-8 rounded-2xl border border-border bg-card hover:shadow-xl hover:border-primary/20 transition-all text-center"
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                <feature.icon className="w-6 h-6 text-primary" />
+              <div className="relative w-48 h-48 mx-auto mb-6 overflow-hidden">
+                <Image
+                  src={feature.image}
+                  alt={feature.title}
+                  fill
+                  className="object-cover object-bottom opacity-80 group-hover:opacity-100 transition-opacity"
+                />
               </div>
-              <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+              <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
               <p className="text-muted-foreground">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Additional features with icons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {additionalFeatures.map((feature) => (
+            <div
+              key={feature.title}
+              className="flex gap-4 p-6 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors"
+            >
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <feature.icon className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
             </div>
           ))}
         </div>
