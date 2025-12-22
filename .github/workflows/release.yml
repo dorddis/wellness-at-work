@@ -87,49 +87,46 @@ jobs:
           fi
 
       - name: Flatten Artifacts
-        # Moves the file from subfolders to the root of artifacts/windows for easy finding
         run: |
           find artifacts/windows -name "*.exe" -type f -exec mv {} artifacts/windows/ \;
           ls -la artifacts/windows/
 
-      - name: Upload to Supabase Storage and DB
+      - name: Create GitHub Release
+        # We create the release FIRST so the link is valid
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          files: artifacts/windows/*.exe
+          generate_release_notes: true
+
+      - name: Update Supabase Database (Link Only)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           VERSION: ${{ steps.version.outputs.version }}
+          REPO: ${{ github.repository }}
         run: |
           # 1. Locate the file
           WINDOWS_FILE=$(ls artifacts/windows/*.exe | head -1)
           if [ -z "$WINDOWS_FILE" ]; then
-            echo "Error: No .exe file found in artifacts folder!"
+            echo "Error: No .exe file found!"
             exit 1
           fi
 
-          echo "Found Windows installer: $WINDOWS_FILE"
           WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE")
           WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
 
-          # 2. URL Encode filename (handles spaces safely)
+          # 2. Construct the GitHub Release URL (Free hosting)
+          # URL Encode filename to handle spaces (Lumina Setup -> Lumina%20Setup)
           ENCODED_FILENAME=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read().strip()))" <<< "$WINDOWS_FILENAME")
           
-          # 3. Define Supabase Storage Paths
-          STORAGE_PATH="releases/v${VERSION}/${ENCODED_FILENAME}"
-          STORAGE_URL="${SUPABASE_URL}/storage/v1/object/${STORAGE_PATH}"
-          PUBLIC_URL="${SUPABASE_URL}/storage/v1/object/public/${STORAGE_PATH}"
-
-          echo "Uploading $WINDOWS_FILENAME to Supabase Storage..."
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ENCODED_FILENAME}"
           
-          # 4. Upload File
-          curl --fail-with-body -X POST "$STORAGE_URL" \
-            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary "@${WINDOWS_FILE}"
-
-          echo "File uploaded. Public URL: $PUBLIC_URL"
+          echo "Generated GitHub Download URL: $DOWNLOAD_URL"
 
           echo "Updating Supabase 'releases' table..."
           
-          # 5. Update Database (using upsert/merge logic)
+          # 3. Update Database to point to GitHub
           curl --fail-with-body -X POST "${SUPABASE_URL}/rest/v1/releases" \
             -H "apikey: ${SUPABASE_SERVICE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
@@ -137,18 +134,11 @@ jobs:
             -H "Prefer: resolution=merge-duplicates" \
             -d "{
               \"version\": \"${VERSION}\",
-              \"windows_url\": \"${PUBLIC_URL}\",
+              \"windows_url\": \"${DOWNLOAD_URL}\",
               \"windows_size\": ${WINDOWS_SIZE},
               \"macos_url\": null,
               \"macos_size\": 0,
               \"release_notes\": \"Release v${VERSION}\"
             }"
             
-          echo "? Database updated successfully."
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          files: artifacts/windows/*.exe
-          generate_release_notes: true
+          echo "? Database updated. Your website will now serve the file from GitHub."
