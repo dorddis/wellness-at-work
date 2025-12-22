@@ -111,19 +111,26 @@ jobs:
           STORAGE_URL="${SUPABASE_URL}/storage/v1/object/releases/v${VERSION}"
 
           # Upload Windows installer
+          WINDOWS_URL=""
           if [ -n "$WINDOWS_FILE" ] && [ -f "$WINDOWS_FILE" ]; then
             WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
             echo "Uploading $WINDOWS_FILENAME..."
-            curl -X POST "${STORAGE_URL}/${WINDOWS_FILENAME}" \
+            
+            # URL encode filename for curl (handle spaces and other characters)
+            ENCODED_FILENAME=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.stdin.read().strip()))" <<< "$WINDOWS_FILENAME")
+            
+            curl -X POST "${STORAGE_URL}/${ENCODED_FILENAME}" \
               -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
               -H "Content-Type: application/octet-stream" \
               --data-binary "@${WINDOWS_FILE}"
-            WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${WINDOWS_FILENAME}"
+            
+            WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${ENCODED_FILENAME}"
+            echo "WINDOWS_URL=$WINDOWS_URL" >> $GITHUB_ENV
           fi
 
           # Insert/Update release in database
           echo "Updating releases table..."
-          curl -X POST "${SUPABASE_URL}/rest/v1/releases" \
+          curl -X POST "${SUPABASE_URL}/rest/v1/releases?on_conflict=version" \
             -H "apikey: ${SUPABASE_SERVICE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
             -H "Content-Type: application/json" \
