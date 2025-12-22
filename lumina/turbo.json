@@ -5,7 +5,13 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", ".vite/**"],
-      "env": ["NODE_ENV", "SUPABASE_URL", "SUPABASE_ANON_KEY"]
+      "env": [
+        "NODE_ENV",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+      ]
     },
     "dev": {
       "cache": false,
