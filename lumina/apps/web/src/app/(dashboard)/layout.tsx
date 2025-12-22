@@ -120,6 +120,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     return false;
   };
 
+  // Main content
   return (
     <div className="min-h-screen bg-secondary/30">
       {/* Mobile sidebar backdrop */}
