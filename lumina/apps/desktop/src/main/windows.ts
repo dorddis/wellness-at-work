@@ -42,14 +42,20 @@ export class WindowManager {
       return this.hubWindow;
     }
 
+    // Get screen size for responsive window sizing
+    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    const windowWidth = Math.min(1200, Math.round(screenWidth * 0.8));
+    const windowHeight = Math.min(800, Math.round(screenHeight * 0.85));
+
     this.hubWindow = new BrowserWindow({
-      width: 900,
-      height: 700,
-      minWidth: 600,
-      minHeight: 500,
+      width: windowWidth,
+      height: windowHeight,
+      minWidth: 800,
+      minHeight: 600,
+      center: true, // Center on screen
       show: false,
-      frame: true,
-      titleBarStyle: 'hiddenInset', // macOS: hidden title bar with traffic lights
+      frame: false, // Frameless window for custom titlebar
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden', // macOS: hidden with traffic lights
       trafficLightPosition: { x: 15, y: 15 },
       backgroundColor: '#ffffff',
       webPreferences: {

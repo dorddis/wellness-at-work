@@ -11,8 +11,10 @@ import {
   StreakBadge,
   AchievementBadge,
   PreBreakToast,
+  EarWaveform,
   ACHIEVEMENTS,
   type DayData,
+  type EarDataPoint,
 } from '@lumina/ui';
 import {
   FaceLandmarkerManager,
@@ -28,6 +30,7 @@ import {
 } from '@lumina/core';
 import luminaLogo from './assets/lumina-logo.png';
 import AuthScreen from './AuthScreen';
+import { AppLoader, CameraLoader, HistorySkeleton, type CameraStatus } from './components';
 
 // Auth user type
 interface AuthUser {
@@ -81,7 +84,81 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
     </svg>
   ),
+  Play: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Pause: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Check: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  X: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  ),
+  AlertTriangle: ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    </svg>
+  ),
+  Users: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
+  Gift: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+    </svg>
+  ),
+  HelpCircle: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  // Window control icons (clean, minimal)
+  Bell: () => (
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5a4 4 0 00-4 4v2.793l-.854.853A.5.5 0 003.5 10h9a.5.5 0 00.354-.854L12 8.293V5.5a4 4 0 00-4-4z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M6 10v.5a2 2 0 104 0V10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  ),
+  Minimize: () => (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+      <path d="M2.5 6h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  ),
+  Maximize: () => (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+      <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  ),
+  Restore: () => (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+      <rect x="1.5" y="3.5" width="6" height="6" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+      <path d="M4.5 3.5V2.5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-1" stroke="currentColor" strokeWidth="1"/>
+    </svg>
+  ),
+  Close: () => (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+      <path d="M3 3l6 6M9 3L3 9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+    </svg>
+  ),
 };
+
+// Web dashboard URL (dev vs production)
+const WEB_DASHBOARD_URL = import.meta.env.DEV
+  ? 'http://localhost:3000'
+  : 'https://lumina.app';
 
 // Detection manager (singleton)
 const landmarkerManager = new FaceLandmarkerManager();
@@ -92,7 +169,7 @@ const alertEngine = new AlertEngine();
 // Baseline calibrator (singleton)
 const baselineCalibrator = new BaselineCalibrator();
 
-type View = 'dashboard' | 'monitor' | 'history' | 'settings';
+type View = 'dashboard' | 'monitor' | 'exercises' | 'history' | 'settings';
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -101,6 +178,8 @@ export default function App() {
   const minuteBlinkCountRef = useRef<number>(0);
   const minuteEarSumRef = useRef<number>(0);
   const minuteEarCountRef = useRef<number>(0);
+  // For slope calculation
+  const prevEarRef = useRef<{ ear: number; timestamp: number } | null>(null);
 
   // Auth state
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -108,6 +187,9 @@ export default function App() {
 
   // Current view
   const [currentView, setCurrentView] = useState<View>('dashboard');
+
+  // Window state (for frameless window controls)
+  const [isMaximized, setIsMaximized] = useState(false);
 
   // Zustand stores
   const {
@@ -166,6 +248,27 @@ export default function App() {
   const [currentDrowsiness, setCurrentDrowsiness] = useState<DrowsinessResult | null>(null);
   const lastYawnCountRef = useRef<number>(0);
   const lastDrowsinessLevelRef = useRef<DrowsinessLevel>('alert');
+
+  // Real-time EAR data for waveform visualization
+  const [currentEarData, setCurrentEarData] = useState<EarDataPoint | null>(null);
+
+  // Check window maximize state on mount
+  useEffect(() => {
+    async function checkMaximized() {
+      const maximized = await window.lumina?.window.isMaximized();
+      setIsMaximized(maximized ?? false);
+    }
+    checkMaximized();
+  }, []);
+
+  // Window control handlers
+  const handleMinimize = () => window.lumina?.window.minimize();
+  const handleMaximize = async () => {
+    await window.lumina?.window.maximize();
+    const maximized = await window.lumina?.window.isMaximized();
+    setIsMaximized(maximized ?? false);
+  };
+  const handleClose = () => window.lumina?.window.close();
 
   // Check auth on mount
   useEffect(() => {
@@ -398,6 +501,35 @@ export default function App() {
         const result = landmarkerManager.processVideoFrame(video);
         if (result) {
           setFaceDetected(result.rawLandmarks !== null);
+
+          // Update EAR waveform data on every frame (for visualization)
+          if (result.rawLandmarks !== null) {
+            const ear = result.blink.avgEAR;
+            const threshold = result.blink.threshold;
+            const now = Date.now();
+            const phase: 'open' | 'closing' | 'closed' | 'opening' =
+              ear < threshold ? 'closed' : 'open';
+
+            // Calculate slope (rate of change)
+            let slope = 0;
+            if (prevEarRef.current) {
+              const dt = now - prevEarRef.current.timestamp;
+              if (dt > 0) {
+                slope = (ear - prevEarRef.current.ear) / dt;
+                // Scale up for visibility (multiply by 1000 for per-second rate)
+                slope = slope * 1000;
+              }
+            }
+            prevEarRef.current = { ear, timestamp: now };
+
+            setCurrentEarData({
+              timestamp: now,
+              ear,
+              isBlink: result.blink.isBlink,
+              phase,
+              slope,
+            });
+          }
 
           if (result.blink.isBlink) {
             recordBlink(result.blink.avgEAR);
@@ -711,14 +843,7 @@ export default function App() {
 
   // Auth check loading
   if (!authChecked) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AppLoader message="Checking authentication..." />;
   }
 
   // Not authenticated - show auth screen
@@ -729,11 +854,8 @@ export default function App() {
   // Loading state (camera init)
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-10 h-10 border-3 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Initializing camera...</p>
-        </div>
+      <div className="h-full bg-gray-50">
+        <CameraLoader status="loading-model" />
       </div>
     );
   }
@@ -741,30 +863,60 @@ export default function App() {
   // Error state
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50 p-8">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-            <span className="text-red-600 text-2xl">!</span>
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Camera Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="h-full bg-gray-50">
+        <CameraLoader status="error" error={error} />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex bg-gray-50">
+    <div className="h-full flex bg-gray-50 relative">
+      {/* Floating window controls - top right corner */}
+      <div
+        className="absolute top-2 right-3 z-50 flex items-center gap-1"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
+        {/* Notification bell */}
+        <button
+          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          title="Notifications"
+        >
+          <Icons.Bell />
+        </button>
+
+        <div className="w-2" />
+
+        {/* Window controls */}
+        <button
+          onClick={handleMinimize}
+          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          title="Minimize"
+        >
+          <Icons.Minimize />
+        </button>
+        <button
+          onClick={handleMaximize}
+          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          title={isMaximized ? 'Restore' : 'Maximize'}
+        >
+          {isMaximized ? <Icons.Restore /> : <Icons.Maximize />}
+        </button>
+        <button
+          onClick={handleClose}
+          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md transition-colors text-gray-400"
+          title="Close"
+        >
+          <Icons.Close />
+        </button>
+      </div>
+
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
-        {/* Logo */}
-        <div className="h-14 flex items-center px-4 border-b border-gray-200">
+        {/* Logo - draggable area */}
+        <div
+          className="h-14 flex items-center px-4 border-b border-gray-200"
+          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        >
           <img src={luminaLogo} alt="Lumina" className="h-8 w-8 object-contain" />
           <span className="ml-2 text-lg font-bold">Lumina</span>
         </div>
@@ -774,8 +926,8 @@ export default function App() {
           {[
             { id: 'dashboard', label: 'Dashboard', icon: <Icons.Activity /> },
             { id: 'monitor', label: 'Live Monitor', icon: <Icons.Camera /> },
+            { id: 'exercises', label: 'Eye Exercises', icon: <Icons.Eye /> },
             { id: 'history', label: 'History', icon: <Icons.Clock /> },
-            { id: 'settings', label: 'Settings', icon: <Icons.Settings /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -792,15 +944,58 @@ export default function App() {
           ))}
         </nav>
 
-        {/* Session status */}
-        <div className="p-4 border-t border-gray-200">
-          <div className={`flex items-center gap-2 text-sm ${isDetecting ? 'text-green-600' : 'text-gray-500'}`}>
-            <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-            {isDetecting ? 'Monitoring Active' : 'Monitoring Paused'}
+        {/* Bottom utility section (Flow style) */}
+        <div className="border-t border-gray-200">
+          {/* Session status */}
+          <div className="px-4 py-3">
+            <div className={`flex items-center gap-2 text-sm ${isDetecting ? 'text-green-600' : 'text-gray-500'}`}>
+              <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+              {isDetecting ? 'Monitoring Active' : 'Monitoring Paused'}
+            </div>
+            {isDetecting && sessionDuration > 0 && (
+              <p className="text-xs text-gray-500 mt-1">Session: {formatDuration(sessionDuration)}</p>
+            )}
           </div>
-          {isDetecting && sessionDuration > 0 && (
-            <p className="text-xs text-gray-500 mt-1">Session: {formatDuration(sessionDuration)}</p>
-          )}
+
+          {/* Utility links */}
+          <div className="px-3 py-2 space-y-1">
+            <button
+              onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/invite`)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <Icons.Users />
+              Invite your team
+            </button>
+            <button
+              onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/referral`)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <Icons.Gift />
+              Get a free month
+            </button>
+          </div>
+
+          {/* Settings & Help */}
+          <div className="px-3 py-2 border-t border-gray-100 space-y-1">
+            <button
+              onClick={() => setCurrentView('settings')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                currentView === 'settings'
+                  ? 'bg-black text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Icons.Settings />
+              Settings
+            </button>
+            <button
+              onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/help`)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <Icons.HelpCircle />
+              Help
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -836,6 +1031,7 @@ export default function App() {
             currentPosture={currentPosture}
             currentYawn={currentYawn}
             currentDrowsiness={currentDrowsiness}
+            userName={authUser?.email?.split('@')[0] ?? 'there'}
           />
         )}
 
@@ -848,8 +1044,11 @@ export default function App() {
             blinkRate={currentBlinkRate}
             wellnessScore={wellnessScore}
             onToggleDetection={handleToggleDetection}
+            currentEarData={currentEarData}
           />
         )}
+
+        {currentView === 'exercises' && <ExercisesView />}
 
         {currentView === 'history' && <HistoryView />}
 
@@ -886,6 +1085,7 @@ function DashboardView({
   currentPosture,
   currentYawn,
   currentDrowsiness,
+  userName,
 }: {
   wellnessScore: number;
   blinkRate: number;
@@ -912,6 +1112,7 @@ function DashboardView({
   currentPosture: PostureResult | null;
   currentYawn: YawnResult | null;
   currentDrowsiness: DrowsinessResult | null;
+  userName: string;
 }) {
   // Access gamification stores
   const { streaks, todayProgress } = useStreakStore();
@@ -972,7 +1173,7 @@ function DashboardView({
   const unlockedCount = Object.values(unlocked).filter(Boolean).length;
 
   return (
-    <div className="p-6 relative">
+    <div className="h-full flex flex-col relative">
       {/* Pre-break Toast */}
       <PreBreakToast
         secondsUntilBreak={preBreakSeconds}
@@ -982,6 +1183,15 @@ function DashboardView({
         postponesRemaining={postponesRemaining}
         isVisible={showPreBreakToast}
       />
+
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 p-6 pb-0 bg-gray-50">
+        {/* Welcome Header */}
+        <div className="mb-4">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Welcome back, {userName}
+          </h1>
+        </div>
 
       {/* Break Overlay Modal */}
       {isOnBreak && (
@@ -1037,17 +1247,20 @@ function DashboardView({
         </div>
       )}
 
-      {/* Header with Privacy Indicator */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Wellness Dashboard</h1>
-          <p className="text-gray-500">Track your eye health and prevent strain</p>
+        {/* Header with Privacy Indicator */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">My Wellness Dashboard</h2>
+            <p className="text-gray-500 text-sm">Track your eye health and prevent strain</p>
+          </div>
+          <PrivacyIndicator isActive={isDetecting} />
         </div>
-        <PrivacyIndicator isActive={isDetecting} />
       </div>
 
-      {/* Top Row: Wellness Score + Daily Streak */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto p-6 pt-4">
+        {/* Top Row: Wellness Score + Daily Streak */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Wellness Score Card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between">
@@ -1300,14 +1513,21 @@ function DashboardView({
         </div>
       )}
 
-      {/* Tips */}
-      <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-        <h4 className="font-medium text-blue-900 mb-2">Eye Health Tips</h4>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>- Aim for 15-20 blinks per minute to prevent dry eyes</li>
-          <li>- Follow the 20-20-20 rule for regular eye breaks</li>
-          <li>- Keep your monitor at arm's length and slightly below eye level</li>
-        </ul>
+        {/* Tips */}
+        <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+          <h4 className="font-medium text-blue-900 mb-2">Eye Health Tips</h4>
+          <ul className="text-sm text-blue-800 space-y-1">
+            <li>- Aim for 15-20 blinks per minute to prevent dry eyes</li>
+            <li>- Follow the 20-20-20 rule for regular eye breaks</li>
+            <li>- Keep your monitor at arm's length and slightly below eye level</li>
+          </ul>
+        </div>
+
+        {/* Footer message */}
+        <div className="text-center py-6 text-gray-400 text-sm">
+          <p>Your eyes work hard for you every day.</p>
+          <p className="mt-1">Take care of them, they're the only pair you've got.</p>
+        </div>
       </div>
     </div>
   );
@@ -1322,6 +1542,7 @@ function MonitorView({
   blinkRate,
   wellnessScore,
   onToggleDetection,
+  currentEarData,
 }: {
   videoRef: React.RefObject<HTMLVideoElement>;
   isDetecting: boolean;
@@ -1330,6 +1551,7 @@ function MonitorView({
   blinkRate: number;
   wellnessScore: number;
   onToggleDetection: () => void;
+  currentEarData: EarDataPoint | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -1405,6 +1627,7 @@ function MonitorView({
             </div>
           </div>
 
+          {/* Start/Stop button */}
           <button
             onClick={onToggleDetection}
             className={`w-full mt-4 py-3 rounded-lg font-medium transition-colors ${
@@ -1415,6 +1638,38 @@ function MonitorView({
           >
             {isDetecting ? 'Stop Detection' : 'Start Detection'}
           </button>
+
+          {/* EAR Waveform - Real-time eye signal visualization */}
+          <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-700">Eye Signal (EAR)</h3>
+              <span className="text-xs text-gray-400">Eye Aspect Ratio over time</span>
+            </div>
+            <EarWaveform
+              currentData={currentEarData ?? undefined}
+              windowSize={150}
+              threshold={0.21}
+              height={100}
+              showThreshold={true}
+              showBlinkMarkers={true}
+            />
+          </div>
+
+          {/* Slope Waveform - Rate of change visualization */}
+          <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-700">Eye Movement (Slope)</h3>
+              <span className="text-xs text-gray-400">Rate of change - dips show blinks</span>
+            </div>
+            <EarWaveform
+              currentData={currentEarData ? { ...currentEarData, ear: currentEarData.slope ?? 0 } : undefined}
+              windowSize={150}
+              threshold={0}
+              height={80}
+              showThreshold={true}
+              showBlinkMarkers={false}
+            />
+          </div>
         </div>
 
         {/* Stats panel */}
@@ -1458,6 +1713,390 @@ function MonitorView({
   );
 }
 
+// Exercises View Component
+interface ExerciseStep {
+  step: number;
+  text: string;
+  duration: number;
+}
+
+interface EyeExercise {
+  id: string;
+  name: string;
+  description: string;
+  category: 'relaxation' | 'focus' | 'mobility' | 'strain_relief';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  durationSeconds: number;
+  iconName: string;
+  instructions: ExerciseStep[];
+}
+
+interface ExerciseSession {
+  id?: number;
+  exercise_id: string;
+  started_at: number;
+  completed_at: number | null;
+  status: 'in_progress' | 'completed' | 'cancelled';
+}
+
+function ExercisesView() {
+  const [exercises, setExercises] = useState<EyeExercise[]>([]);
+  const [sessions, setSessions] = useState<ExerciseSession[]>([]);
+  const [stats, setStats] = useState<{
+    todaySessions: number;
+    todayMinutes: number;
+    weekSessions: number;
+    weekMinutes: number;
+    totalSessions: number;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeExercise, setActiveExercise] = useState<EyeExercise | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [countdown, setCountdown] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load data on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [exerciseList, sessionList, exerciseStats] = await Promise.all([
+          window.lumina.exercises.getAll(),
+          window.lumina.exercises.getSessions(30),
+          window.lumina.exercises.getStats(7),
+        ]);
+        setExercises(exerciseList);
+        setSessions(sessionList);
+        setStats(exerciseStats);
+      } catch (error) {
+        console.error('Failed to load exercises:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Timer logic
+  useEffect(() => {
+    if (!activeExercise || isPaused || isComplete) {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          const steps = activeExercise.instructions;
+          if (currentStepIndex < steps.length - 1) {
+            setCurrentStepIndex(currentStepIndex + 1);
+            return steps[currentStepIndex + 1].duration;
+          } else {
+            setIsComplete(true);
+            if (sessionId) {
+              window.lumina.exercises.completeSession(sessionId);
+            }
+            return 0;
+          }
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [activeExercise, isPaused, isComplete, currentStepIndex, sessionId]);
+
+  const handleStartExercise = async (exercise: EyeExercise) => {
+    try {
+      const result = await window.lumina.exercises.startSession(exercise.id);
+      if (result.success && result.sessionId) {
+        setSessionId(result.sessionId);
+        setActiveExercise(exercise);
+        setCurrentStepIndex(0);
+        setCountdown(exercise.instructions[0]?.duration ?? 5);
+        setIsPaused(false);
+        setIsComplete(false);
+      }
+    } catch (error) {
+      console.error('Failed to start exercise:', error);
+    }
+  };
+
+  const handleCloseModal = useCallback(async () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setActiveExercise(null);
+    setSessionId(null);
+    setCurrentStepIndex(0);
+    setCountdown(0);
+    setIsPaused(false);
+    setIsComplete(false);
+    // Refresh stats
+    const [sessionList, exerciseStats] = await Promise.all([
+      window.lumina.exercises.getSessions(30),
+      window.lumina.exercises.getStats(7),
+    ]);
+    setSessions(sessionList);
+    setStats(exerciseStats);
+  }, []);
+
+  const togglePause = () => {
+    setIsPaused(!isPaused);
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'relaxation': return 'bg-blue-100 text-blue-700';
+      case 'focus': return 'bg-purple-100 text-purple-700';
+      case 'mobility': return 'bg-green-100 text-green-700';
+      case 'strain_relief': return 'bg-amber-100 text-amber-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getDifficultyBadge = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner': return 'bg-green-100 text-green-700';
+      case 'intermediate': return 'bg-amber-100 text-amber-700';
+      case 'advanced': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-gray-500">Loading exercises...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Eye Exercises</h1>
+        <p className="text-gray-500 text-sm">
+          Guided exercises to reduce eye strain and improve eye health
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <div className="text-sm text-gray-500">Today</div>
+          <div className="text-2xl font-bold">{stats?.todayMinutes ?? 0} min</div>
+          <div className="text-xs text-gray-400">{stats?.todaySessions ?? 0} sessions</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <div className="text-sm text-gray-500">This Week</div>
+          <div className="text-2xl font-bold">{stats?.weekMinutes ?? 0} min</div>
+          <div className="text-xs text-gray-400">{stats?.weekSessions ?? 0} sessions</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-gray-200">
+          <div className="text-sm text-gray-500">Total</div>
+          <div className="text-2xl font-bold">{stats?.totalSessions ?? 0}</div>
+          <div className="text-xs text-gray-400">exercises completed</div>
+        </div>
+      </div>
+
+      {/* Exercise Grid */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">All Exercises</h2>
+        <div className="grid grid-cols-2 gap-4">
+          {exercises.map((exercise) => (
+            <div
+              key={exercise.id}
+              className="bg-white rounded-xl p-4 border border-gray-200 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
+                  <Icons.Eye />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-gray-900 truncate">{exercise.name}</h3>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{exercise.description}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(exercise.category)}`}>
+                      {exercise.category.replace('_', ' ')}
+                    </span>
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getDifficultyBadge(exercise.difficulty)}`}>
+                      {exercise.difficulty}
+                    </span>
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <Icons.Clock />
+                      {exercise.durationSeconds}s
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleStartExercise(exercise)}
+                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+              >
+                <Icons.Play />
+                Start Exercise
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      {sessions.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900">Recent Activity</h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {sessions.slice(0, 5).map((session) => {
+              const exercise = exercises.find((e) => e.id === session.exercise_id);
+              return (
+                <div key={session.id} className="flex items-center gap-4 px-4 py-3">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
+                    <Icons.Eye />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">
+                      {exercise?.name ?? 'Unknown Exercise'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(session.started_at).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {session.status === 'completed' ? (
+                      <span className="flex items-center gap-1 text-sm text-green-600">
+                        <Icons.Check />
+                        Completed
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">{session.status}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Exercise Modal */}
+      {activeExercise && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">{activeExercise.name}</h3>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <Icons.X />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {isComplete ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4">
+                    <Icons.Check />
+                  </div>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-2">Great job!</h4>
+                  <p className="text-gray-500 mb-6">
+                    You completed the {activeExercise.name} exercise.
+                  </p>
+                  <button
+                    onClick={handleCloseModal}
+                    className="px-6 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Countdown display */}
+                  <div className="text-center mb-6">
+                    <div className="w-32 h-32 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                      <span className="text-5xl font-bold text-gray-900">{countdown}</span>
+                    </div>
+                    <p className="text-sm text-gray-500">seconds remaining</p>
+                  </div>
+
+                  {/* Current step */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-6 h-6 rounded-full bg-black text-white text-sm font-medium flex items-center justify-center">
+                        {currentStepIndex + 1}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        Step {currentStepIndex + 1} of {activeExercise.instructions.length}
+                      </span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-900">
+                      {activeExercise.instructions[currentStepIndex]?.text}
+                    </p>
+                  </div>
+
+                  {/* Progress dots */}
+                  <div className="flex justify-center gap-2 mb-6">
+                    {activeExercise.instructions.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          idx === currentStepIndex
+                            ? 'bg-black'
+                            : idx < currentStepIndex
+                            ? 'bg-green-500'
+                            : 'bg-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={togglePause}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                    >
+                      {isPaused ? <><Icons.Play /> Resume</> : <><Icons.Pause /> Pause</>}
+                    </button>
+                    <button
+                      onClick={handleCloseModal}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // History View Component
 interface DailyData {
   date: string;
@@ -1475,9 +2114,11 @@ function HistoryView() {
   } | null>(null);
   const [weeklyData, setWeeklyData] = useState<DailyData[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
+      setIsLoading(true);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -1521,6 +2162,7 @@ function HistoryView() {
         }
       }
       setWeeklyData(days);
+      setIsLoading(false);
     }
     loadData();
   }, []);
@@ -1582,6 +2224,21 @@ function HistoryView() {
 
   // Calculate max for bar chart scaling
   const maxBlinks = Math.max(...weeklyData.map((d) => d.totalBlinks), 1);
+
+  // Show skeleton while loading
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">History</h1>
+            <p className="text-gray-500">View your wellness data over time</p>
+          </div>
+        </div>
+        <HistorySkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -1696,6 +2353,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     postureMonitoringEnabled,
     postureSensitivity,
     theme,
+    orgName,
     setAlertCooldownMinutes,
     setNotifications,
     setShowFloatingStatus,
@@ -1713,6 +2371,19 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     pendingCount: number;
   } | null>(null);
 
+  // Data management state
+  const [isExporting, setIsExporting] = useState(false);
+  const [showClearDataModal, setShowClearDataModal] = useState(false);
+  const [clearDataConfirmText, setClearDataConfirmText] = useState('');
+  const [isClearingData, setIsClearingData] = useState(false);
+
+  // Delete account state
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deletionScheduled, setDeletionScheduled] = useState<string | null>(null);
+
   useEffect(() => {
     async function loadSyncStatus() {
       const status = await window.lumina?.sync.getStatus();
@@ -1728,6 +2399,75 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
   const handleManualSync = async () => {
     const result = await window.lumina?.sync.trigger();
     console.log('Manual sync result:', result);
+  };
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      const result = await window.lumina?.database.exportData();
+      if (result?.success && result.data) {
+        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `lumina-wellness-data-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        alert('Failed to export data. Please try again.');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleClearLocalData = async () => {
+    setIsClearingData(true);
+    try {
+      // Clear localStorage
+      const keysToRemove = Object.keys(localStorage).filter((key) =>
+        key.startsWith('lumina-')
+      );
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
+
+      // Clear SQLite database via IPC
+      await window.lumina?.database.clearAllData();
+
+      setShowClearDataModal(false);
+      setClearDataConfirmText('');
+      alert('Local data cleared successfully. The app will restart.');
+      // Reload the app
+      window.location.reload();
+    } catch (error) {
+      console.error('Clear data error:', error);
+      alert('Failed to clear local data. Please try again.');
+    } finally {
+      setIsClearingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await window.lumina?.auth.requestAccountDeletion();
+      if (result?.success && result.deletionDate) {
+        setDeletionScheduled(result.deletionDate);
+        setShowDeleteAccountModal(false);
+        setDeleteConfirmText('');
+      } else {
+        setDeleteError(result?.error || 'Failed to schedule deletion');
+      }
+    } catch (error) {
+      setDeleteError('An unexpected error occurred');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -2057,7 +2797,184 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <p>All blink detection happens locally on your device.</p>
           </div>
         </div>
+
+        {/* Data Management */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold mb-4">Data Management</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Export My Data</p>
+                <p className="text-sm text-gray-500">Download all your wellness data as JSON</p>
+              </div>
+              <button
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Clear Local Data</p>
+                <p className="text-sm text-gray-500">Reset all local storage (database, settings, streaks)</p>
+              </div>
+              <button
+                onClick={() => setShowClearDataModal(true)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                Clear Data
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-white rounded-xl border-2 border-red-200 p-6">
+          <h3 className="font-semibold mb-4 text-red-800">Danger Zone</h3>
+          {deletionScheduled && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="font-medium text-amber-800">Account Deletion Scheduled</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Your account is scheduled for deletion on{' '}
+                {new Date(deletionScheduled).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+                . Contact support to cancel.
+              </p>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-red-800">Delete Account</p>
+              <p className="text-sm text-gray-500">Permanently delete your account (30-day grace period)</p>
+            </div>
+            <button
+              onClick={() => setShowDeleteAccountModal(true)}
+              disabled={!!deletionScheduled}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
       </div>
+
+      {/* Clear Data Confirmation Modal */}
+      {showClearDataModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold mb-4">Clear All Local Data?</h3>
+            <p className="text-gray-600 mb-4">
+              This will permanently delete:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600 mb-4 space-y-1">
+              <li>All wellness data stored on this device</li>
+              <li>Streak progress and achievements</li>
+              <li>Local settings and preferences</li>
+            </ul>
+            <p className="text-sm text-gray-500 mb-4">
+              Cloud-synced data will not be affected.
+            </p>
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Type <span className="font-mono font-bold">DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={clearDataConfirmText}
+                onChange={(e) => setClearDataConfirmText(e.target.value)}
+                placeholder="Type DELETE"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowClearDataModal(false);
+                  setClearDataConfirmText('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearLocalData}
+                disabled={isClearingData || clearDataConfirmText !== 'DELETE'}
+                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+              >
+                {isClearingData ? 'Clearing...' : 'Clear All Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Icons.AlertTriangle className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold">Delete Account?</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete your account? This will:
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600 mb-4 space-y-1">
+              <li>Remove all your wellness data</li>
+              <li>Cancel your organization membership</li>
+              <li>Delete your account after 30 days</li>
+            </ul>
+            <p className="text-sm text-gray-500 mb-4">
+              You can cancel this request within 30 days by contacting support.
+            </p>
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 block mb-1">
+                Type <span className="font-mono font-bold">{orgName || 'DELETE'}</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={`Type ${orgName || 'DELETE'}`}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            {deleteError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-700">{deleteError}</p>
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteAccountModal(false);
+                  setDeleteConfirmText('');
+                  setDeleteError(null);
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || deleteConfirmText !== (orgName || 'DELETE')}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? 'Deleting...' : 'Yes, Delete My Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

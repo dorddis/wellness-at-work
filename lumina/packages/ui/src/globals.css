@@ -6,6 +6,8 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 96%;
@@ -24,6 +26,8 @@
   .dark {
     --background: 0 0% 7%;
     --foreground: 0 0% 95%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
     --primary: 221 83% 53%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 15%;
@@ -47,6 +51,45 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Custom Scrollbar - Slim & Aesthetic */
+  /* WebKit browsers (Chrome, Safari, Edge, Electron) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 }
 
@@ -159,5 +202,38 @@
 
   .dark .select-minimal:hover {
     @apply bg-gray-700/70;
+  }
+
+  /* Skeleton Loading Animation */
+  /* Research: Left-to-right shimmer is perceived as faster */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #e5e7eb 25%,
+      #f3f4f6 50%,
+      #e5e7eb 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite ease-in-out;
+  }
+
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      #374151 25%,
+      #4b5563 50%,
+      #374151 75%
+    );
+    background-size: 200% 100%;
+  }
+}
+
+/* Skeleton shimmer keyframe - defined at root level */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
   }
 }

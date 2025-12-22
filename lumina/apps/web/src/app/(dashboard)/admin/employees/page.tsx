@@ -64,11 +64,13 @@ export default function EmployeesPage() {
             fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
             // Get wellness data for last 14 days (to calculate trend)
+            // Note: Supabase defaults to 1000 rows, need higher limit for many employees
             const { data: wellnessData } = await supabase
               .from('wellness_data')
               .select('user_id, blink_count, timestamp')
               .eq('org_id', orgId)
-              .gte('timestamp', fourteenDaysAgo.toISOString());
+              .gte('timestamp', fourteenDaysAgo.toISOString())
+              .limit(50000);
 
             // Get alerts for last 7 days
             const { data: alertsData } = await supabase

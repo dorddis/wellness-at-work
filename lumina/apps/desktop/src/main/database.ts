@@ -59,6 +59,127 @@ export interface UserSettings {
   theme: string;
 }
 
+// ========== EYE EXERCISES ==========
+
+export interface ExerciseStep {
+  step: number;
+  text: string;
+  duration: number;
+}
+
+export interface EyeExercise {
+  id: string;
+  name: string;
+  description: string;
+  category: 'relaxation' | 'focus' | 'mobility' | 'strain_relief';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  durationSeconds: number;
+  iconName: string;
+  instructions: ExerciseStep[];
+}
+
+export interface ExerciseSession {
+  id?: number;
+  exercise_id: string;
+  started_at: number;
+  completed_at: number | null;
+  status: 'in_progress' | 'completed' | 'cancelled';
+}
+
+// Hardcoded exercises (matches web database seed)
+export const EYE_EXERCISES: EyeExercise[] = [
+  {
+    id: 'palming',
+    name: 'Palming',
+    description: 'Warm your eyes with your palms to relieve strain and promote relaxation.',
+    category: 'relaxation',
+    difficulty: 'beginner',
+    durationSeconds: 60,
+    iconName: 'Hand',
+    instructions: [
+      { step: 1, text: 'Rub your palms together vigorously for 10 seconds to warm them', duration: 10 },
+      { step: 2, text: 'Close your eyes and gently cup your palms over them', duration: 5 },
+      { step: 3, text: 'Relax and breathe deeply. Feel the warmth soothing your eyes', duration: 30 },
+      { step: 4, text: 'Slowly remove your palms and open your eyes', duration: 15 },
+    ],
+  },
+  {
+    id: 'eye-circles',
+    name: 'Eye Circles',
+    description: 'Improve eye muscle flexibility with gentle circular movements.',
+    category: 'mobility',
+    difficulty: 'beginner',
+    durationSeconds: 45,
+    iconName: 'RotateCw',
+    instructions: [
+      { step: 1, text: 'Look straight ahead and relax your shoulders', duration: 5 },
+      { step: 2, text: 'Slowly roll your eyes clockwise in a large circle', duration: 15 },
+      { step: 3, text: 'Now roll your eyes counter-clockwise', duration: 15 },
+      { step: 4, text: 'Close your eyes and rest for a moment', duration: 10 },
+    ],
+  },
+  {
+    id: 'focus-shifting',
+    name: 'Focus Shifting',
+    description: 'Train your eye muscles to switch focus between near and far objects.',
+    category: 'focus',
+    difficulty: 'intermediate',
+    durationSeconds: 60,
+    iconName: 'Target',
+    instructions: [
+      { step: 1, text: 'Hold your thumb about 10 inches from your face', duration: 5 },
+      { step: 2, text: 'Focus on your thumb for 5 seconds', duration: 10 },
+      { step: 3, text: 'Now focus on something 20 feet away for 5 seconds', duration: 10 },
+      { step: 4, text: 'Repeat: Focus on thumb, then distant object', duration: 25 },
+      { step: 5, text: 'Relax your eyes and blink several times', duration: 10 },
+    ],
+  },
+  {
+    id: 'figure-eight',
+    name: 'Figure Eight',
+    description: 'Trace an imaginary figure-8 to improve eye coordination and flexibility.',
+    category: 'mobility',
+    difficulty: 'intermediate',
+    durationSeconds: 45,
+    iconName: 'Infinity',
+    instructions: [
+      { step: 1, text: 'Imagine a large figure-8 on its side about 10 feet away', duration: 5 },
+      { step: 2, text: 'Trace the figure-8 slowly with your eyes', duration: 15 },
+      { step: 3, text: 'Now trace it in the opposite direction', duration: 15 },
+      { step: 4, text: 'Close your eyes and rest', duration: 10 },
+    ],
+  },
+  {
+    id: 'blinking-exercise',
+    name: 'Conscious Blinking',
+    description: 'Combat dry eyes by practicing deliberate, complete blinks.',
+    category: 'strain_relief',
+    difficulty: 'beginner',
+    durationSeconds: 30,
+    iconName: 'Eye',
+    instructions: [
+      { step: 1, text: 'Close your eyes gently but completely', duration: 3 },
+      { step: 2, text: 'Keep them closed for 2 seconds', duration: 2 },
+      { step: 3, text: 'Open your eyes slowly', duration: 3 },
+      { step: 4, text: 'Repeat this slow blink 10 times', duration: 22 },
+    ],
+  },
+  {
+    id: 'near-far-focus',
+    name: '20-20-20 Extended',
+    description: 'An extended version of the 20-20-20 rule with guided relaxation.',
+    category: 'strain_relief',
+    difficulty: 'beginner',
+    durationSeconds: 40,
+    iconName: 'EyeOff',
+    instructions: [
+      { step: 1, text: 'Look at something at least 20 feet away', duration: 20 },
+      { step: 2, text: 'Blink slowly and completely several times', duration: 10 },
+      { step: 3, text: 'Take a deep breath and relax your shoulders', duration: 10 },
+    ],
+  },
+];
+
 /**
  * Wellness event types for tracking posture, yawn, and drowsiness
  */
@@ -221,6 +342,17 @@ export class DatabaseManager {
       )
     `);
 
+    // Exercise sessions table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS exercise_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        exercise_id TEXT NOT NULL,
+        started_at INTEGER NOT NULL,
+        completed_at INTEGER,
+        status TEXT NOT NULL DEFAULT 'in_progress'
+      )
+    `);
+
     // Create indexes
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_blink_events_timestamp ON blink_events(timestamp);
@@ -230,6 +362,8 @@ export class DatabaseManager {
       CREATE INDEX IF NOT EXISTS idx_daily_progress_date ON daily_progress(date);
       CREATE INDEX IF NOT EXISTS idx_wellness_events_timestamp ON wellness_events(timestamp);
       CREATE INDEX IF NOT EXISTS idx_wellness_events_type ON wellness_events(event_type);
+      CREATE INDEX IF NOT EXISTS idx_exercise_sessions_started_at ON exercise_sessions(started_at);
+      CREATE INDEX IF NOT EXISTS idx_exercise_sessions_exercise_id ON exercise_sessions(exercise_id);
     `);
 
     // Insert default baseline if not exists
@@ -976,6 +1110,244 @@ export class DatabaseManager {
       WHERE id = 1
     `);
     stmt.run(...values);
+  }
+
+  // ========== EXERCISE SESSIONS ==========
+
+  /**
+   * Get all exercises (static list)
+   */
+  getExercises(): EyeExercise[] {
+    return EYE_EXERCISES;
+  }
+
+  /**
+   * Get a specific exercise by ID
+   */
+  getExercise(exerciseId: string): EyeExercise | undefined {
+    return EYE_EXERCISES.find((e) => e.id === exerciseId);
+  }
+
+  /**
+   * Start an exercise session
+   */
+  startExerciseSession(exerciseId: string): number | null {
+    if (!this.db) return null;
+
+    const stmt = this.db.prepare(`
+      INSERT INTO exercise_sessions (exercise_id, started_at, status)
+      VALUES (?, ?, 'in_progress')
+    `);
+    const result = stmt.run(exerciseId, Date.now());
+    return result.lastInsertRowid as number;
+  }
+
+  /**
+   * Complete an exercise session
+   */
+  completeExerciseSession(sessionId: number): void {
+    if (!this.db) return;
+
+    const stmt = this.db.prepare(`
+      UPDATE exercise_sessions
+      SET completed_at = ?, status = 'completed'
+      WHERE id = ?
+    `);
+    stmt.run(Date.now(), sessionId);
+  }
+
+  /**
+   * Cancel an exercise session
+   */
+  cancelExerciseSession(sessionId: number): void {
+    if (!this.db) return;
+
+    const stmt = this.db.prepare(`
+      UPDATE exercise_sessions
+      SET status = 'cancelled'
+      WHERE id = ?
+    `);
+    stmt.run(sessionId);
+  }
+
+  /**
+   * Get recent exercise sessions
+   */
+  getExerciseSessions(days: number = 30): ExerciseSession[] {
+    if (!this.db) return [];
+
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const stmt = this.db.prepare(`
+      SELECT * FROM exercise_sessions
+      WHERE started_at >= ?
+      ORDER BY started_at DESC
+    `);
+    return stmt.all(cutoff) as ExerciseSession[];
+  }
+
+  /**
+   * Get exercise stats
+   */
+  getExerciseStats(days: number = 7): {
+    todaySessions: number;
+    todayMinutes: number;
+    weekSessions: number;
+    weekMinutes: number;
+    totalSessions: number;
+  } {
+    if (!this.db) {
+      return {
+        todaySessions: 0,
+        todayMinutes: 0,
+        weekSessions: 0,
+        weekMinutes: 0,
+        totalSessions: 0,
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStart = today.getTime();
+    const weekAgo = Date.now() - days * 24 * 60 * 60 * 1000;
+
+    // Today's stats
+    const todayStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM exercise_sessions
+      WHERE started_at >= ? AND status = 'completed'
+    `);
+    const todayResult = todayStmt.get(todayStart) as { count: number };
+
+    // Week stats
+    const weekStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM exercise_sessions
+      WHERE started_at >= ? AND status = 'completed'
+    `);
+    const weekResult = weekStmt.get(weekAgo) as { count: number };
+
+    // Total stats
+    const totalStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM exercise_sessions
+      WHERE status = 'completed'
+    `);
+    const totalResult = totalStmt.get() as { count: number };
+
+    // Calculate minutes based on exercises completed
+    const todaySessionsStmt = this.db.prepare(`
+      SELECT exercise_id FROM exercise_sessions
+      WHERE started_at >= ? AND status = 'completed'
+    `);
+    const todaySessions = todaySessionsStmt.all(todayStart) as { exercise_id: string }[];
+    const todayMinutes = todaySessions.reduce((acc, s) => {
+      const exercise = this.getExercise(s.exercise_id);
+      return acc + (exercise?.durationSeconds ?? 0) / 60;
+    }, 0);
+
+    const weekSessionsStmt = this.db.prepare(`
+      SELECT exercise_id FROM exercise_sessions
+      WHERE started_at >= ? AND status = 'completed'
+    `);
+    const weekSessions = weekSessionsStmt.all(weekAgo) as { exercise_id: string }[];
+    const weekMinutes = weekSessions.reduce((acc, s) => {
+      const exercise = this.getExercise(s.exercise_id);
+      return acc + (exercise?.durationSeconds ?? 0) / 60;
+    }, 0);
+
+    return {
+      todaySessions: todayResult.count,
+      todayMinutes: Math.round(todayMinutes),
+      weekSessions: weekResult.count,
+      weekMinutes: Math.round(weekMinutes),
+      totalSessions: totalResult.count,
+    };
+  }
+
+  // ========== DATA MANAGEMENT ==========
+
+  /**
+   * Export all user data as JSON
+   */
+  exportAllData(): {
+    blink_events: BlinkEvent[];
+    minute_rollups: MinuteRollup[];
+    user_baseline: UserBaseline | null;
+    user_streaks: StreakRecord[];
+    user_achievements: AchievementRecord[];
+    user_settings: UserSettings | null;
+    daily_progress: any[];
+    wellness_events: WellnessEvent[];
+    exercise_sessions: ExerciseSession[];
+    exported_at: string;
+  } {
+    if (!this.db) {
+      return {
+        blink_events: [],
+        minute_rollups: [],
+        user_baseline: null,
+        user_streaks: [],
+        user_achievements: [],
+        user_settings: null,
+        daily_progress: [],
+        wellness_events: [],
+        exercise_sessions: [],
+        exported_at: new Date().toISOString(),
+      };
+    }
+
+    return {
+      blink_events: this.db.prepare('SELECT * FROM blink_events ORDER BY timestamp DESC').all() as BlinkEvent[],
+      minute_rollups: this.db.prepare('SELECT * FROM minute_rollups ORDER BY timestamp DESC').all() as MinuteRollup[],
+      user_baseline: this.getBaseline(),
+      user_streaks: this.getStreaks(),
+      user_achievements: this.getAchievements(),
+      user_settings: this.getUserSettings(),
+      daily_progress: this.db.prepare('SELECT * FROM daily_progress ORDER BY date DESC').all(),
+      wellness_events: this.db.prepare('SELECT * FROM wellness_events ORDER BY timestamp DESC').all() as WellnessEvent[],
+      exercise_sessions: this.db.prepare('SELECT * FROM exercise_sessions ORDER BY started_at DESC').all() as ExerciseSession[],
+      exported_at: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Clear all local data (all tables)
+   */
+  clearAllData(): void {
+    if (!this.db) return;
+
+    // Delete all data from all tables
+    this.db.exec('DELETE FROM blink_events');
+    this.db.exec('DELETE FROM minute_rollups');
+    this.db.exec('DELETE FROM wellness_events');
+    this.db.exec('DELETE FROM exercise_sessions');
+    this.db.exec('DELETE FROM daily_progress');
+    this.db.exec('DELETE FROM user_achievements');
+
+    // Reset streaks to zero
+    this.db.exec(`
+      UPDATE user_streaks
+      SET current_count = 0, longest_count = 0, broken_at = NULL
+    `);
+
+    // Reset baseline
+    this.db.exec(`
+      UPDATE user_baseline
+      SET blink_p25 = NULL, blink_p50 = NULL, blink_p75 = NULL,
+          calibrated_at = NULL, samples_count = 0
+      WHERE id = 1
+    `);
+
+    // Reset settings to defaults (but keep onboarding status)
+    this.db.exec(`
+      UPDATE user_settings
+      SET sound_preference = 'chime',
+          max_postpones = 2,
+          break_interval_minutes = 20,
+          break_duration_seconds = 20,
+          posture_monitoring_enabled = 1,
+          theme = 'system'
+      WHERE id = 1
+    `);
+
+    console.log('[Database] All local data cleared');
   }
 
   /**

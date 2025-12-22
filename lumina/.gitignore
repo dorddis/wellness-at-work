@@ -10,6 +10,7 @@ out/
 
 # Electron
 release/
+build/
 *.exe
 *.dmg
 *.app
@@ -42,3 +43,4 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+.vercel

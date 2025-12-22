@@ -10,11 +10,9 @@ import {
   Users,
   Bell,
   Settings,
-  LogOut,
   Menu,
   X,
   BarChart3,
-  User,
   Building2,
   Loader2,
   Activity,
@@ -46,6 +44,7 @@ const navSections: NavSection[] = [
       { href: '/dashboard/my-wellness', label: 'My Wellness', icon: <Activity className="w-5 h-5" /> },
       { href: '/dashboard/exercises', label: 'Eye Exercises', icon: <Eye className="w-5 h-5" /> },
       { href: '/dashboard/breaks', label: 'Break Timer', icon: <Timer className="w-5 h-5" /> },
+      { href: '/dashboard/settings', label: 'Settings', icon: <Settings className="w-5 h-5" /> },
     ],
   },
   {
@@ -72,7 +71,7 @@ const navSections: NavSection[] = [
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
 
   // Loading state
   if (loading) {
@@ -133,12 +132,12 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transform transition-transform lg:translate-x-0 flex flex-col ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-border">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-border shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image src="/icon.png" alt="Lumina" width={24} height={24} className="w-6 h-6" />
             <span className="text-lg font-bold">Lumina</span>
@@ -152,15 +151,15 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Org info */}
-        <div className="px-4 py-3 border-b border-border">
+        <div className="px-4 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-2 text-sm">
             <Building2 className="w-4 h-4 text-muted-foreground" />
             <span className="font-medium truncate">{user.organization?.name}</span>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 pb-32 space-y-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 7rem)' }}>
+        {/* Navigation - flex-1 takes remaining space, overflow-y-auto for scrolling */}
+        <nav className="flex-1 p-4 space-y-6 overflow-y-auto min-h-0 overscroll-contain">
           {filteredSections.map((section, sectionIndex) => (
             <div key={section.title}>
               {/* Section header */}
@@ -194,24 +193,17 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* User section */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border">
-          <div className="flex items-center gap-3 mb-3">
+        {/* User section - shrink-0 stays at bottom */}
+        <div className="shrink-0 p-4 border-t border-border bg-background">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-medium">
               {user.email.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user.email}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.organization?.role}</p>
+              <p className="text-xs text-muted-foreground truncate capitalize">{user.organization?.role}</p>
             </div>
           </div>
-          <button
-            onClick={signOut}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Sign out
-          </button>
         </div>
       </aside>
 

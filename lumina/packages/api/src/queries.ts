@@ -71,12 +71,22 @@ export async function getMyWellnessData(
 ): Promise<WellnessRollup[]> {
   const supabase = getSupabase();
 
+  // Get current user to add explicit filter (RLS backup)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('No authenticated user for wellness data query');
+    return [];
+  }
+
+  // Note: Supabase default limit is 1000 rows, we need more for date ranges
   const { data, error } = await supabase
     .from('wellness_data')
     .select('timestamp, blink_count, avg_ear')
+    .eq('user_id', user.id) // Explicit filter in addition to RLS
     .gte('timestamp', startDate.toISOString())
     .lte('timestamp', endDate.toISOString())
-    .order('timestamp', { ascending: true });
+    .order('timestamp', { ascending: true })
+    .limit(50000); // Override default 1000 limit
 
   if (error) {
     console.error('Error fetching wellness data:', error);
@@ -99,20 +109,35 @@ export async function getMyDailyStats(days: number = 30): Promise<DailyStats[]> 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - validDays);
 
+  // Get current user to add explicit filter (RLS backup)
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('[getMyDailyStats] No authenticated user');
+    return [];
+  }
+
   // This would normally be a database function for efficiency
   // Simplified version using client-side aggregation
-  const { data: wellnessData } = await supabase
+  // Note: Supabase default limit is 1000 rows, we need more for 30 days of minute data
+  const { data: wellnessData, error } = await supabase
     .from('wellness_data')
     .select('timestamp, blink_count')
-    .gte('timestamp', startDate.toISOString());
+    .eq('user_id', user.id) // Explicit filter in addition to RLS
+    .gte('timestamp', startDate.toISOString())
+    .order('timestamp', { ascending: true })
+    .limit(50000); // Override default 1000 limit - 30 days * 1440 min/day = 43200 max
 
+  if (error) {
+    console.error('[getMyDailyStats] Query error:', error);
+  }
   if (!wellnessData) return [];
 
   // Group by date
   const byDate = new Map<string, { blinks: number; count: number }>();
 
   for (const d of wellnessData) {
-    const date = d.timestamp.split('T')[0];
+    // Handle both ISO format (2025-12-22T10:00:00) and Postgres format (2025-12-22 10:00:00+00)
+    const date = d.timestamp.split(/[T ]/)[0];
     const existing = byDate.get(date) ?? { blinks: 0, count: 0 };
     byDate.set(date, {
       blinks: existing.blinks + d.blink_count,

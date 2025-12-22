@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * GoalsStep Component
  * Let users select their wellness goals

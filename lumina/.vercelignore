@@ -1,0 +1,31 @@
+# Ignore desktop app (not needed for web deployment)
+apps/desktop
+
+# Ignore large development files
+node_modules/.cache
+*.log
+
+# Ignore test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/tests
+**/__tests__
+
+# Ignore local SQLite databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Ignore Electron release builds
+**/release
+**/dist-electron
+
+# Ignore IDE and OS files
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

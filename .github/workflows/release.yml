@@ -1,0 +1,208 @@
+name: Build and Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '9'
+
+jobs:
+  # Build Windows installer
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: lumina/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: lumina
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app
+        working-directory: lumina
+        run: pnpm build:desktop
+
+      - name: Package Windows installer
+        working-directory: lumina/apps/desktop
+        run: pnpm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            lumina/apps/desktop/release/*.exe
+            lumina/apps/desktop/release/*.exe.blockmap
+          retention-days: 7
+
+  # Build macOS installer
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: lumina/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: lumina
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop app
+        working-directory: lumina
+        run: pnpm build:desktop
+
+      - name: Package macOS installer
+        working-directory: lumina/apps/desktop
+        run: pnpm run package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installer
+          path: lumina/apps/desktop/release/*.dmg
+          retention-days: 7
+
+  # Upload to Supabase Storage and update releases table
+  upload-release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/windows
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installer
+          path: artifacts/macos
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: List artifacts
+        run: |
+          echo "Windows artifacts:"
+          ls -la artifacts/windows/ || echo "No Windows artifacts"
+          echo "macOS artifacts:"
+          ls -la artifacts/macos/ || echo "No macOS artifacts"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+
+      - name: Upload to Supabase Storage and update database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Find the installer files
+          WINDOWS_FILE=$(find artifacts/windows -name "*.exe" -not -name "*.blockmap" | head -1)
+          MACOS_FILE=$(find artifacts/macos -name "*.dmg" | head -1)
+
+          echo "Windows file: $WINDOWS_FILE"
+          echo "macOS file: $MACOS_FILE"
+
+          # Get file sizes
+          WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE" 2>/dev/null || echo "0")
+          MACOS_SIZE=$(stat -c%s "$MACOS_FILE" 2>/dev/null || echo "0")
+
+          echo "Windows size: $WINDOWS_SIZE bytes"
+          echo "macOS size: $MACOS_SIZE bytes"
+
+          # Upload to Supabase Storage using curl
+          STORAGE_URL="${SUPABASE_URL}/storage/v1/object/releases/v${VERSION}"
+
+          # Upload Windows installer
+          if [ -n "$WINDOWS_FILE" ] && [ -f "$WINDOWS_FILE" ]; then
+            WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
+            echo "Uploading $WINDOWS_FILENAME..."
+            curl -X POST "${STORAGE_URL}/${WINDOWS_FILENAME}" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@${WINDOWS_FILE}"
+            WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${WINDOWS_FILENAME}"
+          fi
+
+          # Upload macOS installer
+          if [ -n "$MACOS_FILE" ] && [ -f "$MACOS_FILE" ]; then
+            MACOS_FILENAME=$(basename "$MACOS_FILE")
+            echo "Uploading $MACOS_FILENAME..."
+            curl -X POST "${STORAGE_URL}/${MACOS_FILENAME}" \
+              -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@${MACOS_FILE}"
+            MACOS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${MACOS_FILENAME}"
+          fi
+
+          # Insert/Update release in database
+          echo "Updating releases table..."
+          curl -X POST "${SUPABASE_URL}/rest/v1/releases" \
+            -H "apikey: ${SUPABASE_SERVICE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates" \
+            -d "{
+              \"version\": \"${VERSION}\",
+              \"windows_url\": \"${WINDOWS_URL:-null}\",
+              \"windows_size\": ${WINDOWS_SIZE:-0},
+              \"macos_url\": \"${MACOS_URL:-null}\",
+              \"macos_size\": ${MACOS_SIZE:-0},
+              \"release_notes\": \"Release v${VERSION}\"
+            }"
+
+          echo "Release v${VERSION} uploaded successfully!"
+          echo "Windows: ${WINDOWS_URL:-'Not available'}"
+          echo "macOS: ${MACOS_URL:-'Not available'}"

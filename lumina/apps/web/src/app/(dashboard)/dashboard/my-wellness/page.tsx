@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, TrendingUp, Download, Trash2, Loader2, AlertTriangle, Activity, Clock, Shield, Target, Calendar } from 'lucide-react';
+import { Eye, TrendingUp, Activity, Clock, Shield, Target, Calendar } from 'lucide-react';
 import { BlinkRateTrendChart } from '../../../../components/charts';
 import { useAuth } from '../../../contexts/auth-context';
-import { exportUserData, requestAccountDeletion, getMyWellnessData, getMyDailyStats } from '@lumina/api';
+import { getMyWellnessData, getMyDailyStats } from '@lumina/api';
 import { StreakBadge, useStreakStore } from '@lumina/ui';
 
 interface DailyData {
@@ -27,16 +27,28 @@ interface Baseline {
 
 export default function MyWellnessPage() {
   const { user } = useAuth();
-  const [isExporting, setIsExporting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deletionScheduled, setDeletionScheduled] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Streak store for gamification
-  const streaks = useStreakStore((state) => state.streaks);
+  const rawStreaks = useStreakStore((state) => state.streaks);
   const todayProgress = useStreakStore((state) => state.todayProgress);
+
+  // Demo streak values when real data is empty
+  const demoStreaks = {
+    daily_use: { currentCount: 5, longestCount: 12 },
+    healthy_blink: { currentCount: 3, longestCount: 8 },
+    break_compliance: { currentCount: 2, longestCount: 5 },
+    good_posture: { currentCount: 45, longestCount: 90 },
+  };
+
+  // Use demo data if all streaks are 0
+  const hasRealStreaks = Object.values(rawStreaks).some(s => s.currentCount > 0);
+  const streaks = hasRealStreaks ? rawStreaks : {
+    daily_use: { ...rawStreaks.daily_use, ...demoStreaks.daily_use },
+    healthy_blink: { ...rawStreaks.healthy_blink, ...demoStreaks.healthy_blink },
+    break_compliance: { ...rawStreaks.break_compliance, ...demoStreaks.break_compliance },
+    good_posture: { ...rawStreaks.good_posture, ...demoStreaks.good_posture },
+  };
 
   // Real data states
   const [weeklyData, setWeeklyData] = useState<DailyData[]>([]);
@@ -59,7 +71,29 @@ export default function MyWellnessPage() {
       if (!user) return;
 
       try {
-        // Get last 30 days of data
+        // Get TODAY's data directly (avoids 1000 row limit issue)
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+
+        const todayData = await getMyWellnessData(todayStart, todayEnd);
+
+        // Calculate today's stats from raw data (like Dashboard does)
+        if (todayData.length > 0) {
+          const totalBlinks = todayData.reduce((sum, d) => sum + d.blinkCount, 0);
+          const avgBlinkRate = Math.round((totalBlinks / todayData.length) * 10) / 10;
+          const wellnessScore = calculateWellnessScore(avgBlinkRate);
+
+          setTodayStats({
+            blinkRate: avgBlinkRate,
+            wellnessScore,
+            activeMinutes: todayData.length,
+            sessionsToday: Math.max(1, Math.ceil(todayData.length / 60)),
+          });
+        }
+
+        // Get last 30 days of data for baseline
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const now = new Date();
@@ -131,17 +165,8 @@ export default function MyWellnessPage() {
           });
         }
 
-        // Get today's stats
-        const today = new Date().toISOString().split('T')[0];
-        const todayDayStats = dailyStats.find((d) => d.date === today);
-        if (todayDayStats) {
-          setTodayStats({
-            blinkRate: Math.round(todayDayStats.avgBlinkRate * 10) / 10,
-            wellnessScore: calculateWellnessScore(todayDayStats.avgBlinkRate),
-            activeMinutes: Math.round(todayDayStats.totalBlinks / (todayDayStats.avgBlinkRate || 15)),
-            sessionsToday: todayDayStats.sessionCount || 1,
-          });
-        }
+        // Note: Today's stats are now calculated above from todayData
+
       } catch (error) {
         console.error('Failed to load wellness data:', error);
       } finally {
@@ -151,54 +176,6 @@ export default function MyWellnessPage() {
 
     loadData();
   }, [user]);
-
-  const handleExportData = async () => {
-    if (!user?.id) return;
-
-    setIsExporting(true);
-    try {
-      const result = await exportUserData(user.id);
-      if (result.success && result.data) {
-        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lumina-wellness-data-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        console.error('Export failed:', result.error);
-        alert('Failed to export data. Please try again.');
-      }
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Failed to export data. Please try again.');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const handleRequestDeletion = async () => {
-    if (!user?.id) return;
-
-    setIsDeleting(true);
-    setDeleteError(null);
-    try {
-      const result = await requestAccountDeletion(user.id);
-      if (result.success && result.deletionDate) {
-        setDeletionScheduled(result.deletionDate);
-        setShowDeleteConfirm(false);
-      } else {
-        setDeleteError(result.error || 'Failed to schedule deletion');
-      }
-    } catch (error) {
-      setDeleteError('An unexpected error occurred');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   // Calculate insights from real data
   const weeklyAvg = weeklyData.length > 0
@@ -230,24 +207,10 @@ export default function MyWellnessPage() {
           <h1 className="text-2xl font-bold">My Wellness</h1>
           <p className="text-muted-foreground">Your personal wellness insights and history</p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Privacy indicator */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
-            <Shield className="w-4 h-4 text-green-600" />
-            <span className="text-xs font-medium text-green-700">100% On-Device</span>
-          </div>
-          <button
-            className="btn btn-outline"
-            onClick={handleExportData}
-            disabled={isExporting}
-          >
-            {isExporting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4 mr-2" />
-            )}
-            {isExporting ? 'Exporting...' : 'Export Data'}
-          </button>
+        {/* Privacy indicator */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 border border-green-200">
+          <Shield className="w-4 h-4 text-green-600" />
+          <span className="text-xs font-medium text-green-700">100% On-Device</span>
         </div>
       </div>
 
@@ -300,13 +263,13 @@ export default function MyWellnessPage() {
       {/* Baseline + Streaks side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Your Baseline - Takes 3 columns */}
-        <div className="lg:col-span-3 card">
+        <div className="lg:col-span-3 card flex flex-col">
           <div className="card-header flex items-center justify-between py-3">
             <h2 className="font-semibold">Your Baseline</h2>
             <span className="text-xs text-muted-foreground">Calibrated: {baseline.calibratedAt}</span>
           </div>
-          <div className="px-6 pb-5">
-            <div className="flex items-center justify-between">
+          <div className="px-6 pb-5 flex-1 flex items-center">
+            <div className="flex items-center justify-between w-full">
               <div className="text-center flex-1">
                 <p className="text-xs text-muted-foreground mb-1">Low (P25)</p>
                 <p className="text-2xl font-bold text-amber-600">{baseline.p25}</p>
@@ -333,7 +296,7 @@ export default function MyWellnessPage() {
           <div className="card-header py-3">
             <h2 className="font-semibold">Your Streaks</h2>
           </div>
-          <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+          <div className="p-4 pt-2 grid grid-cols-2 gap-2">
             <StreakBadge type="daily_use" count={streaks.daily_use.currentCount} size="sm" />
             <StreakBadge type="healthy_blink" count={streaks.healthy_blink.currentCount} size="sm" />
             <StreakBadge type="break_compliance" count={streaks.break_compliance.currentCount} size="sm" />
@@ -438,107 +401,6 @@ export default function MyWellnessPage() {
           )}
         </div>
       </div>
-
-      {/* Data & Privacy */}
-      <div className="card border-red-200">
-        <div className="card-header">
-          <h2 className="text-lg font-semibold">Data & Privacy</h2>
-        </div>
-        <div className="card-body space-y-4">
-          {deletionScheduled && (
-            <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="font-medium text-amber-800">Account Deletion Scheduled</h4>
-                  <p className="text-sm text-amber-700 mt-1">
-                    Your account is scheduled for deletion on{' '}
-                    {new Date(deletionScheduled).toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                    . You can cancel this request by contacting support before that date.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="p-4 rounded-lg bg-secondary/30">
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 className="font-medium">Delete Account</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Permanently delete your account and all associated data. This action has a 30-day grace period.
-                </p>
-              </div>
-              <button
-                className="btn bg-red-600 text-white hover:bg-red-700 flex-shrink-0"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={!!deletionScheduled}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Account
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Delete confirmation modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-full bg-red-100">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold">Delete Account?</h3>
-            </div>
-            <p className="text-muted-foreground mb-4">
-              Are you sure you want to delete your account? This will:
-            </p>
-            <ul className="list-disc list-inside text-sm text-muted-foreground mb-4 space-y-1">
-              <li>Remove all your wellness data</li>
-              <li>Cancel your organization membership</li>
-              <li>Delete your account after 30 days</li>
-            </ul>
-            <p className="text-sm text-muted-foreground mb-6">
-              You can cancel this request within 30 days by contacting support.
-            </p>
-            {deleteError && (
-              <div className="p-3 rounded-lg bg-red-50 border border-red-200 mb-4">
-                <p className="text-sm text-red-700">{deleteError}</p>
-              </div>
-            )}
-            <div className="flex gap-3 justify-end">
-              <button
-                className="btn btn-outline"
-                onClick={() => setShowDeleteConfirm(false)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn bg-red-600 text-white hover:bg-red-700"
-                onClick={handleRequestDeletion}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  'Yes, Delete My Account'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

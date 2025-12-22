@@ -1,0 +1,10 @@
+export { Nav } from './Nav';
+export { Hero } from './Hero';
+export { SocialProof } from './SocialProof';
+export { ProblemStats } from './ProblemStats';
+export { Features } from './Features';
+export { HowItWorks } from './HowItWorks';
+export { BlogPreview } from './BlogPreview';
+export { PricingPreview } from './PricingPreview';
+export { CTASection } from './CTASection';
+export { Footer } from './Footer';

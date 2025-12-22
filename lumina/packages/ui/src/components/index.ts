@@ -3,6 +3,28 @@ export { StatusIndicator, type StatusIndicatorProps } from './StatusIndicator';
 export { AlertToast, AlertToastContainer, type AlertToastProps, type AlertToastContainerProps, type AlertSeverity } from './AlertToast';
 export { WellnessScore, type WellnessScoreProps } from './WellnessScore';
 export { BlinkRateChart, type BlinkRateChartProps, type BlinkRateDataPoint } from './BlinkRateChart';
+export { EarWaveform, type EarWaveformProps, type EarDataPoint } from './EarWaveform';
+
+// Loading Components
+export { Spinner, type SpinnerProps } from './Spinner';
+export {
+  Skeleton,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonChart,
+  SkeletonTable,
+  SkeletonAvatar,
+  SkeletonStats,
+  type SkeletonProps,
+  type SkeletonTextProps,
+  type SkeletonCardProps,
+  type SkeletonChartProps,
+  type SkeletonTableProps,
+  type SkeletonAvatarProps,
+  type SkeletonStatsProps,
+} from './Skeleton';
+export { LoadingButton, type LoadingButtonProps } from './LoadingButton';
+export { LoadingOverlay, FullScreenLoader, type LoadingOverlayProps, type FullScreenLoaderProps } from './LoadingOverlay';
 
 // Privacy & Status
 export { PrivacyIndicator, type PrivacyIndicatorProps } from './PrivacyIndicator';

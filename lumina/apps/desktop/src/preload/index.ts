@@ -15,6 +15,7 @@ export interface LuminaAPI {
     getUser: () => Promise<UserResult>;
     signOut: () => Promise<AuthResult>;
     joinOrg: (inviteCode: string) => Promise<JoinOrgResult>;
+    requestAccountDeletion: () => Promise<AccountDeletionResult>;
     // Deep link listeners for magic link auth
     onDeepLinkSuccess: (callback: (data: { user: any }) => void) => () => void;
     onDeepLinkError: (callback: (data: { error: string }) => void) => () => void;
@@ -27,6 +28,11 @@ export interface LuminaAPI {
     toggleStatus: () => Promise<void>;
     showAlert: (alert: AlertData) => Promise<void>;
     hideAlert: () => Promise<void>;
+    // Frameless window controls
+    minimize: () => Promise<void>;
+    maximize: () => Promise<void>;
+    close: () => Promise<void>;
+    isMaximized: () => Promise<boolean>;
   };
 
   // Database Operations
@@ -46,6 +52,9 @@ export interface LuminaAPI {
     getWellnessEvents: (startTime: number, endTime: number, eventType?: WellnessEventType) => Promise<WellnessEvent[]>;
     getTodayWellnessStats: () => Promise<WellnessStats>;
     getRecentWellnessEvents: (minutes: number) => Promise<WellnessEvent[]>;
+    // Data management
+    exportData: () => Promise<ExportDataResult>;
+    clearAllData: () => Promise<ClearDataResult>;
   };
 
   // Detection Events
@@ -97,6 +106,17 @@ export interface LuminaAPI {
     trigger: () => Promise<SyncResult>;
     startAuto: (intervalMs?: number) => Promise<{ success: boolean }>;
     stopAuto: () => Promise<{ success: boolean }>;
+  };
+
+  // Exercises
+  exercises: {
+    getAll: () => Promise<EyeExercise[]>;
+    get: (exerciseId: string) => Promise<EyeExercise | undefined>;
+    startSession: (exerciseId: string) => Promise<{ success: boolean; sessionId?: number }>;
+    completeSession: (sessionId: number) => Promise<{ success: boolean }>;
+    cancelSession: (sessionId: number) => Promise<{ success: boolean }>;
+    getSessions: (days?: number) => Promise<ExerciseSession[]>;
+    getStats: (days?: number) => Promise<ExerciseStats>;
   };
 }
 
@@ -245,6 +265,57 @@ interface JoinOrgResult {
   error?: string;
 }
 
+interface AccountDeletionResult {
+  success: boolean;
+  deletionDate?: string;
+  error?: string;
+}
+
+interface ExportDataResult {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+interface ClearDataResult {
+  success: boolean;
+  error?: string;
+}
+
+// Exercise types
+interface ExerciseStep {
+  step: number;
+  text: string;
+  duration: number;
+}
+
+interface EyeExercise {
+  id: string;
+  name: string;
+  description: string;
+  category: 'relaxation' | 'focus' | 'mobility' | 'strain_relief';
+  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  durationSeconds: number;
+  iconName: string;
+  instructions: ExerciseStep[];
+}
+
+interface ExerciseSession {
+  id?: number;
+  exercise_id: string;
+  started_at: number;
+  completed_at: number | null;
+  status: 'in_progress' | 'completed' | 'cancelled';
+}
+
+interface ExerciseStats {
+  todaySessions: number;
+  todayMinutes: number;
+  weekSessions: number;
+  weekMinutes: number;
+  totalSessions: number;
+}
+
 // Expose API to renderer
 const luminaAPI: LuminaAPI = {
   auth: {
@@ -254,6 +325,7 @@ const luminaAPI: LuminaAPI = {
     getUser: () => ipcRenderer.invoke('auth:get-user'),
     signOut: () => ipcRenderer.invoke('auth:sign-out'),
     joinOrg: (inviteCode) => ipcRenderer.invoke('auth:join-org', inviteCode),
+    requestAccountDeletion: () => ipcRenderer.invoke('auth:request-account-deletion'),
     // Deep link listeners for magic link auth
     onDeepLinkSuccess: (callback) => {
       const handler = (_: any, data: { user: any }) => callback(data);
@@ -273,6 +345,11 @@ const luminaAPI: LuminaAPI = {
     toggleStatus: () => ipcRenderer.invoke('window:toggle-status'),
     showAlert: (alert) => ipcRenderer.invoke('window:show-alert', alert),
     hideAlert: () => ipcRenderer.invoke('window:hide-alert'),
+    // Frameless window controls
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    maximize: () => ipcRenderer.invoke('window:maximize'),
+    close: () => ipcRenderer.invoke('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:is-maximized'),
   },
 
   database: {
@@ -298,6 +375,9 @@ const luminaAPI: LuminaAPI = {
     getTodayWellnessStats: () => ipcRenderer.invoke('db:get-today-wellness-stats'),
     getRecentWellnessEvents: (minutes) =>
       ipcRenderer.invoke('db:get-recent-wellness-events', minutes),
+    // Data management
+    exportData: () => ipcRenderer.invoke('db:export-data'),
+    clearAllData: () => ipcRenderer.invoke('db:clear-all-data'),
   },
 
   detection: {
@@ -360,6 +440,16 @@ const luminaAPI: LuminaAPI = {
     trigger: () => ipcRenderer.invoke('sync:trigger'),
     startAuto: (intervalMs) => ipcRenderer.invoke('sync:start-auto', intervalMs),
     stopAuto: () => ipcRenderer.invoke('sync:stop-auto'),
+  },
+
+  exercises: {
+    getAll: () => ipcRenderer.invoke('exercises:get-all'),
+    get: (exerciseId) => ipcRenderer.invoke('exercises:get', exerciseId),
+    startSession: (exerciseId) => ipcRenderer.invoke('exercises:start-session', exerciseId),
+    completeSession: (sessionId) => ipcRenderer.invoke('exercises:complete-session', sessionId),
+    cancelSession: (sessionId) => ipcRenderer.invoke('exercises:cancel-session', sessionId),
+    getSessions: (days) => ipcRenderer.invoke('exercises:get-sessions', days),
+    getStats: (days) => ipcRenderer.invoke('exercises:get-stats', days),
   },
 };
 

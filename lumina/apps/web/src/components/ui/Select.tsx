@@ -99,7 +99,7 @@ export function Select({
           className="
             absolute z-50 w-full mt-1
             bg-white border border-gray-200 rounded-lg shadow-lg
-            py-1 max-h-64 overflow-auto
+            max-h-64 overflow-auto
             animate-in
           "
         >
@@ -117,6 +117,7 @@ export function Select({
                   w-full flex items-center justify-between gap-2
                   ${optionSizeClasses[size]}
                   text-left transition-colors duration-100
+                  first:rounded-t-lg last:rounded-b-lg
                   ${isSelected
                     ? 'bg-gray-900 text-white'
                     : 'text-gray-700 hover:bg-gray-100'

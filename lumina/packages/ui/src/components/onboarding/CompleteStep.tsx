@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * CompleteStep Component
  * Celebration screen with confetti when onboarding is complete

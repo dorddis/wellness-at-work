@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * OnboardingFlow Component
  * Guides new users through setup (2-3 minutes)

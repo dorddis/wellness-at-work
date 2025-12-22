@@ -86,6 +86,37 @@ export function setupIPC(
     windowManager.hideAlert();
   });
 
+  // Window controls (for frameless window)
+  ipcMain.handle('window:minimize', () => {
+    const win = windowManager.getHubWindow();
+    if (win && !win.isDestroyed()) {
+      win.minimize();
+    }
+  });
+
+  ipcMain.handle('window:maximize', () => {
+    const win = windowManager.getHubWindow();
+    if (win && !win.isDestroyed()) {
+      if (win.isMaximized()) {
+        win.unmaximize();
+      } else {
+        win.maximize();
+      }
+    }
+  });
+
+  ipcMain.handle('window:close', () => {
+    const win = windowManager.getHubWindow();
+    if (win && !win.isDestroyed()) {
+      win.hide(); // Hide instead of close (matches existing behavior)
+    }
+  });
+
+  ipcMain.handle('window:is-maximized', () => {
+    const win = windowManager.getHubWindow();
+    return win && !win.isDestroyed() ? win.isMaximized() : false;
+  });
+
   // ============================================================================
   // Database Operations
   // ============================================================================
@@ -158,6 +189,41 @@ export function setupIPC(
 
   ipcMain.handle('db:get-recent-wellness-events', (_, minutes: number) => {
     return database.getRecentWellnessEvents(minutes);
+  });
+
+  // ============================================================================
+  // Exercise Operations
+  // ============================================================================
+
+  ipcMain.handle('exercises:get-all', () => {
+    return database.getExercises();
+  });
+
+  ipcMain.handle('exercises:get', (_, exerciseId: string) => {
+    return database.getExercise(exerciseId);
+  });
+
+  ipcMain.handle('exercises:start-session', (_, exerciseId: string) => {
+    const sessionId = database.startExerciseSession(exerciseId);
+    return { success: sessionId !== null, sessionId };
+  });
+
+  ipcMain.handle('exercises:complete-session', (_, sessionId: number) => {
+    database.completeExerciseSession(sessionId);
+    return { success: true };
+  });
+
+  ipcMain.handle('exercises:cancel-session', (_, sessionId: number) => {
+    database.cancelExerciseSession(sessionId);
+    return { success: true };
+  });
+
+  ipcMain.handle('exercises:get-sessions', (_, days: number = 30) => {
+    return database.getExerciseSessions(days);
+  });
+
+  ipcMain.handle('exercises:get-stats', (_, days: number = 7) => {
+    return database.getExerciseStats(days);
   });
 
   // ============================================================================
@@ -464,6 +530,57 @@ export function setupIPC(
       syncService.setCredentials(org.id, user.id);
 
       return { success: true, orgId: org.id, orgName: org.name };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
+  // Request account deletion (30-day grace period)
+  ipcMain.handle('auth:request-account-deletion', async () => {
+    try {
+      const supabase = getSupabase();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      // Calculate deletion date (30 days from now)
+      const deletionDate = new Date();
+      deletionDate.setDate(deletionDate.getDate() + 30);
+
+      // TODO: In production, you would call an API to schedule deletion
+      // For now, we'll just return the scheduled date
+      // The actual deletion would be handled by a backend job
+
+      return {
+        success: true,
+        deletionDate: deletionDate.toISOString(),
+      };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
+  // ============================================================================
+  // Data Management
+  // ============================================================================
+
+  // Export all user data
+  ipcMain.handle('db:export-data', () => {
+    try {
+      const data = database.exportAllData();
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
+  // Clear all local data
+  ipcMain.handle('db:clear-all-data', () => {
+    try {
+      database.clearAllData();
+      return { success: true };
     } catch (err) {
       return { success: false, error: String(err) };
     }

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * CalibrationStep Component
  * Quick 30-second calibration to establish baseline

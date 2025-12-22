@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { setSupabaseClient, isSupabaseInitialized } from '@lumina/api';
+import { setSupabaseClient } from '@lumina/api';
 import { createClient } from '@/lib/supabase/client';
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -12,10 +12,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Share the browser client with the API package
     // This ensures all queries use the authenticated session
-    if (!isSupabaseInitialized()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setSupabaseClient(supabase as any);
-    }
+    // Always set the client to ensure auth session is current
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setSupabaseClient(supabase as any);
     setIsReady(true);
   }, [supabase]);
 

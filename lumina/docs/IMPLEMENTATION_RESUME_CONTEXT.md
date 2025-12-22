@@ -6,6 +6,7 @@
 ## Overview
 
 Implemented 5 new dashboard features for Lumina wellness web app with full backend + UI.
+Added Eye Exercises feature to desktop app for feature parity.
 
 ## Implementation Status
 
@@ -23,6 +24,10 @@ Implemented 5 new dashboard features for Lumina wellness web app with full backe
 | Phase 3 | Integrations page (`/admin/integrations/page.tsx`) | DONE |
 | Types | Database types (`database.types.ts`) - added 7 new tables | DONE |
 | TypeScript | All type errors fixed, typecheck passes | DONE |
+| Desktop | Eye Exercises view in desktop hub | DONE |
+| Desktop | Exercise session tracking in SQLite | DONE |
+| Desktop | IPC handlers for exercises | DONE |
+| Desktop | Preload API for exercises | DONE |
 
 ## Files Created/Modified
 
@@ -47,6 +52,12 @@ lumina/apps/web/src/app/login/page.tsx (fixed missing redirect URLs)
 lumina/apps/web/src/app/(dashboard)/dashboard/my-wellness/page.tsx (fixed DailyStats properties, Calendar import)
 lumina/apps/web/src/app/contexts/auth-context.tsx (fixed organization type casting)
 lumina/apps/web/src/app/onboarding/page.tsx (fixed organization type casting)
+
+# Desktop App Files
+lumina/apps/desktop/src/main/database.ts (added EyeExercise types, exercise_sessions table, exercise methods)
+lumina/apps/desktop/src/main/ipc.ts (added exercise IPC handlers)
+lumina/apps/desktop/src/preload/index.ts (added exercises API interface and implementation)
+lumina/apps/desktop/src/renderer/hub/App.tsx (added ExercisesView component, nav item, icons)
 ```
 
 ## Database Tables Added
@@ -69,10 +80,35 @@ lumina/apps/web/src/app/onboarding/page.tsx (fixed organization type casting)
 | Analytics | `/admin/analytics` | Metrics, trend charts, department comparison |
 | Integrations | `/admin/integrations` | 6 service cards (Calendar, Slack, Teams, HR) |
 
+## Desktop App - Eye Exercises Feature
+
+Added Eye Exercises to the desktop app for feature parity with the web app.
+
+### Desktop Implementation Details
+
+| Component | Description |
+|-----------|-------------|
+| **SQLite Table** | `exercise_sessions` - tracks local exercise history |
+| **Exercise Data** | 6 hardcoded exercises (matches web database seed) |
+| **ExercisesView** | Full exercise UI with countdown timer modal |
+| **IPC Handlers** | 7 handlers: get-all, get, start-session, complete-session, cancel-session, get-sessions, get-stats |
+| **Preload API** | `window.lumina.exercises.*` methods exposed to renderer |
+| **Navigation** | Added "Eye Exercises" to sidebar menu |
+
+### Exercises Included (Offline)
+
+1. Palming (60s) - Relaxation
+2. Eye Circles (45s) - Mobility
+3. Focus Shifting (60s) - Focus
+4. Figure Eight (45s) - Mobility
+5. Conscious Blinking (30s) - Strain Relief
+6. 20-20-20 Extended (40s) - Strain Relief
+
 ## Verification
 
 ```bash
 cd lumina
 pnpm typecheck  # All 5 packages pass
 pnpm dev:web    # Run web app to test pages
+pnpm dev:desktop  # Run desktop app to test exercises
 ```

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * PreBreakToast Component
  * 30-second warning before break starts
