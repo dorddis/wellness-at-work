@@ -439,7 +439,13 @@ export function useMeetingModeStateMachine(
   // ==========================================================================
   // MEETING DETECTION POLLING
   // ==========================================================================
+  // NOTE: Polling is DISABLED while running alongside existing App.tsx code.
+  // The existing code handles detection; this hook just tracks state.
+  // Enable polling when this hook fully replaces the old meeting mode code.
+  // ==========================================================================
 
+  /*
+  // DISABLED: Causes duplicate polling when running alongside existing code
   useEffect(() => {
     if (!isDetecting || !meetingModeEnabled) return;
 
@@ -509,6 +515,7 @@ export function useMeetingModeStateMachine(
       clearInterval(interval);
     };
   }, [isDetecting, meetingModeEnabled, hasCalibration, send]);
+  */
 
   // ==========================================================================
   // CLEANUP ON UNMOUNT
