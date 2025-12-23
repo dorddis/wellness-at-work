@@ -14,9 +14,12 @@ import {
   PreBreakToast,
   EarWaveform,
   OnboardingFlow,
+  ProductTour,
+  Select,
   ACHIEVEMENTS,
   type DayData,
   type CaptureRegion,
+  type SelectOption,
 } from '@lumina/ui';
 import {
   FaceLandmarkerManager,
@@ -238,6 +241,9 @@ export default function App() {
     setWellnessGoals,
     setSelectedCameraId: saveSelectedCameraId,
     selectedCameraId: savedCameraId,
+    setEarCalibration,
+    hasCompletedProductTour,
+    setProductTourComplete,
     cloudSyncEnabled: appCloudSyncEnabled, // Used for auto-sync control after auth
   } = useSettingsStore();
 
@@ -485,10 +491,15 @@ export default function App() {
 
     async function startCamera() {
       try {
-        console.log('[Camera] Starting camera...');
+        console.log('[Camera] Starting camera...', selectedCameraId ? `(device: ${selectedCameraId})` : '(default)');
+
+        // Use selected camera if available, otherwise use default
+        const videoConstraints: MediaTrackConstraints = selectedCameraId
+          ? { deviceId: { exact: selectedCameraId }, width: { ideal: 640 }, height: { ideal: 480 } }
+          : { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' };
 
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          video: videoConstraints,
         });
 
         if (!mounted) {
@@ -554,7 +565,14 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [isDetecting, meetingModeActive, pendingMeetingApp]);
+  }, [isDetecting, meetingModeActive, pendingMeetingApp, selectedCameraId]);
+
+  // Camera change handler - updates local state and persists to settings
+  const handleCameraChange = (newCameraId: string) => {
+    console.log('[Camera] Switching to:', newCameraId);
+    setSelectedCameraId(newCameraId);
+    saveSelectedCameraId(newCameraId);
+  };
 
   // Meeting detection polling - ALWAYS check for meetings when detection is running
   useEffect(() => {
@@ -1176,8 +1194,17 @@ export default function App() {
           setSelectedCameraId(cameraId);
         }}
         onCalibrationComplete={(data) => {
-          // Calibration data will be stored when detection starts
           console.log('Onboarding calibration baseline:', data.baselineEar);
+          // Store EAR calibration data for future sessions
+          if (data.earCalibration) {
+            setEarCalibration({
+              threshold: data.earCalibration.threshold,
+              openEAR: data.earCalibration.openEAR,
+              closedEAR: data.earCalibration.closedEAR,
+              calibratedAt: new Date(data.earCalibration.calibratedAt).toISOString(),
+              samplesCount: data.earCalibration.samplesCount,
+            });
+          }
         }}
         onGoalsSelected={(goals) => {
           setWellnessGoals(goals);
@@ -1206,8 +1233,15 @@ export default function App() {
   }
 
   return (
-    <div className="h-full flex bg-gray-50 relative">
-      {/* Floating window controls - top right corner */}
+    <>
+      {/* Product Tour - runs after onboarding is complete */}
+      <ProductTour
+        run={hasCompletedOnboarding && !hasCompletedProductTour}
+        onComplete={setProductTourComplete}
+      />
+
+      <div className="h-full flex bg-gray-50 relative">
+        {/* Floating window controls - top right corner */}
       <div
         className="absolute top-2 right-3 z-50 flex items-center gap-1"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
@@ -1247,7 +1281,7 @@ export default function App() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
+      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col" data-tour="sidebar">
         {/* Logo - draggable area */}
         <div
           className="h-14 flex items-center px-4 border-b border-gray-200"
@@ -1321,6 +1355,7 @@ export default function App() {
                   ? 'bg-black text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
+              data-tour="settings"
             >
               <Icons.Settings />
               Settings
@@ -1434,6 +1469,9 @@ export default function App() {
             onToggleDetection={handleToggleDetection}
             meetingModeActive={meetingModeActive}
             meetingAppName={useMeetingModeStore.getState().detectedApp}
+            cameras={cameras}
+            selectedCameraId={selectedCameraId}
+            onCameraChange={handleCameraChange}
           />
         )}
 
@@ -1556,7 +1594,8 @@ export default function App() {
           }}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1845,7 +1884,7 @@ function DashboardView({
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Blink Rate */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 rounded-lg p-4" data-tour="blink-stats">
             <div className="flex items-center gap-2 mb-1">
               <Icons.Eye />
               <span className="text-sm text-gray-500">Blink Rate</span>
@@ -1870,7 +1909,7 @@ function DashboardView({
           </div>
 
           {/* Next Break */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-gray-50 rounded-lg p-4" data-tour="break-timer">
             <div className="flex items-center gap-2 mb-1">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1906,20 +1945,22 @@ function DashboardView({
         />
 
         {/* Posture Status */}
-        <PostureStatusCard
-          status={
-            !isDetecting ? 'unknown' :
-            !faceDetected ? 'unknown' :
-            currentPosture?.hasIssues ? 'poor' : 'good'
-          }
-          goodPostureMinutes={streaks.good_posture.currentCount}
-          totalMinutes={60}
-          longestStreak={streaks.good_posture.longestCount}
-        />
+        <div data-tour="posture-indicator">
+          <PostureStatusCard
+            status={
+              !isDetecting ? 'unknown' :
+              !faceDetected ? 'unknown' :
+              currentPosture?.hasIssues ? 'poor' : 'good'
+            }
+            goodPostureMinutes={streaks.good_posture.currentCount}
+            totalMinutes={60}
+            longestStreak={streaks.good_posture.longestCount}
+          />
+        </div>
       </div>
 
       {/* Achievements Section */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6" data-tour="achievements">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">Achievements</h3>
           <span className="text-sm text-gray-500">{unlockedCount}/9 unlocked</span>
@@ -2044,9 +2085,12 @@ function MonitorView({
   onToggleDetection,
   meetingModeActive = false,
   meetingAppName = null,
+  cameras = [],
+  selectedCameraId = '',
+  onCameraChange,
 }: {
-  videoRef: React.RefObject<HTMLVideoElement>;
-  meetingCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  meetingCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   isDetecting: boolean;
   faceDetected: boolean;
   blinkCount: number;
@@ -2055,6 +2099,9 @@ function MonitorView({
   onToggleDetection: () => void;
   meetingModeActive?: boolean;
   meetingAppName?: string | null;
+  cameras?: MediaDeviceInfo[];
+  selectedCameraId?: string;
+  onCameraChange?: (cameraId: string) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -2152,6 +2199,22 @@ function MonitorView({
               <span className="text-white text-lg font-bold">Blinks: {blinkCount}</span>
             </div>
           </div>
+
+          {/* Camera selection dropdown - only when not in meeting mode and cameras available */}
+          {!meetingModeActive && cameras.length > 1 && onCameraChange && (
+            <div className="mt-4">
+              <Select
+                label="Camera"
+                options={cameras.map((camera, index): SelectOption => ({
+                  value: camera.deviceId,
+                  label: camera.label || `Camera ${index + 1}`,
+                }))}
+                value={selectedCameraId || cameras[0]?.deviceId || ''}
+                onChange={onCameraChange}
+                placeholder="Select camera..."
+              />
+            </div>
+          )}
 
           {/* Start/Stop button */}
           <button

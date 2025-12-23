@@ -1,6 +1,7 @@
 // Components
 export { StatusIndicator, type StatusIndicatorProps } from './StatusIndicator';
 export { AlertToast, AlertToastContainer, type AlertToastProps, type AlertToastContainerProps, type AlertSeverity } from './AlertToast';
+export { Select, type SelectProps, type SelectOption } from './Select';
 export { WellnessScore, type WellnessScoreProps } from './WellnessScore';
 export { BlinkRateChart, type BlinkRateChartProps, type BlinkRateDataPoint } from './BlinkRateChart';
 export { EarWaveform, type EarWaveformProps, type EarDataPoint } from './EarWaveform';
@@ -63,3 +64,6 @@ export {
   type StepperProps,
   type Step,
 } from './onboarding';
+
+// Product Tour
+export { ProductTour, type ProductTourProps } from './ProductTour';

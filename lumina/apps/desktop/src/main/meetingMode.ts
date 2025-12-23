@@ -31,28 +31,86 @@ export interface MeetingDetectionResult {
  * Known meeting apps to detect (Windows)
  */
 const MEETING_APPS: MeetingAppConfig[] = [
-  // Native apps
-  { process: 'Zoom', name: 'Zoom' },
+  // Native Zoom - check various process names AND window titles
+  // Zoom can run as "Zoom", "Zoom Meetings", etc.
+  { process: 'Zoom', name: 'Zoom', titlePattern: /Zoom|Meeting/i },
+  { process: 'Zoom Meetings', name: 'Zoom', titlePattern: /Zoom|Meeting/i },
+  { process: 'CptHost', name: 'Zoom', titlePattern: /Zoom/i }, // Zoom's capturer process
+
+  // Native Teams
   { process: 'Teams', name: 'Microsoft Teams' },
   { process: 'ms-teams', name: 'Microsoft Teams (New)' },
+
+  // Other native apps
   { process: 'webex', name: 'Webex' },
   { process: 'Slack', name: 'Slack' },
 
-  // Browser-based (need window title check)
+  // Browser-based: Zoom Web App (check BEFORE Google Meet since both can run in same browser)
+  {
+    process: 'chrome',
+    name: 'Zoom',
+    titlePattern: /Zoom\s*(Meeting|Webinar)?|app\.zoom\.us/i,
+  },
+  {
+    process: 'msedge',
+    name: 'Zoom',
+    titlePattern: /Zoom\s*(Meeting|Webinar)?|app\.zoom\.us/i,
+  },
+  {
+    process: 'firefox',
+    name: 'Zoom',
+    titlePattern: /Zoom\s*(Meeting|Webinar)?|app\.zoom\.us/i,
+  },
+
+  // Browser-based: Google Meet - be specific to avoid matching "Zoom Meeting"
   {
     process: 'chrome',
     name: 'Google Meet',
-    titlePattern: /Meet\s*[-|]|Google Meet/i,
+    titlePattern: /Google Meet|meet\.google\.com/i,
   },
   {
     process: 'msedge',
     name: 'Google Meet',
-    titlePattern: /Meet\s*[-|]|Google Meet/i,
+    titlePattern: /Google Meet|meet\.google\.com/i,
   },
   {
     process: 'firefox',
     name: 'Google Meet',
-    titlePattern: /Meet\s*[-|]|Google Meet/i,
+    titlePattern: /Google Meet|meet\.google\.com/i,
+  },
+
+  // Browser-based: Microsoft Teams Web
+  {
+    process: 'chrome',
+    name: 'Microsoft Teams',
+    titlePattern: /Microsoft Teams|teams\.microsoft\.com/i,
+  },
+  {
+    process: 'msedge',
+    name: 'Microsoft Teams',
+    titlePattern: /Microsoft Teams|teams\.microsoft\.com/i,
+  },
+  {
+    process: 'firefox',
+    name: 'Microsoft Teams',
+    titlePattern: /Microsoft Teams|teams\.microsoft\.com/i,
+  },
+
+  // Browser-based: Webex Web
+  {
+    process: 'chrome',
+    name: 'Webex',
+    titlePattern: /Webex|webex\.com/i,
+  },
+  {
+    process: 'msedge',
+    name: 'Webex',
+    titlePattern: /Webex|webex\.com/i,
+  },
+  {
+    process: 'firefox',
+    name: 'Webex',
+    titlePattern: /Webex|webex\.com/i,
   },
 ];
 
@@ -84,6 +142,16 @@ export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
       return { isDetected: false, appName: null };
     }
 
+    // Debug: Log all processes with windows (useful for troubleshooting)
+    const meetingRelated = processes.filter(
+      (p) =>
+        /zoom|teams|meet|webex|slack|chrome|msedge|firefox/i.test(p.ProcessName) ||
+        /zoom|teams|meet|webex|call|conference/i.test(p.MainWindowTitle)
+    );
+    if (meetingRelated.length > 0) {
+      console.log('[MeetingMode] Relevant processes found:', meetingRelated);
+    }
+
     // Check each known meeting app
     for (const app of MEETING_APPS) {
       const match = processes.find(
@@ -91,9 +159,14 @@ export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
       );
 
       if (match) {
-        // For browser-based meetings, check window title
+        // For apps with titlePattern, check window title
         if (app.titlePattern) {
           if (app.titlePattern.test(match.MainWindowTitle)) {
+            console.log('[MeetingMode] Match found:', {
+              app: app.name,
+              process: match.ProcessName,
+              title: match.MainWindowTitle,
+            });
             return {
               isDetected: true,
               appName: app.name,
@@ -101,13 +174,71 @@ export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
             };
           }
         } else {
-          // Native app - just process presence is enough
+          // Native app without title pattern - just process presence is enough
+          console.log('[MeetingMode] Match found (no title check):', {
+            app: app.name,
+            process: match.ProcessName,
+            title: match.MainWindowTitle,
+          });
           return {
             isDetected: true,
             appName: app.name,
             processName: match.ProcessName,
           };
         }
+      }
+    }
+
+    // Fallback: Check by window title if no process match
+    // This catches cases where process name varies (e.g., Zoom.exe vs ZoomIt)
+    for (const proc of processes) {
+      const title = proc.MainWindowTitle.toLowerCase();
+      const procName = proc.ProcessName.toLowerCase();
+
+      // Zoom detection by title
+      if (
+        (title.includes('zoom') && (title.includes('meeting') || title.includes('webinar'))) ||
+        procName.includes('zoom')
+      ) {
+        console.log('[MeetingMode] Fallback match - Zoom:', {
+          process: proc.ProcessName,
+          title: proc.MainWindowTitle,
+        });
+        return {
+          isDetected: true,
+          appName: 'Zoom',
+          processName: proc.ProcessName,
+        };
+      }
+
+      // Teams detection by title
+      if (title.includes('microsoft teams') || title.includes('teams meeting')) {
+        console.log('[MeetingMode] Fallback match - Teams:', {
+          process: proc.ProcessName,
+          title: proc.MainWindowTitle,
+        });
+        return {
+          isDetected: true,
+          appName: 'Microsoft Teams',
+          processName: proc.ProcessName,
+        };
+      }
+
+      // Google Meet detection by title (browser-based) - must be explicit to avoid matching "Zoom Meeting"
+      if (
+        title.includes('meet.google.com') ||
+        title.includes('google meet') ||
+        (title.includes(' meet ') && title.includes('google')) // space around "meet" to avoid "meeting"
+      ) {
+        console.log('[MeetingMode] Fallback match - Google Meet:', {
+          process: proc.ProcessName,
+          title: proc.MainWindowTitle,
+        });
+        return {
+          isDetected: true,
+          appName: 'Google Meet',
+          processName: proc.ProcessName,
+        };
       }
     }
 
