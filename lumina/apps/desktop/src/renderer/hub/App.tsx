@@ -937,29 +937,48 @@ export default function App() {
               const canvas = meetingCanvasRef.current;
               const ctx = canvas.getContext('2d');
               if (ctx) {
-                // Set canvas size to region size
-                canvas.width = calibration.region.width;
-                canvas.height = calibration.region.height;
+                // Calculate scale factor if calibration dimensions are available
+                // This handles cases where the capture stream has different dimensions
+                // than the screenshot used during calibration
+                const calWidth = calibration.calibrationWidth || video.videoWidth;
+                const calHeight = calibration.calibrationHeight || video.videoHeight;
+                const scaleX = video.videoWidth / calWidth;
+                const scaleY = video.videoHeight / calHeight;
+
+                // Scale the region coordinates to match actual video dimensions
+                const scaledRegion = {
+                  x: Math.round(calibration.region.x * scaleX),
+                  y: Math.round(calibration.region.y * scaleY),
+                  width: Math.round(calibration.region.width * scaleX),
+                  height: Math.round(calibration.region.height * scaleY),
+                };
+
+                // Set canvas size to scaled region size
+                canvas.width = scaledRegion.width;
+                canvas.height = scaledRegion.height;
 
                 // DEBUG: Log crop region (throttled)
                 if (now - lastDebugLog > 2000) {
                   console.log('[MeetingMode] DEBUG - Cropping:', {
-                    region: calibration.region,
+                    originalRegion: calibration.region,
+                    scaledRegion,
+                    calibrationSize: `${calWidth}x${calHeight}`,
                     videoSize: `${video.videoWidth}x${video.videoHeight}`,
+                    scale: `${scaleX.toFixed(2)}x${scaleY.toFixed(2)}`,
                   });
                 }
 
-                // Draw cropped region from screen capture
+                // Draw cropped region from screen capture using scaled coordinates
                 ctx.drawImage(
                   video,
-                  calibration.region.x,
-                  calibration.region.y,
-                  calibration.region.width,
-                  calibration.region.height,
+                  scaledRegion.x,
+                  scaledRegion.y,
+                  scaledRegion.width,
+                  scaledRegion.height,
                   0,
                   0,
-                  calibration.region.width,
-                  calibration.region.height
+                  scaledRegion.width,
+                  scaledRegion.height
                 );
 
                 frameSource = canvas;
@@ -1673,11 +1692,14 @@ export default function App() {
           displayId={0}
           preCapturedScreenshot={preCapturedScreenshot}
           onComplete={(region: CaptureRegion) => {
-            // Save calibration
+            // Save calibration with screenshot dimensions for coordinate scaling
             addMeetingCalibration({
               appName: calibrationAppName,
               region,
               displayId: 0,
+              // Store calibration dimensions for proper scaling
+              calibrationWidth: preCapturedScreenshot?.width,
+              calibrationHeight: preCapturedScreenshot?.height,
             });
             setShowCalibrationUI(false);
             setPreCapturedScreenshot(null); // Clear pre-captured screenshot

@@ -20,6 +20,9 @@ export interface MeetingAppCalibration {
   displayId: number;
   createdAt: number;
   lastUsed: number;
+  /** Screenshot dimensions at calibration time - used for coordinate scaling */
+  calibrationWidth?: number;
+  calibrationHeight?: number;
 }
 
 /**

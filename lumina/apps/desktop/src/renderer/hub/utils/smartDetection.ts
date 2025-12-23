@@ -379,7 +379,8 @@ interface FindRectResult {
 }
 
 /**
- * Find the best rectangle containing the face using edge detection
+ * Find the best rectangle containing the face using OUTWARD edge scanning
+ * Simple approach: From face center, scan outward in 4 directions, find FIRST strong edge
  */
 function findBestRectangle(
   imageData: ImageData,
@@ -388,6 +389,7 @@ function findBestRectangle(
   face: FaceBounds
 ): FindRectResult {
   const { data, width } = imageData;
+  const EDGE_THRESHOLD = CONFIG.EDGE_THRESHOLD;
 
   // Get pixel luminance
   const getLum = (x: number, y: number): number => {
@@ -397,194 +399,108 @@ function findBestRectangle(
     return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
   };
 
-  // Find horizontal edges - look for rows with CONTINUOUS strong gradients
-  // A real UI border has gradient at 70%+ of points, not scattered noise
-  const horizontalEdges: number[] = [];
-  const EDGE_THRESHOLD = CONFIG.EDGE_THRESHOLD;
-  const CONTINUITY_RATIO = 0.6; // 60% of points must have gradient
-
-  for (let y = 5; y < screenHeight - 5; y += 2) {
-    let edgePoints = 0;
-    let totalPoints = 0;
-    // Sample across the FULL row width
-    for (let x = 10; x < screenWidth - 10; x += 5) {
-      totalPoints++;
-      // Check vertical gradient at this point
+  // Check if a horizontal line has strong edge (gradient)
+  const hasHorizontalEdge = (y: number, x1: number, x2: number): boolean => {
+    let edgeCount = 0;
+    const step = 5;
+    let total = 0;
+    for (let x = x1; x < x2; x += step) {
+      total++;
       const above = getLum(x, y - 2);
       const below = getLum(x, y + 2);
       if (Math.abs(above - below) > EDGE_THRESHOLD) {
-        edgePoints++;
+        edgeCount++;
       }
     }
-    // Require CONTINUOUS edge - gradient at most points along the line
-    const ratio = edgePoints / totalPoints;
-    if (ratio >= CONTINUITY_RATIO) {
-      // Avoid adding edges too close together
-      if (horizontalEdges.length === 0 || y - horizontalEdges[horizontalEdges.length - 1] > 15) {
-        horizontalEdges.push(y);
-        console.log(`[SmartDetection] H-edge at y=${y}, ratio=${(ratio*100).toFixed(0)}%`);
-      }
-    }
-  }
+    // Require 40% of points to have gradient (less strict for local scan)
+    return total > 0 && (edgeCount / total) >= 0.4;
+  };
 
-  // Find vertical edges - same continuous requirement
-  const verticalEdges: number[] = [];
-  for (let x = 5; x < screenWidth - 5; x += 2) {
-    let edgePoints = 0;
-    let totalPoints = 0;
-    for (let y = 10; y < screenHeight - 10; y += 5) {
-      totalPoints++;
+  // Check if a vertical line has strong edge (gradient)
+  const hasVerticalEdge = (x: number, y1: number, y2: number): boolean => {
+    let edgeCount = 0;
+    const step = 5;
+    let total = 0;
+    for (let y = y1; y < y2; y += step) {
+      total++;
       const left = getLum(x - 2, y);
       const right = getLum(x + 2, y);
       if (Math.abs(left - right) > EDGE_THRESHOLD) {
-        edgePoints++;
+        edgeCount++;
       }
     }
-    const ratio = edgePoints / totalPoints;
-    if (ratio >= CONTINUITY_RATIO) {
-      if (verticalEdges.length === 0 || x - verticalEdges[verticalEdges.length - 1] > 15) {
-        verticalEdges.push(x);
-        console.log(`[SmartDetection] V-edge at x=${x}, ratio=${(ratio*100).toFixed(0)}%`);
-      }
-    }
-  }
-
-  console.log(`[SmartDetection] Found ${horizontalEdges.length} H-edges, ${verticalEdges.length} V-edges`);
-  console.log(`[SmartDetection] H-edges: ${horizontalEdges.slice(0, 10).join(', ')}...`);
-  console.log(`[SmartDetection] V-edges: ${verticalEdges.slice(0, 10).join(', ')}...`);
-
-  // Find all valid rectangles
-  const candidateRects: RectCandidate[] = [];
-  // Default: use most of the window with margins for UI controls
-  const marginX = Math.min(20, screenWidth * 0.02);
-  const marginTop = Math.min(10, screenHeight * 0.01);
-  const marginBottom = Math.min(80, screenHeight * 0.1); // More margin at bottom for controls
-  const defaultRect = {
-    left: marginX,
-    right: screenWidth - marginX,
-    top: marginTop,
-    bottom: screenHeight - marginBottom,
+    return total > 0 && (edgeCount / total) >= 0.4;
   };
 
-  if (horizontalEdges.length >= 2 && verticalEdges.length >= 2) {
-    // Sort edges
-    horizontalEdges.sort((a, b) => a - b);
-    verticalEdges.sort((a, b) => a - b);
+  // Scan outward from face to find edges
+  const faceCenterX = face.centerX;
+  const faceCenterY = face.centerY;
+  const minDistFromFace = 20; // Don't detect edges too close to face
 
-    // Try all combinations (limit to avoid explosion)
-    const maxH = Math.min(horizontalEdges.length, 15);
-    const maxV = Math.min(verticalEdges.length, 15);
-
-    for (let hi = 0; hi < maxH - 1; hi++) {
-      for (let hj = hi + 1; hj < maxH; hj++) {
-        for (let vi = 0; vi < maxV - 1; vi++) {
-          for (let vj = vi + 1; vj < maxV; vj++) {
-            const top = horizontalEdges[hi];
-            const bottom = horizontalEdges[hj];
-            const left = verticalEdges[vi];
-            const right = verticalEdges[vj];
-
-            const w = right - left;
-            const h = bottom - top;
-
-            // Skip tiny rectangles - self-view is at least 200x150
-            if (w < 200 || h < 150) continue;
-
-            // MUST contain face with PADDING - reject tight face crops
-            // Require at least 30% of face size as padding on each side
-            const minPadX = face.width * 0.3;
-            const minPadY = face.height * 0.3;
-            const containsFaceWithPadding =
-              face.x > left + minPadX &&
-              (face.x + face.width) < right - minPadX &&
-              face.y > top + minPadY &&
-              (face.y + face.height) < bottom - minPadY;
-            if (!containsFaceWithPadding) continue;
-
-            // Verify corners - check that edges actually meet (forming closed rectangle)
-            // A real corner has gradient in BOTH horizontal and vertical directions
-            const cornerSize = 8;
-            let validCorners = 0;
-
-            // Check each corner for gradients in both directions
-            const corners = [
-              { x: left, y: top },      // top-left
-              { x: right, y: top },     // top-right
-              { x: left, y: bottom },   // bottom-left
-              { x: right, y: bottom },  // bottom-right
-            ];
-
-            for (const corner of corners) {
-              let hasHGradient = false;
-              let hasVGradient = false;
-
-              // Check horizontal gradient near corner
-              for (let dx = -cornerSize; dx <= cornerSize; dx++) {
-                const g = Math.abs(getLum(corner.x + dx, corner.y) - getLum(corner.x + dx + 3, corner.y));
-                if (g > EDGE_THRESHOLD) hasHGradient = true;
-              }
-
-              // Check vertical gradient near corner
-              for (let dy = -cornerSize; dy <= cornerSize; dy++) {
-                const g = Math.abs(getLum(corner.x, corner.y + dy) - getLum(corner.x, corner.y + dy + 3));
-                if (g > EDGE_THRESHOLD) hasVGradient = true;
-              }
-
-              if (hasHGradient && hasVGradient) validCorners++;
-            }
-
-            // Require at least 3 valid corners (allow one weak corner)
-            if (validCorners < 3) continue;
-
-            // Calculate score
-            let score = 0;
-
-            // Prefer rectangles where face is well-centered (not touching edges)
-            const facePadLeft = face.centerX - left;
-            const facePadRight = right - face.centerX;
-            const facePadTop = face.centerY - top;
-            const facePadBottom = bottom - face.centerY;
-            const minPad = Math.min(facePadLeft, facePadRight, facePadTop, facePadBottom);
-            score += Math.min(minPad / 50, 20); // Up to 20 points for padding
-
-            // Prefer larger rectangles (more likely to be the video container)
-            const area = w * h;
-            const screenArea = screenWidth * screenHeight;
-            const areaRatio = area / screenArea;
-            if (areaRatio > 0.1) score += 15;
-            if (areaRatio > 0.2) score += 10;
-            if (areaRatio > 0.4) score += 5;
-
-            // Aspect ratio bonus (video is usually wider than tall)
-            const aspect = w / h;
-            if (aspect > 1.2 && aspect < 2.0) score += 15;
-
-            // Slight preference for bottom-right (self-view position)
-            score += (left + right) / 2 / screenWidth * 5;
-            score += (top + bottom) / 2 / screenHeight * 5;
-
-            candidateRects.push({ left, right, top, bottom, score });
-          }
-        }
-      }
+  // Scan LEFT from face
+  let leftEdge = 0;
+  for (let x = Math.floor(face.x - minDistFromFace); x > 10; x -= 3) {
+    if (hasVerticalEdge(x, face.y, face.y + face.height)) {
+      leftEdge = x;
+      console.log(`[SmartDetection] Found LEFT edge at x=${x}`);
+      break;
     }
   }
 
-  // Sort by score descending
-  candidateRects.sort((a, b) => b.score - a.score);
-
-  console.log(`[SmartDetection] Found ${candidateRects.length} candidate rectangles`);
-  if (candidateRects.length > 0) {
-    console.log(`[SmartDetection] Top 3 candidates:`);
-    candidateRects.slice(0, 3).forEach((r, i) => {
-      console.log(`  ${i + 1}. [${r.left},${r.top}]->[${r.right},${r.bottom}] score=${r.score.toFixed(1)}`);
-    });
+  // Scan RIGHT from face
+  let rightEdge = screenWidth;
+  for (let x = Math.floor(face.x + face.width + minDistFromFace); x < screenWidth - 10; x += 3) {
+    if (hasVerticalEdge(x, face.y, face.y + face.height)) {
+      rightEdge = x;
+      console.log(`[SmartDetection] Found RIGHT edge at x=${x}`);
+      break;
+    }
   }
 
-  const bestRect = candidateRects.length > 0 ? candidateRects[0] : defaultRect;
+  // Scan UP from face
+  let topEdge = 0;
+  for (let y = Math.floor(face.y - minDistFromFace); y > 10; y -= 3) {
+    if (hasHorizontalEdge(y, face.x, face.x + face.width)) {
+      topEdge = y;
+      console.log(`[SmartDetection] Found TOP edge at y=${y}`);
+      break;
+    }
+  }
+
+  // Scan DOWN from face
+  let bottomEdge = screenHeight;
+  for (let y = Math.floor(face.y + face.height + minDistFromFace); y < screenHeight - 10; y += 3) {
+    if (hasHorizontalEdge(y, face.x, face.x + face.width)) {
+      bottomEdge = y;
+      console.log(`[SmartDetection] Found BOTTOM edge at y=${y}`);
+      break;
+    }
+  }
+
+  console.log(`[SmartDetection] Outward scan result: L=${leftEdge}, R=${rightEdge}, T=${topEdge}, B=${bottomEdge}`);
+
+  // Build result
+  const foundEdges = {
+    left: leftEdge,
+    right: rightEdge,
+    top: topEdge,
+    bottom: bottomEdge,
+  };
+
+  // For debug visualization, collect the edges we found
+  const horizontalEdges = [topEdge, bottomEdge].filter(y => y > 0 && y < screenHeight);
+  const verticalEdges = [leftEdge, rightEdge].filter(x => x > 0 && x < screenWidth);
+
+  const candidateRects: RectCandidate[] = [{
+    left: leftEdge,
+    right: rightEdge,
+    top: topEdge,
+    bottom: bottomEdge,
+    score: 100,
+  }];
 
   return {
-    edges: { left: bestRect.left, right: bestRect.right, top: bestRect.top, bottom: bestRect.bottom },
+    edges: foundEdges,
     horizontalEdges,
     verticalEdges,
     candidateRects,
