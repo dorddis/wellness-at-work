@@ -299,7 +299,6 @@ export default function App() {
     calibrations: meetingCalibrations,
     setEnabled: setMeetingModeEnabled,
     setActive: setMeetingModeActive,
-    getCalibration,
     touchCalibration,
     addCalibration: addMeetingCalibration,
   } = useMeetingModeStore();
@@ -600,10 +599,13 @@ export default function App() {
 
         if (result.isDetected && result.appName) {
           // Meeting detected - check if we have calibration for this app
-          const calibration = getCalibration(result.appName);
+          // Get calibration directly from store state (avoid stale closure)
+          const allCalibrations = useMeetingModeStore.getState().calibrations;
+          const calibration = allCalibrations.find(
+            (c) => c.appName.toLowerCase() === result.appName!.toLowerCase()
+          );
 
           // Debug: Log detection and calibration state
-          const allCalibrations = useMeetingModeStore.getState().calibrations;
           console.log('[MeetingMode] Detection result:', {
             detectedApp: result.appName,
             processName: result.processName,
@@ -617,7 +619,16 @@ export default function App() {
             // Note: We auto-start regardless of meetingModeEnabled since user has calibrated
             // (having calibration implies user wants this feature)
             console.log('[MeetingMode] Meeting detected with calibration:', result.appName);
-            const sourceId = await window.lumina.meetingMode.getSourceId(calibration.displayId);
+
+            // Use window capture (coordinates match calibration), fall back to screen capture
+            let sourceId = await window.lumina.meetingMode.getWindowSourceId(result.appName!);
+            if (sourceId) {
+              console.log('[MeetingMode] Using window capture, sourceId:', sourceId);
+            } else {
+              console.log('[MeetingMode] Window not found, falling back to screen capture');
+              sourceId = await window.lumina.meetingMode.getSourceId(calibration.displayId);
+            }
+
             if (sourceId && meetingVideoRef.current) {
               try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -668,6 +679,20 @@ export default function App() {
                 });
 
                 await meetingVideoRef.current.play();
+
+                // DEBUG: Log video element state
+                const videoEl = meetingVideoRef.current;
+                const track = stream.getVideoTracks()[0];
+                console.log('[MeetingMode] DEBUG - Stream started:', {
+                  videoWidth: videoEl.videoWidth,
+                  videoHeight: videoEl.videoHeight,
+                  readyState: videoEl.readyState,
+                  paused: videoEl.paused,
+                  trackLabel: track?.label,
+                  trackEnabled: track?.enabled,
+                  trackReadyState: track?.readyState,
+                  trackSettings: track?.getSettings(),
+                });
 
                 setMeetingModeActive(true, result.appName);
                 touchCalibration(result.appName);
@@ -762,7 +787,7 @@ export default function App() {
         meetingStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isDetecting, meetingModeActive, getCalibration, setMeetingModeActive, touchCalibration]);
+  }, [isDetecting, meetingModeActive, setMeetingModeActive, touchCalibration]);
 
   // Handle notification click - navigate to Meeting Mode view and start calibration
   // This is triggered when user clicks the system notification
@@ -858,6 +883,9 @@ export default function App() {
       // Run detection at ~30fps (33ms) for both camera and meeting mode
       const intervalMs = 33;
 
+      // DEBUG: Throttle logging to once per second
+      let lastDebugLog = 0;
+
       detectionIntervalRef.current = setInterval(() => {
         // Read current meeting mode state directly from store (avoids stale closure)
         const currentMeetingMode = useMeetingModeStore.getState().isActive;
@@ -868,6 +896,17 @@ export default function App() {
 
         // Wait for video to have valid data
         if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
+          // DEBUG: Log when video not ready (throttled)
+          const now = Date.now();
+          if (currentMeetingMode && now - lastDebugLog > 1000) {
+            lastDebugLog = now;
+            console.log('[MeetingMode] DEBUG - Video not ready:', {
+              hasVideo: !!video,
+              readyState: video?.readyState,
+              videoWidth: video?.videoWidth,
+              videoHeight: video?.videoHeight,
+            });
+          }
           return;
         }
 
@@ -875,9 +914,25 @@ export default function App() {
         let frameSource: HTMLVideoElement | HTMLCanvasElement = video;
 
         if (currentMeetingMode && meetingCanvasRef.current) {
-          const detectedApp = useMeetingModeStore.getState().detectedApp;
+          const storeState = useMeetingModeStore.getState();
+          const detectedApp = storeState.detectedApp;
+
+          // DEBUG: Log meeting mode state (throttled)
+          const now = Date.now();
+          if (now - lastDebugLog > 2000) {
+            lastDebugLog = now;
+            console.log('[MeetingMode] DEBUG - Detection loop:', {
+              detectedApp,
+              videoSize: `${video.videoWidth}x${video.videoHeight}`,
+              calibrations: storeState.calibrations.map(c => c.appName),
+            });
+          }
+
           if (detectedApp) {
-            const calibration = getCalibration(detectedApp);
+            // Get calibration directly from store state (avoid stale closure)
+            const calibration = storeState.calibrations.find(
+              (c) => c.appName.toLowerCase() === detectedApp.toLowerCase()
+            );
             if (calibration) {
               const canvas = meetingCanvasRef.current;
               const ctx = canvas.getContext('2d');
@@ -885,6 +940,14 @@ export default function App() {
                 // Set canvas size to region size
                 canvas.width = calibration.region.width;
                 canvas.height = calibration.region.height;
+
+                // DEBUG: Log crop region (throttled)
+                if (now - lastDebugLog > 2000) {
+                  console.log('[MeetingMode] DEBUG - Cropping:', {
+                    region: calibration.region,
+                    videoSize: `${video.videoWidth}x${video.videoHeight}`,
+                  });
+                }
 
                 // Draw cropped region from screen capture
                 ctx.drawImage(
@@ -901,13 +964,35 @@ export default function App() {
 
                 frameSource = canvas;
               }
+            } else {
+              // DEBUG: No calibration found
+              if (now - lastDebugLog > 2000) {
+                console.warn('[MeetingMode] DEBUG - No calibration for:', detectedApp);
+              }
             }
           }
         }
 
         const result = landmarkerManager.processVideoFrame(frameSource);
         if (result) {
-          setFaceDetected(result.rawLandmarks !== null);
+          const faceFound = result.rawLandmarks !== null;
+          setFaceDetected(faceFound);
+
+          // DEBUG: Log face detection result (throttled, only in meeting mode)
+          if (currentMeetingMode) {
+            const now = Date.now();
+            if (now - lastDebugLog > 3000) {
+              lastDebugLog = now;
+              console.log('[MeetingMode] DEBUG - Face detection:', {
+                faceFound,
+                ear: result.blink?.avgEAR?.toFixed(3),
+                frameSourceType: frameSource === video ? 'video' : 'canvas',
+                frameSize: frameSource instanceof HTMLCanvasElement
+                  ? `${frameSource.width}x${frameSource.height}`
+                  : `${(frameSource as HTMLVideoElement).videoWidth}x${(frameSource as HTMLVideoElement).videoHeight}`,
+              });
+            }
+          }
 
           // Update EAR waveform data on every frame (for visualization)
           if (result.rawLandmarks !== null) {
@@ -1021,7 +1106,7 @@ export default function App() {
         detectionIntervalRef.current = null;
       }
     };
-  }, [isDetecting, isVideoReady, meetingModeActive, setFaceDetected, recordBlink, getCalibration]);
+  }, [isDetecting, isVideoReady, meetingModeActive, setFaceDetected, recordBlink]);
 
   // Update blink rate periodically and evaluate alerts
   useEffect(() => {
@@ -1615,7 +1700,15 @@ export default function App() {
                 }
 
                 console.log('[MeetingMode] Starting capture after calibration for:', appName);
-                const sourceId = await window.lumina.meetingMode.getSourceId(0);
+
+                // Use window capture (coordinates match calibration), fall back to screen capture
+                let sourceId = await window.lumina.meetingMode.getWindowSourceId(appName);
+                if (sourceId) {
+                  console.log('[MeetingMode] Using window capture, sourceId:', sourceId);
+                } else {
+                  console.log('[MeetingMode] Window not found, falling back to screen capture');
+                  sourceId = await window.lumina.meetingMode.getSourceId(0);
+                }
                 console.log('[MeetingMode] Got source ID:', sourceId);
 
                 if (sourceId && meetingVideoRef.current) {

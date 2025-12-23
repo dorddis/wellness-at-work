@@ -26,6 +26,8 @@ interface MeetingModeCalibrationProps {
     width: number;
     height: number;
     scaleFactor: number;
+    windowBounds?: { x: number; y: number; width: number; height: number };
+    isWindowCapture?: boolean;
   } | null;
 }
 
@@ -34,6 +36,8 @@ interface ScreenshotData {
   width: number;
   height: number;
   scaleFactor: number;
+  windowBounds?: { x: number; y: number; width: number; height: number };
+  isWindowCapture?: boolean;
 }
 
 /**
@@ -58,6 +62,7 @@ export function MeetingModeCalibration({
   const [error, setError] = useState<string | null>(null);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [autoDetectResult, setAutoDetectResult] = useState<DetectedRegion | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -166,6 +171,9 @@ export function MeetingModeCalibration({
 
   const handleSave = useCallback(() => {
     if (currentRegion && isValidRegion(currentRegion)) {
+      // Save coordinates as-is (window-relative)
+      // Meeting mode now uses window capture, so coordinates match
+      console.log('[Calibration] Saving region (window-relative):', currentRegion);
       onComplete(currentRegion);
     }
   }, [currentRegion, onComplete]);
@@ -303,6 +311,14 @@ export function MeetingModeCalibration({
             )}
           </button>
           <span className="text-xs text-gray-400">or draw manually</span>
+          {autoDetectResult?.debugImageUrl && (
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className={`px-2 py-1 text-xs rounded ${showDebug ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'}`}
+            >
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
           <span className="px-2 py-0.5 bg-gray-100 rounded">Esc</span>
@@ -325,11 +341,20 @@ export function MeetingModeCalibration({
               ref={imageRef}
               src={screenshot.dataUrl}
               alt="Desktop screenshot"
-              className="max-w-full max-h-screen object-contain cursor-crosshair"
+              className="max-w-full max-h-screen object-contain cursor-crosshair select-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               draggable={false}
             />
+
+            {/* Debug overlay showing detected edges */}
+            {showDebug && autoDetectResult?.debugImageUrl && (
+              <img
+                src={autoDetectResult.debugImageUrl}
+                alt="Debug visualization"
+                className="absolute inset-0 w-full h-full object-contain pointer-events-none opacity-80"
+              />
+            )}
 
             {/* Selection box overlay */}
             {displayRegion && (

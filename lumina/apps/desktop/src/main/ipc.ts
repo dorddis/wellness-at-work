@@ -653,21 +653,105 @@ export function setupIPC(
     return getDisplays();
   });
 
-  // Helper function to capture a screenshot of the primary display
-  async function captureScreenshot(): Promise<{
+  // Get source ID for a specific window by app name (for window capture)
+  ipcMain.handle('meeting:get-window-source-id', async (_, appName: string) => {
+    const { getSourceIdForWindow } = await import('./meetingMode');
+    return getSourceIdForWindow(appName);
+  });
+
+  // Helper function to capture a screenshot of a specific window or primary display
+  async function captureScreenshot(windowTitlePattern?: string): Promise<{
     dataUrl: string;
     width: number;
     height: number;
     scaleFactor: number;
+    windowBounds?: { x: number; y: number; width: number; height: number };
+    isWindowCapture: boolean;
   } | null> {
     const { desktopCapturer, screen } = await import('electron');
 
-    // Get actual screen dimensions for full resolution capture
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.workAreaSize;
     const scaleFactor = primaryDisplay.scaleFactor;
 
-    // Capture at actual screen resolution (accounting for HiDPI)
+    // If a window title pattern is provided, try to capture that specific window
+    if (windowTitlePattern) {
+      console.log(`[Screenshot] Looking for window matching: ${windowTitlePattern}`);
+
+      // Get all windows
+      const windowSources = await desktopCapturer.getSources({
+        types: ['window'],
+        thumbnailSize: {
+          width: Math.round(1920 * scaleFactor),
+          height: Math.round(1080 * scaleFactor),
+        },
+        fetchWindowIcons: false,
+      });
+
+      // Find the matching window
+      const pattern = new RegExp(windowTitlePattern, 'i');
+      const matchingWindow = windowSources.find((s) => pattern.test(s.name));
+
+      if (matchingWindow) {
+        console.log(`[Screenshot] Found window: "${matchingWindow.name}"`);
+
+        // Get window bounds using PowerShell (Windows only)
+        let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
+
+        try {
+          const { exec } = await import('child_process');
+          const { promisify } = await import('util');
+          const execAsync = promisify(exec);
+
+          // PowerShell script to get window bounds by title
+          const escapedTitle = matchingWindow.name.replace(/'/g, "''");
+          const psScript = `
+            Add-Type @"
+              using System;
+              using System.Runtime.InteropServices;
+              public class Win32 {
+                [DllImport("user32.dll")]
+                public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+                [DllImport("user32.dll")]
+                public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+              }
+              public struct RECT {
+                public int Left, Top, Right, Bottom;
+              }
+"@
+            $hwnd = [Win32]::FindWindow($null, '${escapedTitle}')
+            $rect = New-Object RECT
+            [Win32]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
+            @{Left=$rect.Left; Top=$rect.Top; Right=$rect.Right; Bottom=$rect.Bottom} | ConvertTo-Json
+          `;
+          const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
+          const { stdout } = await execAsync(`powershell -EncodedCommand ${encoded}`, { timeout: 5000 });
+          const bounds = JSON.parse(stdout.trim());
+          windowBounds = {
+            x: bounds.Left,
+            y: bounds.Top,
+            width: bounds.Right - bounds.Left,
+            height: bounds.Bottom - bounds.Top,
+          };
+          console.log(`[Screenshot] Window bounds:`, windowBounds);
+        } catch (err) {
+          console.log(`[Screenshot] Could not get window bounds:`, err);
+        }
+
+        return {
+          dataUrl: matchingWindow.thumbnail.toDataURL(),
+          width: matchingWindow.thumbnail.getSize().width,
+          height: matchingWindow.thumbnail.getSize().height,
+          scaleFactor,
+          windowBounds,
+          isWindowCapture: true,
+        };
+      } else {
+        console.log(`[Screenshot] No window found matching pattern, falling back to screen capture`);
+      }
+    }
+
+    // Fallback: capture full screen
+    const { width, height } = primaryDisplay.workAreaSize;
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: {
@@ -676,39 +760,57 @@ export function setupIPC(
       },
     });
 
-    // Get the primary display source
     const primarySource = sources.find((s) => s.display_id === '0') || sources[0];
 
     if (primarySource) {
-      // Return as data URL for display in renderer
       return {
         dataUrl: primarySource.thumbnail.toDataURL(),
         width: primarySource.thumbnail.getSize().width,
         height: primarySource.thumbnail.getSize().height,
-        // Include scale factor so renderer can adjust coordinates
         scaleFactor,
+        isWindowCapture: false,
       };
     }
 
     return null;
   }
 
-  // Capture a screenshot of the primary display for calibration
-  ipcMain.handle('meeting:capture-screenshot', async () => {
-    return captureScreenshot();
+  // Capture a screenshot - can capture specific window by title pattern
+  ipcMain.handle('meeting:capture-screenshot', async (_, windowTitlePattern?: string) => {
+    return captureScreenshot(windowTitlePattern);
   });
 
   // Start meeting mode calibration (opens hub and triggers calibration UI)
   ipcMain.handle('meeting:start-calibration', async () => {
+    // First detect which meeting app is active
+    const { detectMeetingApp } = await import('./meetingMode');
+    const detection = await detectMeetingApp();
+
+    // Build window title pattern based on detected app
+    let windowTitlePattern: string | undefined;
+    if (detection.isDetected) {
+      // Use patterns that match meeting windows
+      if (detection.appName === 'Google Meet') {
+        windowTitlePattern = 'Meet.*-.*-|meet\\.google\\.com';
+      } else if (detection.appName === 'Zoom') {
+        windowTitlePattern = 'Zoom Meeting|Zoom Webinar';
+      } else if (detection.appName === 'Microsoft Teams') {
+        windowTitlePattern = 'Microsoft Teams|teams\\.microsoft';
+      }
+    }
+
     // IMPORTANT: Capture screenshot FIRST while meeting is still visible
-    // Then show hub window with the pre-captured screenshot
-    const screenshot = await captureScreenshot();
+    // Try to capture just the meeting window, not the full screen
+    const screenshot = await captureScreenshot(windowTitlePattern);
 
     // Now show the hub window (this will focus it, but we already have the screenshot)
     windowManager.showHubWindow();
 
     // Send event to trigger calibration UI with pre-captured screenshot
-    windowManager.sendToHub('meeting-mode:start-calibration', { screenshot });
+    windowManager.sendToHub('meeting-mode:start-calibration', {
+      screenshot,
+      appName: detection.appName,
+    });
   });
 
   // ============================================================================

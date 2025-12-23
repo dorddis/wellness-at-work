@@ -325,3 +325,64 @@ export function getDisplays(): Array<{
     isPrimary: d.id === primaryId,
   }));
 }
+
+/**
+ * Window title patterns for each meeting app
+ */
+const WINDOW_TITLE_PATTERNS: Record<string, RegExp> = {
+  'google meet': /Meet\s*[-–]\s*[a-z]{3}-[a-z]{4}-[a-z]{3}|Google Meet|meet\.google\.com/i,
+  zoom: /Zoom\s*(Meeting|Webinar)?|app\.zoom\.us/i,
+  'microsoft teams': /Microsoft Teams|teams\.microsoft\.com/i,
+  webex: /Webex|webex\.com/i,
+};
+
+/**
+ * Get the source ID for a specific window by app name
+ * Used to capture just the meeting window instead of entire screen
+ */
+export async function getSourceIdForWindow(
+  appName: string
+): Promise<string | null> {
+  try {
+    const normalizedAppName = appName.toLowerCase();
+    const titlePattern = WINDOW_TITLE_PATTERNS[normalizedAppName];
+
+    if (!titlePattern) {
+      console.warn('[MeetingMode] No title pattern for app:', appName);
+      return null;
+    }
+
+    // Get all window sources
+    const sources = await desktopCapturer.getSources({
+      types: ['window'],
+      thumbnailSize: { width: 150, height: 150 },
+    });
+
+    console.log(
+      '[MeetingMode] Looking for window matching:',
+      titlePattern,
+      'in',
+      sources.length,
+      'windows'
+    );
+
+    // Find window matching the pattern
+    const matchingSource = sources.find((s) => titlePattern.test(s.name));
+
+    if (!matchingSource) {
+      console.warn('[MeetingMode] No window found matching pattern for:', appName);
+      // Log available windows for debugging
+      console.log(
+        '[MeetingMode] Available windows:',
+        sources.map((s) => s.name)
+      );
+      return null;
+    }
+
+    console.log('[MeetingMode] Found matching window:', matchingSource.name);
+    return matchingSource.id;
+  } catch (error) {
+    console.error('[MeetingMode] Failed to get window source ID:', error);
+    return null;
+  }
+}

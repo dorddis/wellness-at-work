@@ -8,15 +8,15 @@ import { useMeetingModeStore, type CaptureRegion } from '@lumina/ui';
 
 interface UseMeetingModeCaptureResult {
   /** Video element ref for screen capture stream */
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   /** Canvas element ref for cropping region */
-  canvasRef: React.RefObject<HTMLCanvasElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
   /** Whether screen capture is currently active */
   isCapturing: boolean;
   /** Last error message, if any */
   error: string | null;
-  /** Start screen capture for a display */
-  startCapture: (displayId?: number) => Promise<boolean>;
+  /** Start capture - uses window capture when appName provided, otherwise screen capture */
+  startCapture: (appName?: string, displayId?: number) => Promise<boolean>;
   /** Stop screen capture */
   stopCapture: () => void;
   /** Get cropped frame from the capture region */
@@ -38,24 +38,44 @@ export function useMeetingModeCapture(): UseMeetingModeCaptureResult {
   const { setActive, setError: setStoreError } = useMeetingModeStore();
 
   /**
-   * Start screen capture for the specified display
-   * Uses Electron's desktopCapturer via getUserMedia
+   * Start capture for meeting mode
+   * Uses window capture when appName is provided (coordinates match calibration)
+   * Falls back to screen capture if window not found or appName not provided
    */
-  const startCapture = useCallback(async (displayId?: number): Promise<boolean> => {
+  const startCapture = useCallback(async (appName?: string, displayId?: number): Promise<boolean> => {
     try {
       setError(null);
 
-      // Get the source ID for the display
-      const sourceId = await window.lumina.meetingMode.getSourceId(displayId);
+      let sourceId: string | null = null;
+      let isWindowCapture = false;
+
+      // Try window capture first when appName is provided
+      // This ensures coordinates match between calibration and capture
+      if (appName) {
+        console.log('[MeetingCapture] Trying window capture for:', appName);
+        sourceId = await window.lumina.meetingMode.getWindowSourceId(appName);
+        if (sourceId) {
+          isWindowCapture = true;
+          console.log('[MeetingCapture] Using window capture, sourceId:', sourceId);
+        } else {
+          console.log('[MeetingCapture] Window not found, falling back to screen capture');
+        }
+      }
+
+      // Fall back to screen capture
+      if (!sourceId) {
+        sourceId = await window.lumina.meetingMode.getSourceId(displayId);
+        console.log('[MeetingCapture] Using screen capture, sourceId:', sourceId);
+      }
 
       if (!sourceId) {
-        const message = 'Could not get screen capture source';
+        const message = 'Could not get capture source';
         setError(message);
         setStoreError(message);
         return false;
       }
 
-      // Request screen capture stream using Electron's chromeMediaSource
+      // Request capture stream using Electron's chromeMediaSource
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
@@ -80,9 +100,10 @@ export function useMeetingModeCapture(): UseMeetingModeCaptureResult {
       }
 
       setIsCapturing(true);
+      console.log('[MeetingCapture] Capture started, isWindowCapture:', isWindowCapture);
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to start screen capture';
+      const message = err instanceof Error ? err.message : 'Failed to start capture';
       setError(message);
       setStoreError(message);
       setIsCapturing(false);

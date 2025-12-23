@@ -125,6 +125,8 @@ export interface LuminaAPI {
     detectApp: () => Promise<MeetingDetectionResult>;
     getSources: () => Promise<ScreenSource[]>;
     getSourceId: (displayId?: number) => Promise<string | null>;
+    /** Get source ID for a specific window by app name (for window capture) */
+    getWindowSourceId: (appName: string) => Promise<string | null>;
     getDisplays: () => Promise<DisplayInfo[]>;
     captureScreenshot: () => Promise<ScreenshotResult | null>;
     /** Opens hub and triggers meeting mode calibration */
@@ -514,6 +516,7 @@ const luminaAPI: LuminaAPI = {
     detectApp: () => ipcRenderer.invoke('meeting:detect-app'),
     getSources: () => ipcRenderer.invoke('meeting:get-sources'),
     getSourceId: (displayId) => ipcRenderer.invoke('meeting:get-source-id', displayId),
+    getWindowSourceId: (appName) => ipcRenderer.invoke('meeting:get-window-source-id', appName),
     getDisplays: () => ipcRenderer.invoke('meeting:get-displays'),
     captureScreenshot: () => ipcRenderer.invoke('meeting:capture-screenshot'),
     startCalibration: () => ipcRenderer.invoke('meeting:start-calibration'),
