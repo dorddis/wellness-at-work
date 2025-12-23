@@ -5,12 +5,14 @@
  * - Bilateral EAR calculation (both eyes)
  * - Slope detection (rate of change)
  * - Head motion gating (suppress during movement)
+ * - Gaze tracking (suppress during look up/down)
  * - State machine (phase tracking)
  *
  * This is more accurate than simple threshold detection, especially for:
  * - Mini blinks
  * - Glasses wearers
  * - Variable lighting conditions
+ * - Vertical gaze shifts (looking up/down)
  */
 
 import { Point2D } from './blink';
@@ -18,6 +20,7 @@ import { SlopeDetector, SlopeResult } from './slope-detector';
 import { HeadMotionTracker, HeadMotionResult } from './head-motion';
 import { BilateralVerifier, BilateralResult } from './bilateral';
 import { BlinkStateMachine, BlinkPhase, BlinkEvent, StateMachineResult } from './blink-state-machine';
+import { GazeTracker, GazeResult } from './gaze-tracker';
 
 export interface RobustBlinkResult {
   /** True if a valid blink was detected this frame */
@@ -50,6 +53,10 @@ export interface RobustBlinkResult {
   slope: SlopeResult;
   /** Head motion result */
   headMotion: HeadMotionResult;
+  /** Whether a gaze shift (looking up/down) was detected */
+  gazeIsShifting: boolean;
+  /** Gaze tracking result */
+  gaze: GazeResult;
 }
 
 /**
@@ -71,6 +78,7 @@ export class RobustBlinkDetector {
   private bilateral: BilateralVerifier;
   private slopeDetector: SlopeDetector;
   private headMotion: HeadMotionTracker;
+  private gazeTracker: GazeTracker;
   private stateMachine: BlinkStateMachine;
 
   // Counters
@@ -80,6 +88,7 @@ export class RobustBlinkDetector {
     this.bilateral = new BilateralVerifier();
     this.slopeDetector = new SlopeDetector();
     this.headMotion = new HeadMotionTracker();
+    this.gazeTracker = new GazeTracker();
     this.stateMachine = new BlinkStateMachine();
   }
 
@@ -104,13 +113,20 @@ export class RobustBlinkDetector {
     // 2. Track head motion
     const headResult = this.headMotion.update(landmarks);
 
-    // 3. Calculate slope of average EAR
+    // 3. Track gaze direction (iris position)
+    const gazeResult = this.gazeTracker.update(landmarks, ts);
+
+    // 4. Calculate slope of average EAR
     const slopeResult = this.slopeDetector.update(bilateralResult.avgEar, ts);
 
-    // 4. Update state machine
+    // 5. Update state machine
     // Only consider closing/opening if both eyes are symmetric
     const effectiveClosing = slopeResult.isClosing && bilateralResult.isSymmetric;
     const effectiveOpening = slopeResult.isOpening && bilateralResult.isSymmetric;
+
+    // Combine movement suppression: head motion OR gaze shift
+    // Both indicate the EAR change is not from a blink
+    const isMovementDetected = headResult.isMoving || gazeResult.isGazeShift;
 
     // Start tracking blink dip when entering CLOSING phase
     if (slopeResult.isClosing && this.stateMachine.phase === BlinkPhase.IDLE) {
@@ -124,7 +140,7 @@ export class RobustBlinkDetector {
       slopeResult.isAtMinimum,
       bilateralResult.avgEar,
       ts,
-      headResult.isMoving,
+      isMovementDetected, // Now includes gaze shift
     );
 
     // Update baseline AFTER state machine update (matches Python prototype)
@@ -141,6 +157,15 @@ export class RobustBlinkDetector {
       this.bilateral.endBlinkTracking();
     }
 
+    // Enhance rejection reason with gaze shift info if applicable
+    let rejectionReason = stateResult.rejectionReason;
+    if (gazeResult.isGazeShift && !stateResult.blinkDetected && this.stateMachine.phase !== BlinkPhase.IDLE) {
+      // Add gaze shift context to rejection reason
+      if (rejectionReason) {
+        rejectionReason += ` (gaze_shift: velocity=${gazeResult.velocity.toFixed(4)}, displacement=${gazeResult.recentDisplacement.toFixed(3)})`;
+      }
+    }
+
     return {
       isBlink: stateResult.blinkDetected,
       avgEar: bilateralResult.avgEar,
@@ -152,11 +177,13 @@ export class RobustBlinkDetector {
       phaseName: stateResult.phase,
       blinkEvent: stateResult.blinkEvent,
       headIsMoving: headResult.isMoving,
-      rejectionReason: stateResult.rejectionReason,
+      rejectionReason,
       threshold: bilateralResult.combinedBaseline,
       bilateral: bilateralResult,
       slope: slopeResult,
       headMotion: headResult,
+      gazeIsShifting: gazeResult.isGazeShift,
+      gaze: gazeResult,
     };
   }
 
@@ -202,6 +229,7 @@ export class RobustBlinkDetector {
     this.bilateral.reset();
     this.slopeDetector.reset();
     this.headMotion.reset();
+    this.gazeTracker.reset();
     this.stateMachine.reset();
     this.blinkCount = 0;
   }

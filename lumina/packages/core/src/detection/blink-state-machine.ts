@@ -72,7 +72,7 @@ export class BlinkStateMachine {
    * @param isAtMinimum True if slope is near zero
    * @param currentEar Current EAR value
    * @param timestampMs Current timestamp in milliseconds
-   * @param headIsMoving True if head motion detected (suppresses detection)
+   * @param isMovementDetected True if movement detected (head motion OR gaze shift - suppresses detection)
    * @returns StateMachineResult with current phase and any detected blink
    */
   update(
@@ -81,7 +81,7 @@ export class BlinkStateMachine {
     isAtMinimum: boolean,
     currentEar: number,
     timestampMs?: number,
-    headIsMoving: boolean = false,
+    isMovementDetected: boolean = false,
   ): StateMachineResult {
     const ts = timestampMs ?? performance.now();
 
@@ -107,10 +107,10 @@ export class BlinkStateMachine {
       case BlinkPhase.IDLE: {
         // Trigger on slope (fast blink) OR threshold crossing (slow blink)
         let startBlink = false;
-        if (isClosing && !headIsMoving) {
+        if (isClosing && !isMovementDetected) {
           startBlink = true;
           this.isSlowBlink = false;
-        } else if (earBelowThreshold && !headIsMoving) {
+        } else if (earBelowThreshold && !isMovementDetected) {
           // Slow blink: EAR dropped below threshold without significant slope
           startBlink = true;
           this.isSlowBlink = true;
@@ -127,10 +127,10 @@ export class BlinkStateMachine {
       }
 
       case BlinkPhase.CLOSING:
-        if (headIsMoving) {
-          // Abort - head motion detected
+        if (isMovementDetected) {
+          // Abort - movement detected (head motion or gaze shift)
           this.phase = BlinkPhase.IDLE;
-          rejectionReason = 'head_motion_during_closing';
+          rejectionReason = 'movement_during_closing';
         } else if (ts - this.closingStartMs > BLINK_TIMING.CLOSING_TIMEOUT_MS) {
           // Timeout - eyes stayed closed too long (not a blink)
           this.phase = BlinkPhase.IDLE;
@@ -143,9 +143,9 @@ export class BlinkStateMachine {
         break;
 
       case BlinkPhase.MINIMUM:
-        if (headIsMoving) {
+        if (isMovementDetected) {
           this.phase = BlinkPhase.IDLE;
-          rejectionReason = 'head_motion_at_minimum';
+          rejectionReason = 'movement_at_minimum';
         } else if (isOpening) {
           // Eyes starting to open (fast blink via slope)
           this.phase = BlinkPhase.OPENING;
@@ -159,9 +159,9 @@ export class BlinkStateMachine {
         break;
 
       case BlinkPhase.OPENING: {
-        if (headIsMoving) {
+        if (isMovementDetected) {
           this.phase = BlinkPhase.IDLE;
-          rejectionReason = 'head_motion_during_opening';
+          rejectionReason = 'movement_during_opening';
           break;
         }
 
