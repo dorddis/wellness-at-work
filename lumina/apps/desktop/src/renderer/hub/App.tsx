@@ -356,25 +356,17 @@ export default function App() {
     meetingStreamRef,
     isDetecting,
     onShowCalibrationUI: (appName) => {
-      console.log('[MeetingStateMachine] Show calibration UI for:', appName);
       setCalibrationAppName(appName);
       setShowCalibrationUI(true);
     },
     onHideCalibrationUI: () => {
-      console.log('[MeetingStateMachine] Hide calibration UI');
       setShowCalibrationUI(false);
     },
     onShowNotification: (title, message, actions) => {
-      console.log('[MeetingStateMachine] Show notification:', { title, message, actions });
       // TODO: Wire to actual notification system during refactor
     },
-    debug: true, // Enable transition logging for validation
+    debug: false, // Set to true for transition logging
   });
-
-  // Log state machine phase changes for debugging
-  useEffect(() => {
-    console.log('[MeetingStateMachine] Phase:', meetingPhase, '|', meetingStateDescription);
-  }, [meetingPhase, meetingStateDescription]);
 
   // Check window maximize state on mount
   useEffect(() => {
