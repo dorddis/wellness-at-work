@@ -11,6 +11,31 @@ export const LEFT_EYE_INDICES = [33, 160, 158, 133, 153, 144] as const;
 // [inner corner, upper inner, upper outer, outer corner, lower outer, lower inner]
 export const RIGHT_EYE_INDICES = [362, 385, 387, 263, 373, 380] as const;
 
+// ============================================================================
+// Iris/Gaze Tracking Landmark Indices
+// Used to detect vertical gaze direction (looking up/down)
+// ============================================================================
+
+/** Iris center landmarks (MediaPipe Face Mesh) */
+export const IRIS_INDICES = {
+  /** Left iris center */
+  LEFT_CENTER: 468,
+  /** Right iris center */
+  RIGHT_CENTER: 473,
+} as const;
+
+/** Eye lid landmarks for gaze position calculation */
+export const EYE_LID_INDICES = {
+  /** Left eye upper lid center */
+  LEFT_UPPER: 159,
+  /** Left eye lower lid center */
+  LEFT_LOWER: 145,
+  /** Right eye upper lid center */
+  RIGHT_UPPER: 386,
+  /** Right eye lower lid center */
+  RIGHT_LOWER: 374,
+} as const;
+
 // Eye Aspect Ratio threshold - below this indicates closed eyes (more sensitive: 0.18 vs 0.21)
 export const EAR_THRESHOLD = 0.18;
 
@@ -355,4 +380,105 @@ export const HYBRID_VALIDATION = {
   /** Absolute closed threshold: If EAR drops below this, always count as blink
    *  Regardless of baseline, this represents truly closed eyes */
   ABSOLUTE_CLOSED_THRESHOLD: 0.22,
+} as const;
+
+// ============================================================================
+// Gaze/Iris Tracking Configuration
+// Detects vertical gaze shifts (looking up/down) to prevent false blink detection
+// ============================================================================
+
+/**
+ * Gaze tracking configuration for detecting look up/down movements
+ *
+ * When a user looks down and back up quickly, the EAR pattern mimics a blink:
+ * - Looking down: EAR drops (eyelids appear to cover more of the eye)
+ * - Looking up: EAR restores
+ *
+ * We detect this by tracking the iris position relative to the eye opening.
+ * During a real blink, the iris doesn't move vertically (it's hidden).
+ * During a gaze shift, the iris moves significantly.
+ *
+ * Iris Y Ratio: (iris.y - upperLid.y) / (lowerLid.y - upperLid.y)
+ * - Looking straight: ~0.5 (iris centered)
+ * - Looking down: >0.6 (iris closer to lower lid)
+ * - Looking up: <0.4 (iris closer to upper lid)
+ */
+export const GAZE_TRACKING = {
+  /** Number of frames for gaze velocity calculation */
+  VELOCITY_WINDOW_FRAMES: 5,
+
+  /**
+   * Minimum iris velocity (ratio units per frame) to be considered a gaze shift
+   * Higher = less sensitive (only fast movements rejected)
+   * Lower = more sensitive (slower movements also rejected)
+   * Typical fast gaze shift: 0.05-0.15 per frame at 30fps
+   */
+  VELOCITY_THRESHOLD: 0.04,
+
+  /**
+   * Time window (ms) to look for gaze shift during blink detection
+   * If significant iris movement detected within this window before EAR dip,
+   * the "blink" is likely a gaze shift
+   */
+  DETECTION_WINDOW_MS: 200,
+
+  /**
+   * Minimum total iris displacement (ratio units) to reject a blink
+   * This catches cases where velocity is moderate but total movement is large
+   * e.g., slow look down then up
+   */
+  MIN_DISPLACEMENT_THRESHOLD: 0.15,
+
+  /**
+   * EMA smoothing factor for iris position (0 = no smoothing, 1 = no memory)
+   * Light smoothing helps with landmark jitter while preserving fast movements
+   */
+  SMOOTHING_ALPHA: 0.4,
+
+  /**
+   * Minimum eye opening (pixels) below which gaze tracking is unreliable
+   * When eyes are nearly closed, iris landmarks become noisy
+   */
+  MIN_EYE_OPENING_PIXELS: 5,
+
+  /**
+   * Feature flag to enable/disable gaze tracking
+   * Set to false if iris landmark detection is unreliable for your use case
+   */
+  ENABLED: true,
+} as const;
+
+// ============================================================================
+// Calibration Flow Feature Flags
+// Controls whether onboarding calibration data is used by the detector
+// See: docs/08-TESTING/CALIBRATION_ISSUES.md
+// ============================================================================
+
+/**
+ * Feature flags for calibration behavior
+ *
+ * These flags coordinate breaking changes across the codebase.
+ * Do not enable without testing and coordinating with other developers.
+ */
+export const CALIBRATION_FLAGS = {
+  /**
+   * When true, pass onboarding calibration baseline to RobustBlinkDetector.
+   *
+   * Currently false because:
+   * - BilateralVerifier uses its own EMA-based baseline
+   * - Need to wire calibration data through FaceLandmarkerManager
+   * - Requires testing to ensure no regression
+   *
+   * Enable after Phase 2 implementation is complete.
+   * @see docs/08-TESTING/CALIBRATION_ISSUES.md
+   */
+  USE_ONBOARDING_CALIBRATION: false,
+
+  /**
+   * When true, use 60-second calibration duration (matches EAR_CALIBRATION).
+   * When false, use legacy 30-second duration.
+   *
+   * Can be enabled independently of USE_ONBOARDING_CALIBRATION.
+   */
+  USE_EXTENDED_CALIBRATION_DURATION: false,
 } as const;
