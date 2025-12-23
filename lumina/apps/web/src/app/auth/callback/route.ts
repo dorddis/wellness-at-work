@@ -10,6 +10,9 @@ export async function GET(request: NextRequest) {
   if (code) {
     const cookieStore = await cookies();
 
+    // Track cookies that need to be set on the response
+    const cookiesToSet: { name: string; value: string; options: CookieOptions }[] = [];
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,15 +21,17 @@ export async function GET(request: NextRequest) {
           getAll() {
             return cookieStore.getAll();
           },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }: { name: string; value: string; options: CookieOptions }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // The `setAll` method is called from a Server Component.
-              // This can be ignored if middleware refreshes sessions.
-            }
+          setAll(cookies: { name: string; value: string; options: CookieOptions }[]) {
+            // Store cookies to apply to redirect response later
+            cookiesToSet.push(...cookies);
+            // Also set on cookieStore for immediate use
+            cookies.forEach(({ name, value, options }) => {
+              try {
+                cookieStore.set(name, value, options);
+              } catch {
+                // Ignore - we'll set on response
+              }
+            });
           },
         },
       }
@@ -38,6 +43,8 @@ export async function GET(request: NextRequest) {
       // Check if user has an organization
       const { data: { user } } = await supabase.auth.getUser();
 
+      let redirectUrl = `${origin}${next}`;
+
       if (user) {
         const { data: memberships } = await supabase
           .from('org_members')
@@ -47,11 +54,16 @@ export async function GET(request: NextRequest) {
 
         if (!memberships || memberships.length === 0) {
           // User needs to join or create an organization
-          return NextResponse.redirect(`${origin}/onboarding`);
+          redirectUrl = `${origin}/onboarding`;
         }
       }
 
-      return NextResponse.redirect(`${origin}${next}`);
+      // Create redirect response and apply session cookies
+      const response = NextResponse.redirect(redirectUrl);
+      cookiesToSet.forEach(({ name, value, options }) => {
+        response.cookies.set(name, value, options);
+      });
+      return response;
     }
   }
 
