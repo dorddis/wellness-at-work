@@ -5,7 +5,7 @@
  * 2. Edge detection (gradient-based boundary finding)
  */
 
-import { FaceLandmarkerManager } from '@lumina/core';
+// MediaPipe is imported dynamically in detectFaces() for IMAGE mode
 
 export interface DetectedRegion {
   x: number;
@@ -42,15 +42,18 @@ interface Edges {
 const CONFIG = {
   GRADIENT_THRESHOLD: 30,    // Luminance change to consider an "edge"
   SAMPLE_STEP: 2,            // Pixels to step when scanning
-  MAX_SCAN_DISTANCE: 400,    // Don't scan more than 400px from face
+  MAX_SCAN_DISTANCE: 150,    // Max scan from face edge (self-view is typically small)
   MIN_BOX_SIZE: 80,          // Minimum expected self-view size
   MULTI_RAY_OFFSETS: [-20, -10, 0, 10, 20], // Parallel rays for robustness
   FALLBACK_EXPAND_X: 1.8,    // Fallback: expand face width by this factor
   FALLBACK_EXPAND_Y: 2.2,    // Fallback: expand face height by this factor
   // Edge detection for rectangles
-  EDGE_THRESHOLD: 35,        // Strong edge threshold
+  EDGE_THRESHOLD: 25,        // Strong edge threshold (lowered for video borders)
   MIN_EDGE_POINTS: 4,        // Min points to consider a line
   DEBUG_MODE: true,          // Enable debug visualization
+  // Self-view size constraints
+  MAX_SELFVIEW_WIDTH: 400,   // Self-view is never wider than this
+  MAX_SELFVIEW_HEIGHT: 350,  // Self-view is never taller than this
 };
 
 /**
@@ -231,24 +234,39 @@ async function dataUrlToImageData(
 
 /**
  * Detect faces in the screenshot using MediaPipe FaceLandmarker
- * Uses a canvas to convert the image to a format FaceLandmarker can process
+ * Uses IMAGE mode (not VIDEO mode) for static screenshot analysis
  */
 async function detectFaces(
   dataUrl: string,
   width: number,
   height: number
 ): Promise<FaceBounds[]> {
-  // Create a temporary FaceLandmarker for detection
-  const manager = new FaceLandmarkerManager();
+  // Import MediaPipe directly for IMAGE mode detection
+  const { FaceLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
+
+  // Use Awaited type to get the resolved type from createFromOptions
+  let faceLandmarker: Awaited<ReturnType<typeof FaceLandmarker.createFromOptions>> | null = null;
 
   try {
-    // Initialize with IMAGE running mode by configuring for single frame
-    await manager.initialize({
-      numFaces: 5, // Allow multiple faces for self-view candidate selection
-      disableCalibration: true, // Don't need calibration for detection
+    // Load WASM files
+    const vision = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm'
+    );
+
+    // Create FaceLandmarker in IMAGE mode (critical for static screenshots!)
+    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath:
+          'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        delegate: 'GPU',
+      },
+      runningMode: 'IMAGE', // IMAGE mode for static screenshots
+      numFaces: 5, // Detect multiple faces to find self-view
+      minFaceDetectionConfidence: 0.3, // Lower threshold to catch small faces
+      minTrackingConfidence: 0.3,
     });
 
-    // Create canvas from image for detection
+    // Create canvas from image
     const img = await loadImage(dataUrl);
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -260,42 +278,50 @@ async function detectFaces(
     }
     ctx.drawImage(img, 0, 0, width, height);
 
-    // Detect faces using processVideoFrame (works with canvas)
-    const result = manager.processVideoFrame(canvas, width);
+    // Detect faces using IMAGE mode's detect() method
+    const result = faceLandmarker.detect(canvas);
 
-    if (!result || !result.rawLandmarks) {
+    console.log(`[SmartDetection] MediaPipe detected ${result.faceLandmarks?.length || 0} face(s)`);
+
+    if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
+      console.warn('[SmartDetection] No faces found in screenshot');
       return [];
     }
 
-    // We get one face from rawLandmarks - convert to bounds
-    // For multiple faces, we'd need to modify FaceLandmarkerManager
-    const landmarks = result.rawLandmarks;
-    const xs = landmarks.map((p: { x: number; y: number }) => p.x * width);
-    const ys = landmarks.map((p: { x: number; y: number }) => p.y * height);
+    // Convert all detected faces to FaceBounds
+    const faces: FaceBounds[] = result.faceLandmarks.map((landmarks: Array<{x: number; y: number; z: number}>, idx: number) => {
+      const xs = landmarks.map((p: {x: number}) => p.x * width);
+      const ys = landmarks.map((p: {y: number}) => p.y * height);
 
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
 
-    const faceWidth = maxX - minX;
-    const faceHeight = maxY - minY;
+      const faceWidth = maxX - minX;
+      const faceHeight = maxY - minY;
 
-    // Return single face (FaceLandmarkerManager currently returns first face only)
-    return [{
-      x: minX,
-      y: minY,
-      width: faceWidth,
-      height: faceHeight,
-      area: faceWidth * faceHeight,
-      centerX: minX + faceWidth / 2,
-      centerY: minY + faceHeight / 2,
-    }];
+      console.log(`[SmartDetection] Face ${idx}: x=${minX.toFixed(0)}, y=${minY.toFixed(0)}, w=${faceWidth.toFixed(0)}, h=${faceHeight.toFixed(0)}`);
+
+      return {
+        x: minX,
+        y: minY,
+        width: faceWidth,
+        height: faceHeight,
+        area: faceWidth * faceHeight,
+        centerX: minX + faceWidth / 2,
+        centerY: minY + faceHeight / 2,
+      };
+    });
+
+    return faces;
   } catch (err) {
     console.error('[SmartDetection] Face detection error:', err);
     return [];
   } finally {
-    manager.close();
+    if (faceLandmarker) {
+      faceLandmarker.close();
+    }
   }
 }
 

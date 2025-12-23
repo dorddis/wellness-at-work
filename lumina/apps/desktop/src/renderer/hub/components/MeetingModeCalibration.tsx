@@ -63,6 +63,7 @@ export function MeetingModeCalibration({
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [autoDetectResult, setAutoDetectResult] = useState<DetectedRegion | null>(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [autoDetectMessage, setAutoDetectMessage] = useState<string | null>(null); // Non-blocking message
   const overlayRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -137,6 +138,7 @@ export function MeetingModeCalibration({
     // Reset region and auto-detect result on new manual selection
     setCurrentRegion(null);
     setAutoDetectResult(null);
+    setAutoDetectMessage(null); // Clear any failure message
   }, []);
 
   const handleMouseMove = useCallback(
@@ -188,6 +190,7 @@ export function MeetingModeCalibration({
 
     setIsAutoDetecting(true);
     setAutoDetectResult(null);
+    setAutoDetectMessage(null);
 
     try {
       const result = await autoDetectSelfView(
@@ -205,15 +208,14 @@ export function MeetingModeCalibration({
           width: result.width,
           height: result.height,
         });
+        setAutoDetectMessage(null);
       } else {
-        // No face detected - show message
-        setError('Could not detect your face. Please draw the region manually.');
-        setTimeout(() => setError(null), 3000);
+        // No face detected - show non-blocking message, keep UI available
+        setAutoDetectMessage('Could not detect your face. Please draw the region manually.');
       }
     } catch (err) {
       console.error('[Calibration] Auto-detect error:', err);
-      setError('Auto-detection failed. Please draw the region manually.');
-      setTimeout(() => setError(null), 3000);
+      setAutoDetectMessage('Auto-detection failed. Please draw the region manually.');
     } finally {
       setIsAutoDetecting(false);
     }
@@ -326,6 +328,23 @@ export function MeetingModeCalibration({
           <span className="px-2 py-0.5 bg-gray-100 rounded ml-2">Enter</span>
           <span>to save</span>
         </div>
+        {/* Non-blocking auto-detect failure message */}
+        {autoDetectMessage && (
+          <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+            <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="text-amber-800 text-sm">{autoDetectMessage}</span>
+            <button
+              onClick={() => setAutoDetectMessage(null)}
+              className="ml-auto p-1 hover:bg-amber-100 rounded"
+            >
+              <svg className="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Screenshot as background with selection overlay */}
