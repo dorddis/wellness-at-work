@@ -20,6 +20,7 @@ export * from './detection/slope-detector';
 export * from './detection/head-motion';
 export * from './detection/bilateral';
 export * from './detection/blink-state-machine';
+export * from './detection/gaze-tracker';
 export * from './detection/robust-blink-detector';
 
 // Alerts
