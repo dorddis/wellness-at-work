@@ -1,6 +1,6 @@
 # Onboarding Improvements - Implementation Plan
 
-**Status:** Paused - Resume later
+**Status:** ✅ COMPLETE
 **Last Updated:** 2025-12-23
 
 ## Completed Work
@@ -33,15 +33,37 @@
 - Reduced y movement (20 → 10)
 - Changed color theme to black/white/gray only (removed green/purple/orange)
 
+### 6. CalibrationStep with Real Detection (DONE - Dec 2025)
+
+**Previously:** CalibrationStep used fake data (`Math.random()`) instead of actual blink detection.
+
+**Now Implemented:**
+- Real FaceLandmarker detection during 30-second calibration
+- Live video preview with face detection overlay
+- EARCalibrator integration for personalized thresholds
+- Actual blink counting and EAR sample collection
+- Error handling for camera/detection failures
+- Cleanup of camera stream and FaceLandmarker on unmount
+
+**Key Changes:**
+```typescript
+// Now uses real detection
+const faceLandmarkerRef = useRef<FaceLandmarkerManager | null>(null);
+const earCalibratorRef = useRef<EARCalibrator | null>(null);
+// ... runs actual detection loop at ~30fps
+```
+
 ---
 
-## Pending Work
+## Reference: Original CalibrationStep Task (COMPLETED)
 
-### Task 1: Fix CalibrationStep with Real Detection
+The following was the original implementation plan, now complete:
 
-**Problem:** CalibrationStep currently uses fake data (`Math.random()`) instead of actual blink detection.
+### Original Problem Statement
 
-**Current Implementation (lines 44-52 in CalibrationStep.tsx):**
+CalibrationStep used fake data (`Math.random()`) instead of actual blink detection.
+
+**Previous Implementation (lines 44-52 in CalibrationStep.tsx):**
 ```typescript
 // Simulate blink detection during calibration
 if (Math.random() < 0.03) {

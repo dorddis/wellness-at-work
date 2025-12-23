@@ -18,7 +18,7 @@ See `lumina/` folder for the implementation.
 | Component | Technology |
 |-----------|------------|
 | Monorepo | Turborepo + pnpm |
-| Desktop App | Electron 33+ with Vite |
+| Desktop App | Electron 39+ with Vite |
 | Web Dashboard | Next.js 15 |
 | UI Framework | React 18 + Tailwind CSS |
 | State Management | Zustand |
@@ -176,7 +176,7 @@ Meeting ends → Stop screen capture → Restart webcam
 - 2+ yawns in 10 min: "Feeling tired? A short break might help"
 - PERCLOS >20%: "Your eyes are heavy - take a break"
 
-**Implementation:** See `lumina/docs/features/POSTURE_YAWN_DETECTION.md`
+**Implementation:** See `docs/05-FEATURES/POSTURE_YAWN_DETECTION.md`
 
 ### EXPLICIT NON-GOAL: Emotion Detection
 
@@ -191,7 +191,7 @@ Meeting ends → Stop screen capture → Restart webcam
 
 **Our positioning:** "We DON'T track your emotions" is a FEATURE, not a missing capability.
 
-See `DEC-006` in `lumina/docs/PRODUCT_DECISIONS.md` for full rationale.
+See `DEC-006` in `docs/06-BUSINESS/PRODUCT_DECISIONS.md` for full rationale.
 
 ## Blink Detection Algorithm
 
@@ -210,32 +210,46 @@ EAR = (A + B) / (2.0 * C)  # A,B = vertical, C = horizontal
 
 ```
 wellness-at-work/
-├── src/                        # Desktop app (PyQt6)
-│   ├── main.py                 # Entry point
-│   ├── ui/                     # PyQt windows, system tray
-│   ├── detection/              # MediaPipe blink/posture detectors
-│   ├── core/                   # Session, analytics, alerts engine
-│   └── data/                   # SQLite, Supabase sync, models
-├── web-dashboard/              # Next.js static dashboard
-├── tests/                      # pytest
-├── eye-tracker-share/          # Their reference (79 lines)
-└── docs/                       # Architecture docs
+├── README.md                   # Project overview
+├── docs/                       # Reorganized documentation
+│   ├── INDEX.md                # Master navigation hub
+│   ├── FOUNDER_DEMO_PACKAGE.md # Complete founder pitch
+│   ├── CURRENT_IMPLEMENTATION_STATUS.md
+│   ├── 01-START-HERE/          # Quick orientation
+│   ├── 02-PRODUCT/             # Business & product strategy
+│   ├── 03-ARCHITECTURE/        # Technical design
+│   ├── 04-IMPLEMENTATION/      # Developer guides
+│   ├── 05-FEATURES/            # Feature deep dives
+│   ├── 06-BUSINESS/            # Business case materials
+│   ├── 07-API-REFERENCE/       # Technical specs
+│   └── 08-TESTING/             # QA & verification
+├── archive/                    # Historical artifacts
+└── lumina/                     # Monorepo implementation
+    ├── apps/
+    │   ├── desktop/            # Electron app (Vite + React)
+    │   └── web/                # Next.js dashboard
+    ├── packages/
+    │   ├── core/               # Business logic
+    │   ├── ui/                 # React components
+    │   └── api/                # Supabase integration
+    └── supabase/
+        └── migrations/         # Database schema
 ```
 
 ## Key Documentation
 
 | File | Purpose | Read Time |
 |------|---------|-----------|
-| `ARCHITECTURE_SUMMARY.md` | Executive summary | 5 min |
-| `ARCHITECTURE_DECISION.md` | TimescaleDB vs Event-Driven decision | 10 min |
-| `CRITICAL_CHALLENGES.md` | The 6 make-or-break problems | 5 min |
-| `IMPLEMENTATION_ROADMAP.md` | 4-week sprint plan | 15 min |
-| `SCALE_CHALLENGES_FILTERED.md` | Top 10 scaling challenges | 10 min |
-| `lumina/docs/GDPR_COMPLIANCE.md` | **GDPR implementation: data export, deletion, consent tracking** | 10 min |
-| `lumina/docs/features/MEETING_MODE.md` | **Planned:** Meeting mode via screen capture | 10 min |
-| `lumina/docs/features/POSTURE_YAWN_DETECTION.md` | **Planned:** Posture, yawn, drowsiness detection | 10 min |
-| `lumina/docs/PRODUCT_DECISIONS.md` | **All product decisions for founder demo** | 20 min |
-| `lumina/docs/UI_UX_IMPLEMENTATION.md` | **UI/UX enhancements: components, onboarding, gamification** | 15 min |
+| `docs/INDEX.md` | **Master navigation hub** | 5 min |
+| `docs/FOUNDER_DEMO_PACKAGE.md` | Complete founder pitch deck | 15 min |
+| `docs/CURRENT_IMPLEMENTATION_STATUS.md` | Feature audit with status | 10 min |
+| `docs/03-ARCHITECTURE/ARCHITECTURE_OVERVIEW.md` | System architecture | 10 min |
+| `docs/02-PRODUCT/CRITICAL_CHALLENGES.md` | The 9 make-or-break problems | 5 min |
+| `docs/04-IMPLEMENTATION/GDPR_COMPLIANCE.md` | GDPR: data export, deletion, consent | 10 min |
+| `docs/05-FEATURES/MEETING_MODE.md` | **Complete:** Meeting mode via screen capture | 10 min |
+| `docs/05-FEATURES/POSTURE_YAWN_DETECTION.md` | **Complete:** Posture, yawn, drowsiness detection | 10 min |
+| `docs/06-BUSINESS/PRODUCT_DECISIONS.md` | All product decisions for founder demo | 20 min |
+| `docs/05-FEATURES/UI_UX_IMPLEMENTATION.md` | UI/UX: components, onboarding, gamification | 15 min |
 
 ## Database Schema (TimescaleDB)
 
