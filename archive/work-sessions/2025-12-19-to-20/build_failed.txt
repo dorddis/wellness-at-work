@@ -1,0 +1,19 @@
+Run pnpm run package
+  pnpm run package
+  shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+  env:
+    NODE_VERSION: 20
+    PNPM_VERSION: 9
+    PNPM_HOME: C:\Users\runneradmin\setup-pnpm\node_modules\.bin
+    GH_TOKEN: ***
+
+> @lumina/desktop@0.1.2 package D:\a\wellness-at-work\wellness-at-work\lumina\apps\desktop
+> electron-builder
+
+  • electron-builder  version=25.1.8 os=10.0.26100
+  • artifacts will be published  reason=tag is defined tag=v0.1.2
+  • loaded configuration  file=package.json ("build" field)
+  ⨯ Cannot compute electron version from installed node modules - none of the possible electron modules are installed and version ("^33.2.0") is not fixed in project.
+See https://github.com/electron-userland/electron-builder/issues/3984#issuecomment-504968246
+ ELIFECYCLE  Command failed with exit code 1.
+Error: Process completed with exit code 1.

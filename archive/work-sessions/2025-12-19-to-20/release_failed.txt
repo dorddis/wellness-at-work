@@ -1,0 +1,55 @@
+Run # Find the installer files
+  # Find the installer files
+  WINDOWS_FILE=$(find artifacts/windows -name "*.exe" -not -name "*.blockmap" | head -1)
+  
+  echo "Windows file: $WINDOWS_FILE"
+  
+  # Get file sizes
+  WINDOWS_SIZE=$(stat -c%s "$WINDOWS_FILE" 2>/dev/null || echo "0")
+  
+  echo "Windows size: $WINDOWS_SIZE bytes"
+  
+  # Upload to Supabase Storage using curl
+  STORAGE_URL="${SUPABASE_URL}/storage/v1/object/releases/v${VERSION}"
+  
+  # Upload Windows installer
+  if [ -n "$WINDOWS_FILE" ] && [ -f "$WINDOWS_FILE" ]; then
+    WINDOWS_FILENAME=$(basename "$WINDOWS_FILE")
+    echo "Uploading $WINDOWS_FILENAME..."
+    curl -X POST "${STORAGE_URL}/${WINDOWS_FILENAME}" \
+      -H "Authorization: ***" \
+      -H "Content-Type: application/octet-stream" \
+      --data-binary "@${WINDOWS_FILE}"
+    WINDOWS_URL="${SUPABASE_URL}/storage/v1/object/public/releases/v${VERSION}/${WINDOWS_FILENAME}"
+  fi
+  
+  # Insert/Update release in database
+  echo "Updating releases table..."
+  curl -X POST "${SUPABASE_URL}/rest/v1/releases" \
+    -H "apikey: ${SUPABASE_SERVICE_KEY}" \
+    -H "Authorization: ***" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: resolution=merge-duplicates" \
+    -d "{
+      \"version\": \"${VERSION}\",
+      \"windows_url\": \"${WINDOWS_URL:-null}\",
+      \"windows_size\": ${WINDOWS_SIZE:-0},
+      \"macos_url\": null,
+      \"macos_size\": 0,
+      \"release_notes\": \"Release v${VERSION}\" 
+    }"
+  
+  echo "Release v${VERSION} uploaded successfully!"
+  echo "Windows: ${WINDOWS_URL:-'Not available'}"
+  shell: /usr/bin/bash -e {0}
+  env:
+    NODE_VERSION: 22
+    PNPM_VERSION: 9
+    SUPABASE_URL: ***
+    SUPABASE_SERVICE_KEY: ***
+    VERSION: 0.1.5
+Windows file: artifacts/windows/Lumina Setup 0.1.5.exe
+Windows size: 93289985 bytes
+Uploading Lumina Setup 0.1.5.exe...
+curl: (3) URL rejected: Malformed input to a URL function
+Error: Process completed with exit code 3.
