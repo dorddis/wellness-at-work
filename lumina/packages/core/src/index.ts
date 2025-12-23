@@ -23,6 +23,10 @@ export * from './detection/blink-state-machine';
 export * from './detection/gaze-tracker';
 export * from './detection/robust-blink-detector';
 
+// Meeting mode
+export * from './detection/meetingModeCrop';
+export * from './meeting-mode';
+
 // Alerts
 export * from './alerts/rules';
 export * from './alerts/engine';

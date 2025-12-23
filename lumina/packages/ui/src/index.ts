@@ -12,5 +12,8 @@ export * from './components';
 // Stores
 export * from './stores';
 
+// Hooks
+export * from './hooks';
+
 // Constants
 export * from './constants/privacy';
