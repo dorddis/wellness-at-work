@@ -325,6 +325,34 @@ Physiological signals that indicate engagement/wellbeing without interpreting em
 
 ---
 
+## DEC-010B: GDPR Compliance Features
+
+**Date:** December 2024
+
+**Context:** B2B enterprise customers require GDPR compliance for EU employees.
+
+**Decision:** Implement full GDPR compliance with user-facing controls.
+
+**Implementation:**
+- **Local-only mode:** Toggle to disable cloud sync entirely (Settings > Privacy)
+- **Data export:** JSON and CSV export of all personal data (last 90 days)
+- **Account deletion:** 30-day grace period with Edge Function for permanent deletion
+- **Privacy consent tracking:** Version-tracked policy consent in database
+- **Data access requests:** In-app form for formal SAR/rectification requests
+
+**Technical Details:**
+- `privacy_consents` table with RLS for consent tracking
+- `data_access_requests` table for formal requests
+- `process-account-deletions` Edge Function runs daily via pg_cron
+- See `docs/GDPR_COMPLIANCE.md` for full implementation guide
+
+**Rationale:**
+- EU enterprises cannot deploy without GDPR compliance
+- Proactive compliance builds trust with security-conscious buyers
+- User control reinforces "privacy-first" positioning
+
+---
+
 # UX Decisions
 
 ## DEC-011: System Tray First, Window Second

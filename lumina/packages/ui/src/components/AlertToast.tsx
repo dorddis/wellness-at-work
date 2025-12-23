@@ -9,6 +9,10 @@ export interface AlertToastProps {
   severity: AlertSeverity;
   message: string;
   action?: string;
+  /** Optional primary action button text (replaces Snooze when provided) */
+  actionButtonText?: string;
+  /** Callback when action button is clicked */
+  onActionClick?: (id: string) => void;
   onDismiss: (id: string) => void;
   onSnooze: (id: string, minutes: number) => void;
   onDoubleClick?: () => void;
@@ -36,6 +40,8 @@ export function AlertToast({
   severity,
   message,
   action,
+  actionButtonText,
+  onActionClick,
   onDismiss,
   onSnooze,
   onDoubleClick,
@@ -74,12 +80,21 @@ export function AlertToast({
         >
           Dismiss
         </button>
-        <button
-          onClick={() => onSnooze(id, 10)}
-          className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-current/10 hover:bg-current/20 transition-colors"
-        >
-          Snooze 10 min
-        </button>
+        {actionButtonText && onActionClick ? (
+          <button
+            onClick={() => onActionClick(id)}
+            className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          >
+            {actionButtonText}
+          </button>
+        ) : (
+          <button
+            onClick={() => onSnooze(id, 10)}
+            className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-current/10 hover:bg-current/20 transition-colors"
+          >
+            Snooze 10 min
+          </button>
+        )}
       </div>
     </motion.div>
   );

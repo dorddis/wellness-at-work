@@ -35,12 +35,12 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         {/* Shield icon */}
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.5 }}
-          className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
+          className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
         >
-          <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -51,18 +51,18 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
         </motion.div>
 
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
           className="text-2xl font-bold text-gray-900 mb-2"
         >
           Your Privacy is Protected
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
           className="text-gray-600 mb-8 max-w-md"
         >
           We take your privacy seriously. Here's how we keep your data safe:
@@ -73,9 +73,9 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
           {privacyPoints.map((point, index) => (
             <motion.div
               key={point.title}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 + index * 0.15, duration: 0.4 }}
               className="flex items-start gap-4 text-left bg-gray-50 rounded-lg p-4"
             >
               <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">

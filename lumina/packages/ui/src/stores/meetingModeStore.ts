@@ -36,7 +36,7 @@ export interface MeetingModeState {
   calibrations: MeetingAppCalibration[];
 
   // Settings
-  captureRate: number; // FPS, default 10
+  captureRate: number; // FPS, default 30
   autoDetect: boolean; // Auto-switch on meeting detection
 
   // Actions
@@ -89,7 +89,7 @@ const initialState = DEMO_MODE
           lastUsed: Date.now() - 1 * 24 * 60 * 60 * 1000,
         },
       ],
-      captureRate: 10,
+      captureRate: 30,
       autoDetect: true,
     }
   : {
@@ -99,7 +99,7 @@ const initialState = DEMO_MODE
       detectedApp: null,
       lastError: null,
       calibrations: [],
-      captureRate: 10,
+      captureRate: 30,
       autoDetect: true,
     };
 
@@ -119,16 +119,21 @@ export const useMeetingModeStore = create<MeetingModeState>()(
 
       setError: (error) => set({ lastError: error }),
 
+      // Helper: normalize app name for case-insensitive comparison
+      // All comparisons use lowercase to handle "Google Meet" vs "Google meet" etc.
       addCalibration: (cal) =>
         set((state) => {
           const now = Date.now();
-          const existing = state.calibrations.find((c) => c.appName === cal.appName);
+          const normalizedName = cal.appName.toLowerCase();
+          const existing = state.calibrations.find(
+            (c) => c.appName.toLowerCase() === normalizedName
+          );
 
           if (existing) {
-            // Update existing calibration
+            // Update existing calibration (keep original stored name)
             return {
               calibrations: state.calibrations.map((c) =>
-                c.appName === cal.appName
+                c.appName.toLowerCase() === normalizedName
                   ? { ...c, region: cal.region, displayId: cal.displayId, lastUsed: now }
                   : c
               ),
@@ -147,26 +152,37 @@ export const useMeetingModeStore = create<MeetingModeState>()(
       updateCalibration: (appName, region) =>
         set((state) => ({
           calibrations: state.calibrations.map((c) =>
-            c.appName === appName ? { ...c, region, lastUsed: Date.now() } : c
+            c.appName.toLowerCase() === appName.toLowerCase()
+              ? { ...c, region, lastUsed: Date.now() }
+              : c
           ),
         })),
 
       removeCalibration: (appName) =>
         set((state) => ({
-          calibrations: state.calibrations.filter((c) => c.appName !== appName),
+          calibrations: state.calibrations.filter(
+            (c) => c.appName.toLowerCase() !== appName.toLowerCase()
+          ),
         })),
 
-      getCalibration: (appName) => get().calibrations.find((c) => c.appName === appName),
+      getCalibration: (appName) =>
+        get().calibrations.find(
+          (c) => c.appName.toLowerCase() === appName.toLowerCase()
+        ),
 
       touchCalibration: (appName) =>
         set((state) => ({
           calibrations: state.calibrations.map((c) =>
-            c.appName === appName ? { ...c, lastUsed: Date.now() } : c
+            c.appName.toLowerCase() === appName.toLowerCase()
+              ? { ...c, lastUsed: Date.now() }
+              : c
           ),
         })),
 
       hasCalibration: (appName) =>
-        get().calibrations.some((c) => c.appName === appName),
+        get().calibrations.some(
+          (c) => c.appName.toLowerCase() === appName.toLowerCase()
+        ),
 
       setCaptureRate: (fps) =>
         set({ captureRate: Math.max(5, Math.min(30, fps)) }),

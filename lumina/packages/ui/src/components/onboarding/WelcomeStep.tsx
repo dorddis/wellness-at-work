@@ -16,11 +16,11 @@ export interface WelcomeStepProps {
 export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
   return (
     <div className="h-full flex flex-col items-center justify-center px-8 text-center">
-      {/* Logo animation */}
+      {/* Logo animation - gentle scale up */}
       <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', duration: 0.8 }}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', duration: 1.2, bounce: 0.3 }}
         className="mb-8"
       >
         {logoSrc ? (
@@ -35,18 +35,18 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
       </motion.div>
 
       <motion.h1
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
         className="text-3xl font-bold text-gray-900 mb-4"
       >
         Welcome to Lumina
       </motion.h1>
 
       <motion.p
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
         className="text-lg text-gray-600 mb-8 max-w-md"
       >
         Your AI-powered eye wellness companion. We'll help you maintain healthy
@@ -55,9 +55,9 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
 
       {/* Features */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.8, duration: 0.6 }}
         className="flex gap-6 mb-12"
       >
         <Feature icon="eye" label="Blink Detection" />
@@ -66,9 +66,9 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 1.0, duration: 0.6 }}
         className="flex flex-col gap-3 w-full max-w-xs"
       >
         <button

@@ -54,8 +54,9 @@ async function createApp() {
   syncService = new SyncService(database);
   await syncService.initialize();
 
-  // Start auto-sync (every 5 minutes)
-  syncService.startAutoSync(5 * 60 * 1000);
+  // NOTE: Auto-sync is NOT started here - it's controlled by the renderer
+  // based on cloudSyncEnabled setting (GDPR local-only mode support).
+  // The renderer calls sync:start-auto after login if cloudSyncEnabled is true.
 
   // Setup permission handler for camera/microphone access
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {

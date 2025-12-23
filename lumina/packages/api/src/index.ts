@@ -49,8 +49,19 @@ export {
   getOrgSettings,
   updateOrgSettings,
   exportUserData,
+  type ExportFormat,
+  type ExportDataResult,
   requestAccountDeletion,
   cancelAccountDeletion,
+  // Privacy Consent
+  getPrivacyConsent,
+  recordPrivacyConsent,
+  // Data Access Requests
+  submitDataAccessRequest,
+  getMyDataAccessRequests,
+  type DataRequestType,
+  type DataRequestStatus,
+  type DataAccessRequest,
   // Break Events
   getMyBreakEvents,
   getMyBreakStats,

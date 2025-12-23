@@ -52,6 +52,7 @@ export {
   CalibrationStep,
   GoalsStep,
   CompleteStep,
+  Stepper,
   type OnboardingFlowProps,
   type WelcomeStepProps,
   type PrivacyStepProps,
@@ -59,4 +60,6 @@ export {
   type CalibrationStepProps,
   type GoalsStepProps,
   type CompleteStepProps,
+  type StepperProps,
+  type Step,
 } from './onboarding';

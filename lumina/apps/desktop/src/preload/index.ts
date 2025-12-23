@@ -127,6 +127,8 @@ export interface LuminaAPI {
     getSourceId: (displayId?: number) => Promise<string | null>;
     getDisplays: () => Promise<DisplayInfo[]>;
     captureScreenshot: () => Promise<ScreenshotResult | null>;
+    /** Opens hub and triggers meeting mode calibration */
+    startCalibration: () => Promise<void>;
   };
 
   // System Notifications
@@ -137,6 +139,9 @@ export interface LuminaAPI {
   // Meeting Mode Navigation (from notification clicks)
   onMeetingModeNavigate: (callback: () => void) => () => void;
   offMeetingModeNavigate: (callback: () => void) => void;
+
+  // Meeting Mode Start Calibration (from alert action button)
+  onMeetingModeStartCalibration: (callback: () => void) => () => void;
 }
 
 interface ScreenshotResult {
@@ -166,12 +171,16 @@ interface AlertData {
     | 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture'
     | 'break_reminder' | 'posture' | 'session_start' | 'custom'
     | 'calibration_complete' | 'break_complete'
-    // New wellness alert types
+    // Wellness alert types
     | 'too_close' | 'too_far' | 'head_tilt' | 'forward_lean'
-    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning';
+    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning'
+    // Meeting mode alerts
+    | 'meeting_detected' | 'meeting_mode_active' | 'meeting_mode_error';
   severity: 'info' | 'warning' | 'critical';
   message: string;
   action?: string;
+  /** Button text for primary action (e.g., "Set Up Now") */
+  actionButtonText?: string;
 }
 
 interface RollupData {
@@ -506,6 +515,7 @@ const luminaAPI: LuminaAPI = {
     getSourceId: (displayId) => ipcRenderer.invoke('meeting:get-source-id', displayId),
     getDisplays: () => ipcRenderer.invoke('meeting:get-displays'),
     captureScreenshot: () => ipcRenderer.invoke('meeting:capture-screenshot'),
+    startCalibration: () => ipcRenderer.invoke('meeting:start-calibration'),
   },
 
   notification: {
@@ -521,6 +531,13 @@ const luminaAPI: LuminaAPI = {
   offMeetingModeNavigate: (callback) => {
     // Remove listener by reference - but typically the returned cleanup function should be used
     ipcRenderer.removeAllListeners('meeting-mode:navigate');
+  },
+
+  // Meeting Mode Start Calibration (from alert action button)
+  onMeetingModeStartCalibration: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('meeting-mode:start-calibration', handler);
+    return () => ipcRenderer.removeListener('meeting-mode:start-calibration', handler);
   },
 };
 

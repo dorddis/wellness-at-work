@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import { WindowManager } from './windows';
 import { DatabaseManager, WellnessEventType } from './database';
 import { SyncService } from './sync';
-import { getSupabase, syncAlert } from '@lumina/api';
+import { getSupabase, syncAlert, requestAccountDeletion } from '@lumina/api';
 
 // Store reference to window manager for deep link handling
 let globalWindowManager: WindowManager | null = null;
@@ -573,6 +573,8 @@ export function setupIPC(
   });
 
   // Request account deletion (30-day grace period)
+  // The Edge Function 'process-account-deletions' runs daily at 3 AM UTC
+  // to permanently delete accounts marked for deletion > 30 days ago.
   ipcMain.handle('auth:request-account-deletion', async () => {
     try {
       const supabase = getSupabase();
@@ -582,18 +584,11 @@ export function setupIPC(
         return { success: false, error: 'Not authenticated' };
       }
 
-      // Calculate deletion date (30 days from now)
-      const deletionDate = new Date();
-      deletionDate.setDate(deletionDate.getDate() + 30);
+      // Mark user for deletion in org_members table
+      // The actual deletion is handled by the 'process-account-deletions' Edge Function
+      const result = await requestAccountDeletion(user.id);
 
-      // TODO: In production, you would call an API to schedule deletion
-      // For now, we'll just return the scheduled date
-      // The actual deletion would be handled by a backend job
-
-      return {
-        success: true,
-        deletionDate: deletionDate.toISOString(),
-      };
+      return result;
     } catch (err) {
       return { success: false, error: String(err) };
     }
@@ -691,6 +686,14 @@ export function setupIPC(
     }
 
     return null;
+  });
+
+  // Start meeting mode calibration (opens hub and triggers calibration UI)
+  ipcMain.handle('meeting:start-calibration', async () => {
+    // Show the hub window
+    windowManager.showHubWindow();
+    // Send event to trigger calibration UI
+    windowManager.sendToHub('meeting-mode:start-calibration', {});
   });
 
   // ============================================================================

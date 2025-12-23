@@ -109,13 +109,40 @@ Must solve these before anything else. Product fails without them.
 **Problem:** Enterprise users spend 30-50% of their workday in video meetings. During meetings, the camera is "owned" by Zoom/Teams/Meet, so our app cannot access it directly. **Without solving this, Lumina is useless during 4+ hours/day.**
 
 **Solution:** Screen-capture the user's self-view preview (the small video of yourself in the corner):
-1. Detect meeting app is active (process monitoring)
+1. Detect meeting app is active (process monitoring via PowerShell)
 2. User calibrates self-view region once per app (drag box around their face preview)
-3. Capture that screen region at ~10 FPS
+3. Capture that screen region at 30 FPS (same as webcam)
 4. Run existing MediaPipe pipeline on captured frames
 5. Calculate EAR and detect blinks as normal
 
-**Implementation:** See `lumina/docs/features/MEETING_MODE.md` for full technical spec.
+**Implementation Status:** COMPLETE - See `lumina/apps/desktop/src/renderer/hub/App.tsx`
+
+**Key Implementation Details:**
+- Detection loop: 33ms interval (30 FPS) for both webcam and meeting mode
+- Screen capture: Electron `desktopCapturer` via `getUserMedia` with `chromeMediaSource: 'desktop'`
+- Frame cropping: Canvas `drawImage()` with calibrated region coordinates
+- Video elements: Hidden `<video>` and `<canvas>` for processing only
+- State: `useMeetingModeStore` (Zustand with localStorage persistence)
+
+**Meeting Mode Flow:**
+```
+Meeting detected → Has calibration?
+  → YES: Stop webcam → Start screen capture → Wait for video ready → setMeetingModeActive(true)
+  → NO: Stop webcam → Show notification → User calibrates → Start capture
+Meeting ends → Stop screen capture → Restart webcam
+```
+
+**Bug Fixes Applied (Dec 2024):**
+1. ~~Notification respects `meetingModeEnabled` flag~~ → Changed: notification shows REGARDLESS of enabled state (for first-time discovery)
+2. Camera restarts when meeting ends without calibration (was stuck off)
+3. `dismissedMeetingPromptRef` cleared on meeting end (allows re-notification next meeting)
+4. `pendingMeetingApp` cleared on calibration cancel
+5. Meeting check before auto-start after calibration (prevents capture when meeting ended during calibration)
+6. Error notifications shown when screen capture fails
+7. Video ready wait added to auto-start path (was race condition)
+8. **PowerShell detection fixed** - Uses `-EncodedCommand` to avoid `$_` escaping issues with cmd.exe
+9. **Race condition fixed** - `pendingMeetingApp` only cleared AFTER screen capture starts (prevents camera from restarting before capture is ready)
+10. Detection runs at 30 FPS (was 10 FPS) - same as webcam for consistent blink detection
 
 **Priority:** P1.5 - Must ship in v1.2 before enterprise pilots.
 
@@ -204,6 +231,7 @@ wellness-at-work/
 | `CRITICAL_CHALLENGES.md` | The 6 make-or-break problems | 5 min |
 | `IMPLEMENTATION_ROADMAP.md` | 4-week sprint plan | 15 min |
 | `SCALE_CHALLENGES_FILTERED.md` | Top 10 scaling challenges | 10 min |
+| `lumina/docs/GDPR_COMPLIANCE.md` | **GDPR implementation: data export, deletion, consent tracking** | 10 min |
 | `lumina/docs/features/MEETING_MODE.md` | **Planned:** Meeting mode via screen capture | 10 min |
 | `lumina/docs/features/POSTURE_YAWN_DETECTION.md` | **Planned:** Posture, yawn, drowsiness detection | 10 min |
 | `lumina/docs/PRODUCT_DECISIONS.md` | **All product decisions for founder demo** | 20 min |

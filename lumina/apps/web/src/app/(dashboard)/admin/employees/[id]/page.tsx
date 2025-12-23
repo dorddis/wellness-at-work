@@ -159,11 +159,11 @@ export default function EmployeeDetailPage() {
 
         // Build employee object
         const employeeInfo: Employee = {
-          id: memberData.user_id,
+          id: memberData.user_id ?? employeeId,
           name: memberData.full_name || memberData.email?.split('@')[0] || 'Unknown',
           email: memberData.email ?? 'unknown@example.com',
           department: memberData.department ?? 'Unassigned',
-          joinedAt: memberData.joined_at,
+          joinedAt: memberData.joined_at ?? new Date().toISOString(),
           score: calculateWellnessScore(avgBlinkRate),
           blinkRate: Math.round(avgBlinkRate * 10) / 10,
           totalSessions: uniqueSessions.size || Math.ceil((wellnessData?.length ?? 0) / 60),

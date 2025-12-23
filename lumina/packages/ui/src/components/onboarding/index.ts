@@ -10,3 +10,4 @@ export { CameraStep, type CameraStepProps } from './CameraStep';
 export { CalibrationStep, type CalibrationStepProps } from './CalibrationStep';
 export { GoalsStep, type GoalsStepProps } from './GoalsStep';
 export { CompleteStep, type CompleteStepProps } from './CompleteStep';
+export { Stepper, type StepperProps, type Step } from './Stepper';

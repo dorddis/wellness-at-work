@@ -63,8 +63,11 @@ const MEETING_APPS: MeetingAppConfig[] = [
 export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
   try {
     // PowerShell command to get process names and window titles
+    // Using -EncodedCommand to avoid shell escaping issues with $_ variable
+    const psScript = `Get-Process | Where-Object {$_.MainWindowTitle -ne ''} | Select-Object ProcessName, MainWindowTitle | ConvertTo-Json -Compress`;
+    const encodedCommand = Buffer.from(psScript, 'utf16le').toString('base64');
     const { stdout } = await execAsync(
-      'powershell -Command "Get-Process | Where-Object {$_.MainWindowTitle -ne \'\'} | Select-Object ProcessName, MainWindowTitle | ConvertTo-Json -Compress"',
+      `powershell -NoProfile -EncodedCommand ${encodedCommand}`,
       { timeout: 5000 }
     );
 

@@ -11,3 +11,6 @@ export * from './components';
 
 // Stores
 export * from './stores';
+
+// Constants
+export * from './constants/privacy';

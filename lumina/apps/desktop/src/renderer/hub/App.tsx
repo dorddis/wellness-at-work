@@ -13,6 +13,7 @@ import {
   AchievementBadge,
   PreBreakToast,
   EarWaveform,
+  OnboardingFlow,
   ACHIEVEMENTS,
   type DayData,
   type CaptureRegion,
@@ -230,6 +231,16 @@ export default function App() {
 
   const { alerts, addAlert, dismissAlert } = useAlertStore();
 
+  // Onboarding state + cloud sync control
+  const {
+    hasCompletedOnboarding,
+    setOnboardingComplete,
+    setWellnessGoals,
+    setSelectedCameraId: saveSelectedCameraId,
+    selectedCameraId: savedCameraId,
+    cloudSyncEnabled: appCloudSyncEnabled, // Used for auto-sync control after auth
+  } = useSettingsStore();
+
   // Camera state
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
@@ -295,6 +306,9 @@ export default function App() {
   // Meeting mode calibration UI state (for main app - triggered by meeting detection prompt)
   const [showCalibrationUI, setShowCalibrationUI] = useState(false);
   const [calibrationAppName, setCalibrationAppName] = useState<string>('');
+  // State for meeting detected without calibration (camera paused, waiting for user action)
+  const [pendingMeetingApp, setPendingMeetingApp] = useState<string | null>(null);
+  const dismissedMeetingPromptRef = useRef<Set<string>>(new Set());
 
   // Check window maximize state on mount
   useEffect(() => {
@@ -351,6 +365,19 @@ export default function App() {
       await window.lumina.sync.setCredentials(user.organization.id, user.id);
     }
   }, []);
+
+  // Start auto-sync after auth if cloudSyncEnabled is true (GDPR local-only mode support)
+  useEffect(() => {
+    if (!authUser) return;
+
+    if (appCloudSyncEnabled) {
+      console.log('[Sync] Starting auto-sync (cloudSyncEnabled=true)');
+      window.lumina?.sync.startAuto();
+    } else {
+      console.log('[Sync] Auto-sync disabled (local-only mode)');
+      window.lumina?.sync.stopAuto();
+    }
+  }, [authUser, appCloudSyncEnabled]);
 
   // Load baseline from database on auth
   useEffect(() => {
@@ -422,10 +449,10 @@ export default function App() {
     };
   }, [authUser]);
 
-  // Start camera when detection starts (unless in meeting mode), stop when it stops
+  // Start camera when detection starts (unless in meeting mode or pending calibration), stop when it stops
   useEffect(() => {
-    if (!isDetecting || meetingModeActive) {
-      // Stop camera when detection stops OR when meeting mode is active
+    if (!isDetecting || meetingModeActive || pendingMeetingApp) {
+      // Stop camera when detection stops OR when meeting mode is active OR waiting for calibration
       if (currentStreamRef.current) {
         console.log('[Camera] Stopping camera...');
         currentStreamRef.current.getTracks().forEach(track => track.stop());
@@ -436,12 +463,17 @@ export default function App() {
       }
       setIsVideoReady(false);
 
-      // If meeting mode is active, we don't return - detection continues with screen capture
+      // Early exit cases
       if (!isDetecting) {
         return;
       }
 
-      // In meeting mode, set video ready since we'll use the meeting video
+      // Pending meeting app - camera stopped, waiting for calibration, don't continue detection
+      if (pendingMeetingApp) {
+        return;
+      }
+
+      // In meeting mode, detection continues with screen capture video
       if (meetingModeActive && meetingVideoRef.current && meetingVideoRef.current.readyState >= 2) {
         setIsVideoReady(true);
       }
@@ -522,11 +554,7 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [isDetecting, meetingModeActive]);
-
-  // State for meeting detected (no in-app prompt, only notification)
-  const [pendingMeetingApp, setPendingMeetingApp] = useState<string | null>(null);
-  const dismissedMeetingPromptRef = useRef<Set<string>>(new Set());
+  }, [isDetecting, meetingModeActive, pendingMeetingApp]);
 
   // Meeting detection polling - ALWAYS check for meetings when detection is running
   useEffect(() => {
@@ -542,9 +570,21 @@ export default function App() {
           // Meeting detected - check if we have calibration for this app
           const calibration = getCalibration(result.appName);
 
-          if (calibration && meetingModeEnabled && !meetingModeActive) {
-            // Has calibration and enabled - auto-start
-            console.log('[MeetingMode] Meeting detected:', result.appName);
+          // Debug: Log detection and calibration state
+          const allCalibrations = useMeetingModeStore.getState().calibrations;
+          console.log('[MeetingMode] Detection result:', {
+            detectedApp: result.appName,
+            processName: result.processName,
+            hasCalibration: !!calibration,
+            storedCalibrations: allCalibrations.map(c => c.appName),
+            meetingModeActive,
+          });
+
+          if (calibration && !meetingModeActive) {
+            // Has calibration - auto-start meeting mode
+            // Note: We auto-start regardless of meetingModeEnabled since user has calibrated
+            // (having calibration implies user wants this feature)
+            console.log('[MeetingMode] Meeting detected with calibration:', result.appName);
             const sourceId = await window.lumina.meetingMode.getSourceId(calibration.displayId);
             if (sourceId && meetingVideoRef.current) {
               try {
@@ -565,38 +605,58 @@ export default function App() {
 
                 meetingStreamRef.current = stream;
                 meetingVideoRef.current.srcObject = stream;
+
+                // Wait for video to be ready before setting active
+                await new Promise<void>((resolve) => {
+                  const video = meetingVideoRef.current!;
+                  if (video.readyState >= 2) {
+                    resolve();
+                  } else {
+                    video.onloadeddata = () => resolve();
+                  }
+                });
+
                 await meetingVideoRef.current.play();
 
                 setMeetingModeActive(true, result.appName);
                 touchCalibration(result.appName);
                 console.log('[MeetingMode] Screen capture started for', result.appName);
+
+                // Show in-app alert that meeting mode is now active
+                window.lumina.alerts.show({
+                  id: `meeting-active-${Date.now()}`,
+                  type: 'meeting_mode_active',
+                  severity: 'info',
+                  message: `Meeting Mode active - tracking eye health during ${result.appName}`,
+                });
               } catch (err) {
                 console.error('[MeetingMode] Failed to start screen capture:', err);
+                // Show in-app error alert
+                window.lumina.alerts.show({
+                  id: `meeting-error-${Date.now()}`,
+                  type: 'meeting_mode_error',
+                  severity: 'warning',
+                  message: 'Failed to start Meeting Mode. Please try recalibrating.',
+                  action: 'Open Settings to recalibrate',
+                });
               }
             }
           } else if (!calibration && !dismissedMeetingPromptRef.current.has(result.appName)) {
-            // No calibration - stop camera and show notification only (no in-app popup)
-            // Stop camera immediately when meeting detected
-            if (currentStreamRef.current) {
-              console.log('[MeetingMode] Stopping camera - meeting detected without calibration');
-              currentStreamRef.current.getTracks().forEach(track => track.stop());
-              currentStreamRef.current = null;
-            }
-            if (videoRef.current) {
-              videoRef.current.srcObject = null;
-            }
+            // No calibration - show in-app alert to prompt setup
+            // This allows first-time users to discover the feature
+            console.log('[MeetingMode] Meeting detected, no calibration for:', result.appName);
 
             // Store pending app for calibration
             setPendingMeetingApp(result.appName);
             dismissedMeetingPromptRef.current.add(result.appName);
 
-            // Show only system notification - user can click to open app and set up
-            // The notification click handler will navigate to Meeting Mode view
-            window.lumina.notification.show({
-              title: `${result.appName} Meeting Detected`,
-              body: 'Click to set up Meeting Mode for eye health tracking during video calls.',
-              silent: false,
-              type: 'meeting-detected',
+            // Show in-app alert with action button to start calibration
+            window.lumina.alerts.show({
+              id: `meeting-detected-${Date.now()}`,
+              type: 'meeting_detected',
+              severity: 'info',
+              message: `${result.appName} detected! Track your eye health during video calls.`,
+              actionButtonText: 'Set Up Now',
             });
           }
         } else {
@@ -611,7 +671,19 @@ export default function App() {
             if (meetingVideoRef.current) {
               meetingVideoRef.current.srcObject = null;
             }
+            // Clear dismissed prompt for this app so user gets notified next meeting
+            const endedApp = useMeetingModeStore.getState().detectedApp;
+            if (endedApp) {
+              dismissedMeetingPromptRef.current.delete(endedApp);
+            }
             setMeetingModeActive(false);
+          } else if (pendingMeetingApp) {
+            // Meeting ended before calibration was completed - restart camera
+            console.log('[MeetingMode] Meeting ended without calibration, restarting camera');
+            // Clear dismissed prompt so user gets notified next meeting
+            dismissedMeetingPromptRef.current.delete(pendingMeetingApp);
+            setPendingMeetingApp(null);
+            // Camera will restart automatically via the camera effect (pendingMeetingApp changed)
           }
         }
       } catch (err) {
@@ -632,7 +704,7 @@ export default function App() {
         meetingStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isDetecting, meetingModeEnabled, meetingModeActive, getCalibration, setMeetingModeActive, touchCalibration]);
+  }, [isDetecting, meetingModeActive, getCalibration, setMeetingModeActive, touchCalibration]);
 
   // Handle notification click - navigate to Meeting Mode view and start calibration
   // This is triggered when user clicks the system notification
@@ -658,6 +730,29 @@ export default function App() {
     };
   }, [pendingMeetingApp, setMeetingModeEnabled]);
 
+  // Handle alert action button click - start calibration directly
+  // This is triggered when user clicks "Set Up Now" on the meeting detected alert
+  useEffect(() => {
+    const handleStartCalibration = async () => {
+      // First detect which meeting app is running
+      try {
+        const result = await window.lumina.meetingMode.detectApp();
+        if (result.isDetected && result.appName) {
+          setCalibrationAppName(result.appName);
+          setShowCalibrationUI(true);
+          setMeetingModeEnabled(true);
+        }
+      } catch (err) {
+        console.error('[MeetingMode] Failed to detect app for calibration:', err);
+      }
+    };
+
+    const cleanup = window.lumina?.onMeetingModeStartCalibration?.(handleStartCalibration);
+
+    return () => {
+      cleanup?.();
+    };
+  }, [setMeetingModeEnabled]);
 
   // Start/stop detection loop - uses setInterval to work in background
   useEffect(() => {
@@ -668,8 +763,8 @@ export default function App() {
       isVideoReady;
 
     if (isDetecting && videoReady) {
-      // Run detection at ~30fps (33ms) for camera, ~10fps (100ms) for meeting mode
-      const intervalMs = meetingModeActive ? 100 : 33;
+      // Run detection at ~30fps (33ms) for both camera and meeting mode
+      const intervalMs = 33;
 
       detectionIntervalRef.current = setInterval(() => {
         // Use meeting video when in meeting mode, otherwise camera
@@ -818,7 +913,7 @@ export default function App() {
             minuteEarCountRef.current = 0;
           }
         }
-      }, intervalMs); // 33ms for camera (30fps), 100ms for meeting mode (10fps)
+      }, intervalMs); // 33ms = ~30fps for both camera and meeting mode
     } else {
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
@@ -1067,6 +1162,29 @@ export default function App() {
   // Not authenticated - show auth screen
   if (!authUser) {
     return <AuthScreen onAuthComplete={handleAuthComplete} />;
+  }
+
+  // Onboarding flow for new users
+  if (!hasCompletedOnboarding) {
+    return (
+      <OnboardingFlow
+        onComplete={() => setOnboardingComplete()}
+        onSkip={() => setOnboardingComplete()}
+        hasCameraPermission={cameras.length > 0}
+        onCameraSelected={(cameraId) => {
+          saveSelectedCameraId(cameraId);
+          setSelectedCameraId(cameraId);
+        }}
+        onCalibrationComplete={(data) => {
+          // Calibration data will be stored when detection starts
+          console.log('Onboarding calibration baseline:', data.baselineEar);
+        }}
+        onGoalsSelected={(goals) => {
+          setWellnessGoals(goals);
+        }}
+        logoSrc={luminaLogo}
+      />
+    );
   }
 
   // Loading state (camera init)
@@ -1350,14 +1468,23 @@ export default function App() {
             });
             setShowCalibrationUI(false);
 
-            // Immediately start screen capture since we know meeting is active
             const appName = calibrationAppName;
             setCalibrationAppName('');
-            setPendingMeetingApp(null);
+            // NOTE: Don't clear pendingMeetingApp yet - wait until screen capture starts
+            // to prevent camera effect from trying to restart webcam
 
-            // Start screen capture right away
+            // Check if meeting is still active before starting capture
             (async () => {
               try {
+                // Verify meeting is still running (user may have left during calibration)
+                const meetingStatus = await window.lumina.meetingMode.detectApp();
+                if (!meetingStatus.isDetected) {
+                  console.log('[MeetingMode] Meeting ended during calibration, skipping capture');
+                  // Now clear pendingMeetingApp - camera will restart
+                  setPendingMeetingApp(null);
+                  return;
+                }
+
                 console.log('[MeetingMode] Starting capture after calibration for:', appName);
                 const sourceId = await window.lumina.meetingMode.getSourceId(0);
                 console.log('[MeetingMode] Got source ID:', sourceId);
@@ -1394,18 +1521,38 @@ export default function App() {
 
                   await meetingVideoRef.current.play();
                   setMeetingModeActive(true, appName);
+                  // Now safe to clear pendingMeetingApp - screen capture is running
+                  setPendingMeetingApp(null);
                   console.log('[MeetingMode] Screen capture started successfully');
                 } else {
                   console.error('[MeetingMode] No source ID or video ref');
+                  // Clear pendingMeetingApp to allow camera restart
+                  setPendingMeetingApp(null);
+                  window.lumina.notification.show({
+                    title: 'Meeting Mode Error',
+                    body: 'Could not access screen. Please try again.',
+                    silent: false,
+                    type: 'general',
+                  });
                 }
               } catch (err) {
                 console.error('[MeetingMode] Failed to start screen capture after calibration:', err);
+                // Clear pendingMeetingApp to allow camera restart
+                setPendingMeetingApp(null);
+                window.lumina.notification.show({
+                  title: 'Meeting Mode Error',
+                  body: 'Failed to start screen capture. Please check permissions and try again.',
+                  silent: false,
+                  type: 'general',
+                });
               }
             })();
           }}
           onCancel={() => {
             setShowCalibrationUI(false);
             setCalibrationAppName('');
+            // Clear pending app - camera will restart if meeting ended
+            setPendingMeetingApp(null);
           }}
         />
       )}
@@ -2715,6 +2862,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     postureMonitoringEnabled,
     postureSensitivity,
     theme,
+    cloudSyncEnabled,
     orgName,
     setAlertCooldownMinutes,
     setNotifications,
@@ -2725,6 +2873,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     setPostureMonitoringEnabled,
     setPostureSensitivity,
     setTheme,
+    setCloudSyncEnabled,
   } = useSettingsStore();
 
   const [syncStatus, setSyncStatus] = useState<{
@@ -3091,32 +3240,81 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
           </div>
         </div>
 
-        {/* Sync Settings */}
+        {/* Privacy & Sync Settings */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold mb-4">Cloud Sync</h3>
+          <h3 className="font-semibold mb-4">Privacy & Cloud Sync</h3>
           <div className="space-y-4">
+            {/* Cloud Sync Toggle - GDPR Local-Only Mode */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Sync Status</p>
+                <p className="font-medium">Cloud Sync</p>
                 <p className="text-sm text-gray-500">
-                  {syncStatus?.isConfigured ? 'Connected to cloud' : 'Not configured'}
+                  {cloudSyncEnabled
+                    ? 'Sync wellness data to cloud for dashboard access'
+                    : 'Local-only mode: data stays on this device'}
                 </p>
               </div>
-              <div className={`w-3 h-3 rounded-full ${syncStatus?.isConfigured ? 'bg-green-500' : 'bg-gray-400'}`} />
+              <button
+                onClick={async () => {
+                  const newValue = !cloudSyncEnabled;
+                  setCloudSyncEnabled(newValue);
+                  // Control auto-sync based on toggle
+                  if (newValue) {
+                    await window.lumina?.sync.startAuto();
+                  } else {
+                    await window.lumina?.sync.stopAuto();
+                  }
+                }}
+                className={`w-12 h-6 rounded-full transition-colors ${
+                  cloudSyncEnabled ? 'bg-black' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Pending Records</p>
-                <p className="text-sm text-gray-500">Data waiting to sync</p>
+
+            {/* Privacy notice when disabled */}
+            {!cloudSyncEnabled && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Local-Only Mode Active</strong><br />
+                  Your wellness data is stored only on this device. No data is sent to our servers.
+                  You can re-enable sync anytime to access your data on the web dashboard.
+                </p>
               </div>
-              <span className="bg-gray-100 px-3 py-1 rounded">{syncStatus?.pendingCount ?? 0}</span>
-            </div>
-            <button
-              onClick={handleManualSync}
-              className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              Sync Now
-            </button>
+            )}
+
+            {/* Sync status - only show when enabled */}
+            {cloudSyncEnabled && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Sync Status</p>
+                    <p className="text-sm text-gray-500">
+                      {syncStatus?.isConfigured ? 'Connected to cloud' : 'Not configured'}
+                    </p>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${syncStatus?.isConfigured ? 'bg-green-500' : 'bg-gray-400'}`} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Pending Records</p>
+                    <p className="text-sm text-gray-500">Data waiting to sync</p>
+                  </div>
+                  <span className="bg-gray-100 px-3 py-1 rounded">{syncStatus?.pendingCount ?? 0}</span>
+                </div>
+                <button
+                  onClick={handleManualSync}
+                  className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Sync Now
+                </button>
+              </>
+            )}
           </div>
         </div>
 

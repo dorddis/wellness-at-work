@@ -73,9 +73,9 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
       <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10">
         {/* Success icon with animation */}
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.6, delay: 0.2 }}
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', duration: 1.0, bounce: 0.3, delay: 0.3 }}
           className="w-24 h-24 bg-black rounded-full flex items-center justify-center mb-6"
         >
           <motion.svg
@@ -85,7 +85,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
             viewBox="0 0 24 24"
             initial={{ pathLength: 0 }}
             animate={{ pathLength: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
           >
             <motion.path
               strokeLinecap="round"
@@ -94,24 +94,24 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
               d="M5 13l4 4L19 7"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
+              transition={{ duration: 0.6, delay: 1.0 }}
             />
           </motion.svg>
         </motion.div>
 
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.6, duration: 0.5 }}
           className="text-3xl font-bold text-gray-900 mb-2"
         >
           You're All Set!
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
           className="text-gray-600 mb-8 max-w-md"
         >
           Lumina is now monitoring your wellness. We'll help you maintain healthy
@@ -120,9 +120,9 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
 
         {/* Quick tips */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 1.0, duration: 0.5 }}
           className="bg-gray-50 rounded-xl p-6 max-w-sm w-full mb-6"
         >
           <h3 className="font-medium text-gray-900 mb-4">Quick Tips</h3>
@@ -135,9 +135,9 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
 
         {/* Stats preview */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
           className="flex gap-4 text-center"
         >
           <div className="px-4 py-2">
@@ -159,9 +159,9 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
 
       {/* Action button */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 1.4, duration: 0.5 }}
         className="mt-6"
       >
         <button

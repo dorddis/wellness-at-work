@@ -310,31 +310,40 @@ class DrowsinessDetector {
 
 ---
 
-## Implementation Plan
+## Implementation Status
 
-### Phase 1: Posture Detection (v1.2)
+> **Status:** Core detection fully implemented (2024-12). Alert integration pending.
 
-- [ ] Add posture landmark constants
-- [ ] Implement distance detection (too close/far)
-- [ ] Implement head tilt detection
-- [ ] Add posture calibration during onboarding
-- [ ] Create posture alerts with cooldowns
-- [ ] UI indicator for posture status
+### Phase 1: Posture Detection (v1.2) - COMPLETE
 
-### Phase 2: Yawn Detection (v1.3)
+- [x] Add posture landmark constants (`packages/core/src/detection/constants.ts`)
+- [x] Implement distance detection (too close/far) - `DistanceDetector` class
+- [x] Implement head tilt detection - `TiltDetector` class
+- [x] Implement forward lean detection - `LeanDetector` class
+- [x] Auto-calibration during first frames (POSTURE.BASELINE_FRAMES)
+- [x] UI indicator for posture status (`PostureIndicator` component)
 
-- [ ] Add mouth landmark constants
-- [ ] Implement MAR calculation
-- [ ] Create YawnDetector class
-- [ ] Track yawn frequency
-- [ ] Integrate with session analytics
+**Implementation:** `packages/core/src/detection/posture.ts` - `PostureAnalyzer` class
 
-### Phase 3: Drowsiness Detection (v1.4)
+### Phase 2: Yawn Detection (v1.3) - COMPLETE
 
-- [ ] Implement PERCLOS calculation
-- [ ] Combine blink + yawn for drowsiness score
-- [ ] Create drowsiness alerts ("You seem tired, take a break")
-- [ ] Add to HR dashboard (anonymized team fatigue trends)
+- [x] Add mouth landmark constants (MOUTH_INDICES)
+- [x] Implement MAR calculation - `calculateMAR()` function
+- [x] Create YawnDetector class with cooldowns
+- [x] Track yawn frequency via `getRecentYawns(windowMs)`
+- [x] Yawn timestamps tracked for drowsiness integration
+
+**Implementation:** `packages/core/src/detection/yawn.ts` - `YawnDetector` class
+
+### Phase 3: Drowsiness Detection (v1.4) - COMPLETE
+
+- [x] Implement PERCLOS calculation (% eye closure in sliding window)
+- [x] Combine blink + yawn for drowsiness score
+- [x] Multi-level classification: alert/mild/moderate/severe
+- [ ] Create drowsiness alerts (not yet wired to UI)
+- [ ] Add to HR dashboard (future feature)
+
+**Implementation:** `packages/core/src/detection/drowsiness.ts` - `DrowsinessDetector` class
 
 ---
 

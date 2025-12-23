@@ -1,83 +1,235 @@
+'use client';
+
 /**
  * CameraStep Component
- * Requests camera permission with explanation
+ * Camera selection with live preview
  */
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 
 export interface CameraStepProps {
-  onNext: () => void;
+  onNext: (selectedCameraId: string) => void;
   onBack: () => void;
   hasPermission: boolean;
 }
 
+interface CameraDevice {
+  deviceId: string;
+  label: string;
+}
+
 export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [permissionGranted, setPermissionGranted] = useState(hasPermission);
+
+  // Request permission and enumerate cameras
+  useEffect(() => {
+    async function initCameras() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Request camera access to get labels
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach(track => track.stop());
+        setPermissionGranted(true);
+
+        // Enumerate devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices
+          .filter(d => d.kind === 'videoinput')
+          .map((d, i) => ({
+            deviceId: d.deviceId,
+            label: d.label || `Camera ${i + 1}`,
+          }));
+
+        setCameras(videoDevices);
+        if (videoDevices.length > 0) {
+          setSelectedCameraId(videoDevices[0].deviceId);
+        }
+      } catch (err) {
+        console.error('Camera init error:', err);
+        setError('Camera access denied. Please allow camera access to continue.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    initCameras();
+
+    return () => {
+      // Cleanup stream on unmount
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Start preview when camera is selected
+  useEffect(() => {
+    async function startPreview() {
+      if (!selectedCameraId || !videoRef.current) return;
+
+      // Stop existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: selectedCameraId } },
+        });
+        streamRef.current = stream;
+        videoRef.current.srcObject = stream;
+      } catch (err) {
+        console.error('Preview error:', err);
+      }
+    }
+
+    startPreview();
+  }, [selectedCameraId]);
+
+  const handleContinue = () => {
+    // Stop preview stream before continuing
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    onNext(selectedCameraId);
+  };
+
   return (
     <div className="h-full flex flex-col px-8 py-6">
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
-        {/* Camera icon */}
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.5 }}
-          className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6"
-        >
-          <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-            />
-          </svg>
-        </motion.div>
-
+      <div className="flex-1 flex flex-col items-center justify-center">
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
           className="text-2xl font-bold text-gray-900 mb-2"
         >
-          Camera Access Needed
+          Select Your Camera
         </motion.h2>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-gray-600 mb-8 max-w-md"
+          transition={{ delay: 0.1 }}
+          className="text-gray-600 mb-6 text-center max-w-md"
         >
-          We need access to your camera to detect blinks and monitor posture.
-          Remember: all processing happens locally on your device.
+          Choose the camera you want to use for wellness tracking.
+          All processing happens locally on your device.
         </motion.p>
 
-        {/* What we detect */}
+        {/* Camera preview */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gray-50 rounded-xl p-6 max-w-sm w-full mb-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="relative w-full max-w-md aspect-video bg-gray-900 rounded-xl overflow-hidden mb-4"
         >
-          <h3 className="font-medium text-gray-900 mb-4">What we detect:</h3>
-          <div className="space-y-3">
-            <DetectionItem icon="eye" label="Eye blinks (15-20/min is healthy)" />
-            <DetectionItem icon="face" label="Face position for posture" />
-            <DetectionItem icon="clock" label="Screen time duration" />
-          </div>
+          {isLoading ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            </div>
+          ) : error ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+              <svg className="w-12 h-12 text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-white text-sm">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              {/* Privacy indicator */}
+              <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs text-white font-medium">Local only</span>
+              </div>
+            </>
+          )}
         </motion.div>
 
-        {/* What we don't do */}
+        {/* Camera selector */}
+        {cameras.length > 1 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="w-full max-w-md mb-4"
+          >
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Camera
+            </label>
+            <select
+              value={selectedCameraId}
+              onChange={(e) => setSelectedCameraId(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-100 border-0 rounded-lg text-gray-900 focus:ring-2 focus:ring-black focus:outline-none"
+            >
+              {cameras.map((camera) => (
+                <option key={camera.deviceId} value={camera.deviceId}>
+                  {camera.label}
+                </option>
+              ))}
+            </select>
+          </motion.div>
+        )}
+
+        {/* Single camera message */}
+        {cameras.length === 1 && !isLoading && !error && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-sm text-gray-500 mb-4"
+          >
+            Using: {cameras[0].label}
+          </motion.p>
+        )}
+
+        {/* What we detect - compact */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="flex items-center gap-2 text-sm text-gray-500"
+          transition={{ delay: 0.4 }}
+          className="flex gap-6 text-sm text-gray-500"
         >
-          <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          <span>No photos or videos are ever saved</span>
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Blinks
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Posture
+          </span>
+          <span className="flex items-center gap-1.5">
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            No recording
+          </span>
         </motion.div>
       </div>
 
@@ -90,42 +242,13 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
           Back
         </button>
         <button
-          onClick={onNext}
-          className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+          onClick={handleContinue}
+          disabled={!permissionGranted || cameras.length === 0}
+          className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {hasPermission ? 'Continue' : 'Allow Camera Access'}
+          Continue
         </button>
       </div>
-    </div>
-  );
-}
-
-function DetectionItem({ icon, label }: { icon: string; label: string }) {
-  const icons: Record<string, JSX.Element> = {
-    eye: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-      </svg>
-    ),
-    face: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-    clock: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  };
-
-  return (
-    <div className="flex items-center gap-3 text-left">
-      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-600">
-        {icons[icon]}
-      </div>
-      <span className="text-sm text-gray-700">{label}</span>
     </div>
   );
 }

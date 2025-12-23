@@ -396,11 +396,13 @@ export async function getOrgAlerts(
   const memberMap = new Map<string, { email: string | null; fullName: string | null; department: string | null }>();
   if (members) {
     for (const m of members) {
-      memberMap.set(m.user_id, {
-        email: m.email ?? null,
-        fullName: m.full_name ?? null,
-        department: m.department ?? null,
-      });
+      if (m.user_id) {
+        memberMap.set(m.user_id, {
+          email: m.email ?? null,
+          fullName: m.full_name ?? null,
+          department: m.department ?? null,
+        });
+      }
     }
   }
 
@@ -523,20 +525,74 @@ export async function updateOrgSettings(
 // GDPR Compliance
 // ============================================================================
 
-/**
- * Export all user data (GDPR data portability)
- */
-export async function exportUserData(userId: string): Promise<{
+export type ExportFormat = 'json' | 'csv';
+
+export interface ExportDataResult {
   success: boolean;
   data?: {
     profile: Record<string, unknown>;
     wellnessData: unknown[];
+    breakEvents: unknown[];
+    exerciseSessions: unknown[];
+    challengeParticipations: unknown[];
     alerts: unknown[];
+    privacyConsents: unknown[];
     membership: unknown;
     exportedAt: string;
   };
+  csv?: {
+    wellnessData: string;
+    breakEvents: string;
+    exerciseSessions: string;
+    alerts: string;
+  };
   error?: string;
-}> {
+}
+
+/**
+ * Convert array of objects to CSV string
+ */
+function arrayToCSV(data: Record<string, unknown>[]): string {
+  if (!data || data.length === 0) return '';
+
+  // Get headers from first object
+  const headers = Object.keys(data[0]);
+
+  // Create CSV rows
+  const csvRows = [
+    headers.join(','), // Header row
+    ...data.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header];
+          // Handle null/undefined
+          if (value === null || value === undefined) return '';
+          // Handle strings with commas, quotes, or newlines
+          const stringValue = String(value);
+          if (
+            stringValue.includes(',') ||
+            stringValue.includes('"') ||
+            stringValue.includes('\n')
+          ) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        })
+        .join(',')
+    ),
+  ];
+
+  return csvRows.join('\n');
+}
+
+/**
+ * Export all user data (GDPR data portability)
+ * Supports both JSON and CSV formats
+ */
+export async function exportUserData(
+  userId: string,
+  format: ExportFormat = 'json'
+): Promise<ExportDataResult> {
   const supabase = getSupabase();
 
   try {
@@ -552,20 +608,58 @@ export async function exportUserData(userId: string): Promise<{
 
     const { data: wellnessData } = await supabase
       .from('wellness_data')
-      .select('*')
+      .select('id, timestamp, blink_count, avg_ear, session_id')
       .eq('user_id', userId)
-      .gte('timestamp', ninetyDaysAgo.toISOString());
+      .gte('timestamp', ninetyDaysAgo.toISOString())
+      .order('timestamp', { ascending: false });
+
+    // Get break events
+    const { data: breakEvents } = await supabase
+      .from('break_events')
+      .select(
+        'id, scheduled_at, started_at, completed_at, postponed_count, status, break_type, duration_seconds'
+      )
+      .eq('user_id', userId)
+      .gte('scheduled_at', ninetyDaysAgo.toISOString())
+      .order('scheduled_at', { ascending: false });
+
+    // Get exercise sessions
+    const { data: exerciseSessions } = await supabase
+      .from('exercise_sessions')
+      .select(
+        'id, started_at, completed_at, status, eye_exercises(name, category)'
+      )
+      .eq('user_id', userId)
+      .gte('started_at', ninetyDaysAgo.toISOString())
+      .order('started_at', { ascending: false });
+
+    // Get challenge participations
+    const { data: challengeParticipations } = await supabase
+      .from('challenge_participants')
+      .select(
+        'id, joined_at, current_progress, last_updated_at, team_challenges(name, challenge_type)'
+      )
+      .eq('user_id', userId);
 
     // Get alerts
     const { data: alerts } = await supabase
       .from('org_alerts')
-      .select('*')
-      .eq('user_id', userId);
+      .select('id, alert_type, severity, message, acknowledged, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    // Get privacy consents
+    const { data: privacyConsents } = await supabase
+      .from('privacy_consents')
+      .select('id, policy_version, consented_at')
+      .eq('user_id', userId)
+      .order('consented_at', { ascending: false });
 
     // Get organization membership
     const { data: membership } = await supabase
       .from('org_members')
-      .select(`
+      .select(
+        `
         role,
         department,
         joined_at,
@@ -573,27 +667,145 @@ export async function exportUserData(userId: string): Promise<{
           name,
           slug
         )
-      `)
+      `
+      )
       .eq('user_id', userId)
       .single();
 
+    const exportData = {
+      profile: {
+        id: user.user.id,
+        email: user.user.email,
+        createdAt: user.user.created_at,
+      },
+      wellnessData: wellnessData || [],
+      breakEvents: breakEvents || [],
+      exerciseSessions: exerciseSessions || [],
+      challengeParticipations: challengeParticipations || [],
+      alerts: alerts || [],
+      privacyConsents: privacyConsents || [],
+      membership,
+      exportedAt: new Date().toISOString(),
+    };
+
+    // Return based on format
+    if (format === 'csv') {
+      // Flatten exercise sessions for CSV
+      const flatExerciseSessions = (exerciseSessions || []).map(
+        (session: Record<string, unknown>) => ({
+          id: session.id,
+          started_at: session.started_at,
+          completed_at: session.completed_at,
+          status: session.status,
+          exercise_name: (
+            session.eye_exercises as Record<string, unknown> | null
+          )?.name,
+          exercise_category: (
+            session.eye_exercises as Record<string, unknown> | null
+          )?.category,
+        })
+      );
+
+      return {
+        success: true,
+        data: exportData,
+        csv: {
+          wellnessData: arrayToCSV(
+            (wellnessData || []) as Record<string, unknown>[]
+          ),
+          breakEvents: arrayToCSV(
+            (breakEvents || []) as Record<string, unknown>[]
+          ),
+          exerciseSessions: arrayToCSV(flatExerciseSessions),
+          alerts: arrayToCSV((alerts || []) as Record<string, unknown>[]),
+        },
+      };
+    }
+
     return {
       success: true,
-      data: {
-        profile: {
-          id: user.user.id,
-          email: user.user.email,
-          createdAt: user.user.created_at,
-        },
-        wellnessData: wellnessData || [],
-        alerts: alerts || [],
-        membership,
-        exportedAt: new Date().toISOString(),
-      },
+      data: exportData,
     };
   } catch (error) {
     console.error('Failed to export user data:', error);
     return { success: false, error: 'Export failed' };
+  }
+}
+
+// ============================================================================
+// PRIVACY CONSENT
+// ============================================================================
+
+/**
+ * Get user's latest privacy policy consent version
+ */
+export async function getPrivacyConsent(userId: string): Promise<{
+  success: boolean;
+  version?: string;
+  consentedAt?: string;
+  error?: string;
+}> {
+  const supabase = getSupabase();
+
+  try {
+    const { data, error } = await supabase
+      .from('privacy_consents')
+      .select('policy_version, consented_at')
+      .eq('user_id', userId)
+      .order('consented_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned (acceptable - user hasn't consented yet)
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      version: data?.policy_version ?? undefined,
+      consentedAt: data?.consented_at ?? undefined,
+    };
+  } catch (error) {
+    console.error('Failed to get privacy consent:', error);
+    return { success: false, error: 'Failed to get consent status' };
+  }
+}
+
+/**
+ * Record user's consent to a privacy policy version
+ */
+export async function recordPrivacyConsent(
+  userId: string,
+  policyVersion: string,
+  userAgent?: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const supabase = getSupabase();
+
+  try {
+    const { error } = await supabase.from('privacy_consents').upsert(
+      {
+        user_id: userId,
+        policy_version: policyVersion,
+        consented_at: new Date().toISOString(),
+        user_agent: userAgent,
+      },
+      {
+        onConflict: 'user_id,policy_version',
+      }
+    );
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to record privacy consent:', error);
+    return { success: false, error: 'Failed to record consent' };
   }
 }
 
@@ -659,6 +871,100 @@ export async function cancelAccountDeletion(userId: string): Promise<{
   } catch (error) {
     console.error('Failed to cancel deletion:', error);
     return { success: false, error: 'Cancellation failed' };
+  }
+}
+
+// ============================================================================
+// DATA ACCESS REQUESTS (GDPR Subject Access Requests)
+// ============================================================================
+
+export type DataRequestType = 'access' | 'rectification' | 'portability';
+export type DataRequestStatus = 'pending' | 'processing' | 'completed' | 'rejected';
+
+export interface DataAccessRequest {
+  id: string;
+  userId: string;
+  requestType: DataRequestType;
+  status: DataRequestStatus;
+  requestDetails: string | null;
+  requestedAt: string;
+  processedAt: string | null;
+}
+
+/**
+ * Submit a data access request (GDPR SAR)
+ */
+export async function submitDataAccessRequest(
+  userId: string,
+  requestType: DataRequestType,
+  details?: string
+): Promise<{
+  success: boolean;
+  requestId?: string;
+  error?: string;
+}> {
+  const supabase = getSupabase();
+
+  try {
+    const { data, error } = await supabase
+      .from('data_access_requests')
+      .insert({
+        user_id: userId,
+        request_type: requestType,
+        request_details: details || null,
+        status: 'pending',
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, requestId: data.id };
+  } catch (error) {
+    console.error('Failed to submit data access request:', error);
+    return { success: false, error: 'Request submission failed' };
+  }
+}
+
+/**
+ * Get user's data access requests
+ */
+export async function getMyDataAccessRequests(
+  userId: string
+): Promise<{
+  success: boolean;
+  requests?: DataAccessRequest[];
+  error?: string;
+}> {
+  const supabase = getSupabase();
+
+  try {
+    const { data, error } = await supabase
+      .from('data_access_requests')
+      .select('id, user_id, request_type, status, request_details, requested_at, processed_at')
+      .eq('user_id', userId)
+      .order('requested_at', { ascending: false });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const requests: DataAccessRequest[] = (data || []).map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      requestType: r.request_type as DataRequestType,
+      status: r.status as DataRequestStatus,
+      requestDetails: r.request_details,
+      requestedAt: r.requested_at,
+      processedAt: r.processed_at,
+    }));
+
+    return { success: true, requests };
+  } catch (error) {
+    console.error('Failed to get data access requests:', error);
+    return { success: false, error: 'Failed to retrieve requests' };
   }
 }
 

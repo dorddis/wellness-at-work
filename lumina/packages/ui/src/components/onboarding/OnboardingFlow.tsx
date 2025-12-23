@@ -14,6 +14,7 @@ import { CameraStep } from './CameraStep';
 import { CalibrationStep } from './CalibrationStep';
 import { GoalsStep } from './GoalsStep';
 import { CompleteStep } from './CompleteStep';
+import { Stepper, type Step } from './Stepper';
 
 export interface OnboardingFlowProps {
   /** Callback when onboarding is completed */
@@ -22,8 +23,10 @@ export interface OnboardingFlowProps {
   onSkip?: () => void;
   /** Whether camera permission is already granted */
   hasCameraPermission?: boolean;
-  /** Callback to request camera permission */
+  /** Callback to request camera permission (deprecated - CameraStep handles this now) */
   onRequestCameraPermission?: () => Promise<boolean>;
+  /** Callback when camera is selected */
+  onCameraSelected?: (cameraId: string) => void;
   /** Callback when calibration data is captured */
   onCalibrationComplete?: (data: { baselineEar: number }) => void;
   /** Callback when goals are selected */
@@ -47,11 +50,20 @@ const STEP_ORDER: OnboardingStep[] = [
   'complete',
 ];
 
+const STEP_CONFIG: Step[] = [
+  { id: 'welcome', label: 'Welcome' },
+  { id: 'privacy', label: 'Privacy' },
+  { id: 'camera', label: 'Camera' },
+  { id: 'calibration', label: 'Calibrate' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'complete', label: 'Ready!' },
+];
+
 export function OnboardingFlow({
   onComplete,
   onSkip,
   hasCameraPermission = false,
-  onRequestCameraPermission,
+  onCameraSelected,
   onCalibrationComplete,
   onGoalsSelected,
   logoSrc,
@@ -81,18 +93,10 @@ export function OnboardingFlow({
     }
   }, [currentStepIndex]);
 
-  const handleCameraPermission = async () => {
-    if (onRequestCameraPermission) {
-      const granted = await onRequestCameraPermission();
-      setCameraGranted(granted);
-      if (granted) {
-        goToNextStep();
-      }
-    } else {
-      // Simulate permission granted
-      setCameraGranted(true);
-      goToNextStep();
-    }
+  const handleCameraSelected = (cameraId: string) => {
+    setCameraGranted(true);
+    onCameraSelected?.(cameraId);
+    goToNextStep();
   };
 
   const handleCalibrationComplete = (data: { baselineEar: number }) => {
@@ -119,7 +123,7 @@ export function OnboardingFlow({
       case 'camera':
         return (
           <CameraStep
-            onNext={handleCameraPermission}
+            onNext={handleCameraSelected}
             onBack={goToPrevStep}
             hasPermission={cameraGranted}
           />
@@ -147,21 +151,38 @@ export function OnboardingFlow({
     }
   };
 
+  // Don't show stepper on welcome or complete screens
+  const showStepper = currentStep !== 'welcome' && currentStep !== 'complete';
+
   return (
     <div className="fixed inset-0 bg-white z-50 flex flex-col">
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-100">
-        <motion.div
-          className="h-full bg-black"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3 }}
-        />
-      </div>
+      {/* Header with stepper */}
+      <div className="shrink-0">
+        {/* Progress bar (thin line at very top) */}
+        <div className="h-1 bg-gray-100">
+          <motion.div
+            className="h-full bg-black"
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
 
-      {/* Step counter */}
-      <div className="px-6 py-4 text-sm text-gray-500">
-        Step {currentStepIndex + 1} of {STEP_ORDER.length}
+        {/* Stepper navigation */}
+        {showStepper && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="py-6 border-b border-gray-100"
+          >
+            <Stepper
+              steps={STEP_CONFIG}
+              currentStep={currentStepIndex}
+              showLabels
+              compact={false}
+            />
+          </motion.div>
+        )}
       </div>
 
       {/* Content */}

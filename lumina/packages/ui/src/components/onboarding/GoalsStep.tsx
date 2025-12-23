@@ -51,10 +51,11 @@ const GOALS: Goal[] = [
 ];
 
 export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
+  // Start with nothing selected - let user choose
   const [selectedGoals, setSelectedGoals] = useState({
-    reduceEyeStrain: initialGoals?.reduceEyeStrain ?? true,
-    improvePosture: initialGoals?.improvePosture ?? true,
-    takeRegularBreaks: initialGoals?.takeRegularBreaks ?? true,
+    reduceEyeStrain: initialGoals?.reduceEyeStrain ?? false,
+    improvePosture: initialGoals?.improvePosture ?? false,
+    takeRegularBreaks: initialGoals?.takeRegularBreaks ?? false,
   });
 
   const toggleGoal = (goalId: Goal['id']) => {
@@ -74,12 +75,12 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
     <div className="h-full flex flex-col px-8 py-6">
       <div className="flex-1 flex flex-col items-center justify-center text-center">
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', duration: 0.5 }}
-          className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mb-6"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
+          className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
         >
-          <svg className="w-10 h-10 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -90,18 +91,18 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
         </motion.div>
 
         <motion.h2
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
           className="text-2xl font-bold text-gray-900 mb-2"
         >
           Set Your Goals
         </motion.h2>
 
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.5, duration: 0.5 }}
           className="text-gray-600 mb-8 max-w-md"
         >
           What would you like to focus on? You can change these anytime in settings.
@@ -112,9 +113,9 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           {GOALS.map((goal, index) => (
             <motion.button
               key={goal.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 + index * 0.15, duration: 0.4 }}
               onClick={() => toggleGoal(goal.id)}
               className={`w-full flex items-start gap-4 text-left p-4 rounded-xl border-2 transition-all ${
                 selectedGoals[goal.id]
@@ -152,7 +153,8 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 text-sm text-orange-600"
+            transition={{ duration: 0.3 }}
+            className="mt-4 text-sm text-gray-500"
           >
             Select at least one goal to continue
           </motion.p>

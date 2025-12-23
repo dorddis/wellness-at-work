@@ -13,9 +13,19 @@ import {
   AlertTriangle,
   Clock,
   Calendar,
+  FileText,
+  CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../../../providers';
-import { exportUserData, requestAccountDeletion } from '@lumina/api';
+import {
+  exportUserData,
+  requestAccountDeletion,
+  submitDataAccessRequest,
+  getMyDataAccessRequests,
+  type ExportFormat,
+  type DataRequestType,
+  type DataAccessRequest,
+} from '@lumina/api';
 
 interface UserSettings {
   displayName: string;
@@ -48,6 +58,7 @@ export default function UserSettingsPage() {
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json');
 
   // Clear cache state
   const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
@@ -59,6 +70,14 @@ export default function UserSettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletionScheduled, setDeletionScheduled] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
+  // Data access request state
+  const [showDataRequestForm, setShowDataRequestForm] = useState(false);
+  const [dataRequestType, setDataRequestType] = useState<DataRequestType>('access');
+  const [dataRequestDetails, setDataRequestDetails] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [dataRequests, setDataRequests] = useState<DataAccessRequest[]>([]);
+  const [requestSuccess, setRequestSuccess] = useState(false);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -81,6 +100,51 @@ export default function UserSettingsPage() {
     setIsLoading(false);
   }, [user]);
 
+  // Load data access requests
+  useEffect(() => {
+    async function loadRequests() {
+      if (!user?.id) return;
+      const result = await getMyDataAccessRequests(user.id);
+      if (result.success && result.requests) {
+        setDataRequests(result.requests);
+      }
+    }
+    loadRequests();
+  }, [user?.id]);
+
+  const handleSubmitDataRequest = async () => {
+    if (!user?.id) return;
+
+    setIsSubmittingRequest(true);
+    try {
+      const result = await submitDataAccessRequest(
+        user.id,
+        dataRequestType,
+        dataRequestDetails || undefined
+      );
+      if (result.success) {
+        setRequestSuccess(true);
+        setDataRequestDetails('');
+        // Refresh the requests list
+        const refreshResult = await getMyDataAccessRequests(user.id);
+        if (refreshResult.success && refreshResult.requests) {
+          setDataRequests(refreshResult.requests);
+        }
+        setTimeout(() => {
+          setShowDataRequestForm(false);
+          setRequestSuccess(false);
+        }, 2000);
+      } else {
+        alert('Failed to submit request: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Request error:', error);
+      alert('Failed to submit request. Please try again.');
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage(null);
@@ -97,25 +161,64 @@ export default function UserSettingsPage() {
     }
   };
 
+  const downloadFile = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportData = async () => {
     if (!user?.id) return;
 
     setIsExporting(true);
     try {
-      const result = await exportUserData(user.id);
-      if (result.success && result.data) {
-        const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lumina-wellness-data-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
+      const result = await exportUserData(user.id, exportFormat);
+
+      if (!result.success) {
         console.error('Export failed:', result.error);
         alert('Failed to export data. Please try again.');
+        return;
+      }
+
+      const dateStr = new Date().toISOString().split('T')[0];
+
+      if (exportFormat === 'json' && result.data) {
+        // Download single JSON file with all data
+        downloadFile(
+          JSON.stringify(result.data, null, 2),
+          `lumina-wellness-data-${dateStr}.json`,
+          'application/json'
+        );
+      } else if (exportFormat === 'csv' && result.csv) {
+        // Download multiple CSV files
+        const csvFiles = [
+          { name: 'wellness-data', content: result.csv.wellnessData },
+          { name: 'break-events', content: result.csv.breakEvents },
+          { name: 'exercise-sessions', content: result.csv.exerciseSessions },
+          { name: 'alerts', content: result.csv.alerts },
+        ].filter(f => f.content); // Only non-empty files
+
+        if (csvFiles.length === 0) {
+          alert('No data to export.');
+          return;
+        }
+
+        // Download each CSV file with a small delay to avoid browser blocking
+        for (let i = 0; i < csvFiles.length; i++) {
+          const file = csvFiles[i];
+          await new Promise(resolve => setTimeout(resolve, i * 200));
+          downloadFile(
+            file.content,
+            `lumina-${file.name}-${dateStr}.csv`,
+            'text/csv'
+          );
+        }
       }
     } catch (error) {
       console.error('Export error:', error);
@@ -384,25 +487,57 @@ export default function UserSettingsPage() {
           </h2>
         </div>
         <div className="card-body space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
-            <div>
-              <h4 className="font-medium">Export My Data</h4>
-              <p className="text-sm text-muted-foreground">
-                Download all your wellness data as a JSON file
-              </p>
+          <div className="p-4 rounded-lg bg-secondary/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="font-medium">Export My Data</h4>
+                <p className="text-sm text-muted-foreground">
+                  Download your wellness data (last 90 days)
+                </p>
+              </div>
+              <button
+                onClick={handleExportData}
+                disabled={isExporting}
+                className="btn btn-outline"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                {isExporting ? 'Exporting...' : 'Export'}
+              </button>
             </div>
-            <button
-              onClick={handleExportData}
-              disabled={isExporting}
-              className="btn btn-outline"
-            >
-              {isExporting ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4 mr-2" />
-              )}
-              {isExporting ? 'Exporting...' : 'Export'}
-            </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">Format:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExportFormat('json')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    exportFormat === 'json'
+                      ? 'bg-primary text-white'
+                      : 'bg-white border border-border hover:bg-secondary/50'
+                  }`}
+                >
+                  JSON
+                </button>
+                <button
+                  onClick={() => setExportFormat('csv')}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                    exportFormat === 'csv'
+                      ? 'bg-primary text-white'
+                      : 'bg-white border border-border hover:bg-secondary/50'
+                  }`}
+                >
+                  CSV
+                </button>
+              </div>
+            </div>
+            {exportFormat === 'csv' && (
+              <p className="text-xs text-muted-foreground mt-2">
+                CSV will download separate files for wellness data, breaks, exercises, and alerts.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/30">
@@ -418,6 +553,116 @@ export default function UserSettingsPage() {
             >
               Clear Cache
             </button>
+          </div>
+
+          {/* Data Access Request */}
+          <div className="p-4 rounded-lg bg-secondary/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="font-medium flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Data Access Request
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Submit a formal request under GDPR
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDataRequestForm(!showDataRequestForm)}
+                className="btn btn-outline"
+              >
+                {showDataRequestForm ? 'Cancel' : 'New Request'}
+              </button>
+            </div>
+
+            {/* Request Form */}
+            {showDataRequestForm && (
+              <div className="mt-4 p-4 bg-white rounded-lg border border-border space-y-4">
+                {requestSuccess ? (
+                  <div className="flex items-center gap-3 text-green-600">
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Request submitted successfully!</span>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="label text-sm">Request Type</label>
+                      <select
+                        value={dataRequestType}
+                        onChange={(e) => setDataRequestType(e.target.value as DataRequestType)}
+                        className="input"
+                      >
+                        <option value="access">Data Access (view all my data)</option>
+                        <option value="portability">Data Portability (transfer to another service)</option>
+                        <option value="rectification">Data Rectification (correct inaccurate data)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="label text-sm">Additional Details (optional)</label>
+                      <textarea
+                        value={dataRequestDetails}
+                        onChange={(e) => setDataRequestDetails(e.target.value)}
+                        placeholder="Describe your request in more detail..."
+                        className="input min-h-[80px]"
+                        rows={3}
+                      />
+                    </div>
+                    <button
+                      onClick={handleSubmitDataRequest}
+                      disabled={isSubmittingRequest}
+                      className="btn btn-primary"
+                    >
+                      {isSubmittingRequest ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Request'
+                      )}
+                    </button>
+                    <p className="text-xs text-muted-foreground">
+                      We will process your request within 30 days as required by GDPR.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Previous Requests */}
+            {dataRequests.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Previous Requests</p>
+                <div className="space-y-2">
+                  {dataRequests.slice(0, 3).map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center justify-between text-sm p-2 bg-white rounded border border-border"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="capitalize">{req.requestType}</span>
+                        <span className="text-muted-foreground">
+                          {new Date(req.requestedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs ${
+                          req.status === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : req.status === 'processing'
+                            ? 'bg-blue-100 text-blue-700'
+                            : req.status === 'rejected'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {req.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

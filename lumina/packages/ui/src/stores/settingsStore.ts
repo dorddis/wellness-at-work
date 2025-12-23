@@ -10,6 +10,9 @@ export interface SettingsState {
   autoStart: boolean;
   showFloatingStatus: boolean;
 
+  // Camera settings
+  selectedCameraId: string | null;
+
   // Detection settings
   earThreshold: number;
   alertCooldownMinutes: number;
@@ -44,6 +47,9 @@ export interface SettingsState {
   // Appearance
   theme: 'light' | 'dark' | 'system';
 
+  // Privacy & Sync (GDPR compliance)
+  cloudSyncEnabled: boolean; // Local-only mode when false
+
   // Organization (B2B)
   orgId: string | null;
   orgName: string | null;
@@ -54,6 +60,7 @@ export interface SettingsState {
   setSoundEffects: (enabled: boolean) => void;
   setAutoStart: (enabled: boolean) => void;
   setShowFloatingStatus: (enabled: boolean) => void;
+  setSelectedCameraId: (cameraId: string | null) => void;
   setEarThreshold: (threshold: number) => void;
   setAlertCooldownMinutes: (minutes: number) => void;
   setBreakSettings: (settings: {
@@ -72,6 +79,7 @@ export interface SettingsState {
   setOnboardingStep: (step: number) => void;
   setWellnessGoals: (goals: Partial<SettingsState['wellnessGoals']>) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setCloudSyncEnabled: (enabled: boolean) => void;
   setOrganization: (orgId: string, orgName: string, role: 'admin' | 'manager' | 'employee') => void;
   clearOrganization: () => void;
   reset: () => void;
@@ -89,6 +97,7 @@ const initialState = DEMO_MODE ? {
   soundEffects: true,
   autoStart: true,
   showFloatingStatus: true,
+  selectedCameraId: null,
   earThreshold: 0.21,
   alertCooldownMinutes: 10,
   // Break settings
@@ -115,6 +124,8 @@ const initialState = DEMO_MODE ? {
   },
   // Appearance
   theme: 'light' as const,
+  // Privacy & Sync
+  cloudSyncEnabled: true, // Demo mode: sync enabled
   // Demo organization
   orgId: 'demo-org-123',
   orgName: 'Acme Corporation',
@@ -124,6 +135,7 @@ const initialState = DEMO_MODE ? {
   soundEffects: true,
   autoStart: false,
   showFloatingStatus: true,
+  selectedCameraId: null,
   earThreshold: 0.21,
   alertCooldownMinutes: 10,
   // Break settings (20-20-20 rule defaults)
@@ -150,6 +162,9 @@ const initialState = DEMO_MODE ? {
   },
   // Appearance
   theme: 'system' as const,
+  // Privacy & Sync
+  cloudSyncEnabled: true, // Default: sync enabled (user can disable for local-only mode)
+  // Organization
   orgId: null,
   orgName: null,
   userRole: null,
@@ -164,6 +179,7 @@ export const useSettingsStore = create<SettingsState>()(
       setSoundEffects: (enabled) => set({ soundEffects: enabled }),
       setAutoStart: (enabled) => set({ autoStart: enabled }),
       setShowFloatingStatus: (enabled) => set({ showFloatingStatus: enabled }),
+      setSelectedCameraId: (cameraId) => set({ selectedCameraId: cameraId }),
       setEarThreshold: (threshold) => set({ earThreshold: threshold }),
       setAlertCooldownMinutes: (minutes) => set({ alertCooldownMinutes: minutes }),
 
@@ -191,6 +207,8 @@ export const useSettingsStore = create<SettingsState>()(
 
       setTheme: (theme) => set({ theme }),
 
+      setCloudSyncEnabled: (enabled) => set({ cloudSyncEnabled: enabled }),
+
       setOrganization: (orgId, orgName, role) =>
         set({ orgId, orgName, userRole: role }),
 
@@ -201,7 +219,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'lumina-settings',
-      version: 2, // Increment version for migration
+      version: 4, // v4: Added selectedCameraId for camera selection during onboarding
     }
   )
 );

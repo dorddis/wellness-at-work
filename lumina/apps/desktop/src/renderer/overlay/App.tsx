@@ -8,12 +8,15 @@ interface AlertData {
     | 'low_blink' | 'critical_blink' | 'long_session' | 'poor_posture'
     | 'break_reminder' | 'posture' | 'session_start' | 'custom'
     | 'calibration_complete' | 'break_complete'
-    // New wellness alert types
+    // Wellness alert types
     | 'too_close' | 'too_far' | 'head_tilt' | 'forward_lean'
-    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning';
+    | 'drowsy_mild' | 'drowsy_moderate' | 'drowsy_severe' | 'frequent_yawning'
+    // Meeting mode alerts
+    | 'meeting_detected' | 'meeting_mode_active' | 'meeting_mode_error';
   severity: AlertSeverity;
   message: string;
   action?: string;
+  actionButtonText?: string;
 }
 
 export default function OverlayApp() {
@@ -43,6 +46,17 @@ export default function OverlayApp() {
     window.lumina?.alerts.openHub();
   };
 
+  const handleActionClick = (id: string) => {
+    setAlert(null);
+    // For meeting_detected alerts, open hub and trigger calibration
+    if (alert?.type === 'meeting_detected') {
+      window.lumina?.meetingMode?.startCalibration();
+    } else {
+      // Default: just open the hub
+      window.lumina?.alerts.openHub();
+    }
+  };
+
   return (
     <div className="h-full flex items-start justify-end p-2">
       <AnimatePresence mode="wait">
@@ -53,6 +67,8 @@ export default function OverlayApp() {
             severity={alert.severity}
             message={alert.message}
             action={alert.action}
+            actionButtonText={alert.actionButtonText}
+            onActionClick={alert.actionButtonText ? handleActionClick : undefined}
             onDismiss={handleDismiss}
             onSnooze={handleSnooze}
             onDoubleClick={handleDoubleClick}

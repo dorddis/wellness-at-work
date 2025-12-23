@@ -1,4 +1,8 @@
 import { Nav, Footer } from '@/components/landing';
+import {
+  CURRENT_PRIVACY_POLICY_VERSION,
+  CURRENT_PRIVACY_POLICY_DATE,
+} from '@lumina/ui';
 
 export const metadata = {
   title: 'Privacy Policy | Lumina',
@@ -6,6 +10,13 @@ export const metadata = {
 };
 
 export default function PrivacyPage() {
+  // Format date for display
+  const formattedDate = new Date(CURRENT_PRIVACY_POLICY_DATE).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <Nav />
@@ -15,9 +26,12 @@ export default function PrivacyPage() {
           <h1 className="text-4xl font-bold tracking-tight mb-4">
             Privacy Policy
           </h1>
-          <p className="text-muted-foreground mb-12">
-            Last updated: December 22, 2024
-          </p>
+          <div className="flex items-center gap-3 text-muted-foreground mb-12">
+            <p>Last updated: {formattedDate}</p>
+            <span className="text-xs px-2 py-0.5 bg-muted rounded-full">
+              v{CURRENT_PRIVACY_POLICY_VERSION}
+            </span>
+          </div>
 
           <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8">
             <section>
