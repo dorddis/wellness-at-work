@@ -712,8 +712,8 @@ export default function App() {
     // Initial check
     checkForMeeting();
 
-    // Poll every 15 seconds (faster for better UX)
-    const interval = setInterval(checkForMeeting, 15000);
+    // Poll every 3 seconds for quick meeting detection
+    const interval = setInterval(checkForMeeting, 3000);
 
     return () => {
       clearInterval(interval);

@@ -62,21 +62,22 @@ const MEETING_APPS: MeetingAppConfig[] = [
     titlePattern: /Zoom\s*(Meeting|Webinar)?|app\.zoom\.us/i,
   },
 
-  // Browser-based: Google Meet - be specific to avoid matching "Zoom Meeting"
+  // Browser-based: Google Meet - use meeting code pattern (xxx-xxxx-xxx) for high accuracy
+  // Title format: "Meet - abc-defg-hij - Google Chrome"
   {
     process: 'chrome',
     name: 'Google Meet',
-    titlePattern: /Google Meet|meet\.google\.com/i,
+    titlePattern: /Meet\s*[-–]\s*[a-z]{3}-[a-z]{4}-[a-z]{3}|Google Meet|meet\.google\.com/i,
   },
   {
     process: 'msedge',
     name: 'Google Meet',
-    titlePattern: /Google Meet|meet\.google\.com/i,
+    titlePattern: /Meet\s*[-–]\s*[a-z]{3}-[a-z]{4}-[a-z]{3}|Google Meet|meet\.google\.com/i,
   },
   {
     process: 'firefox',
     name: 'Google Meet',
-    titlePattern: /Google Meet|meet\.google\.com/i,
+    titlePattern: /Meet\s*[-–]\s*[a-z]{3}-[a-z]{4}-[a-z]{3}|Google Meet|meet\.google\.com/i,
   },
 
   // Browser-based: Microsoft Teams Web
@@ -224,11 +225,13 @@ export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
         };
       }
 
-      // Google Meet detection by title (browser-based) - must be explicit to avoid matching "Zoom Meeting"
+      // Google Meet detection by title (browser-based)
+      // Use meeting code pattern (xxx-xxxx-xxx) for high accuracy
+      const meetCodePattern = /meet\s*[-–]\s*[a-z]{3}-[a-z]{4}-[a-z]{3}/i;
       if (
+        meetCodePattern.test(proc.MainWindowTitle) ||
         title.includes('meet.google.com') ||
-        title.includes('google meet') ||
-        (title.includes(' meet ') && title.includes('google')) // space around "meet" to avoid "meeting"
+        title.includes('google meet')
       ) {
         console.log('[MeetingMode] Fallback match - Google Meet:', {
           process: proc.ProcessName,
