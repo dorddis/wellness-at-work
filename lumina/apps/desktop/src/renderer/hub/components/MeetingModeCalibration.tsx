@@ -2,10 +2,12 @@
  * MeetingModeCalibration Component
  * Allows users to select the self-view region for meeting mode
  * Shows a screenshot of the desktop so user can select the meeting app's self-view
+ * Supports auto-detection using face detection + edge snapping
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { type CaptureRegion } from '@lumina/ui';
+import { autoDetectSelfView, type DetectedRegion } from '../utils/smartDetection';
 
 interface MeetingModeCalibrationProps {
   /** Name of the meeting app being calibrated */
@@ -46,27 +48,24 @@ export function MeetingModeCalibration({
   const [screenshot, setScreenshot] = useState<ScreenshotData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
+  const [autoDetectResult, setAutoDetectResult] = useState<DetectedRegion | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Capture screenshot on mount - minimize app first so meeting app is visible
+  // Capture screenshot on mount
+  // No need to minimize - meeting is already visible when user triggers calibration
   useEffect(() => {
     async function captureScreen() {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Step 1: Minimize the Lumina window so it doesn't cover the meeting app
-        await window.lumina.window.minimize();
+        // Small delay to ensure any UI transitions are complete
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-        // Step 2: Wait for window to minimize
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        // Step 3: Capture the screenshot (meeting app should now be visible)
+        // Capture the screenshot (meeting app should already be visible)
         const result = await window.lumina.meetingMode.captureScreenshot();
-
-        // Step 4: Restore the window to show calibration UI
-        await window.lumina.window.maximize();
 
         if (result) {
           setScreenshot(result);
@@ -76,10 +75,6 @@ export function MeetingModeCalibration({
       } catch (err) {
         console.error('[Calibration] Screenshot error:', err);
         setError('Failed to capture screen. Please check permissions.');
-        // Try to restore window even on error
-        try {
-          await window.lumina.window.maximize();
-        } catch {}
       } finally {
         setIsLoading(false);
       }
@@ -115,8 +110,9 @@ export function MeetingModeCalibration({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     });
-    // Reset region on new selection
+    // Reset region and auto-detect result on new manual selection
     setCurrentRegion(null);
+    setAutoDetectResult(null);
   }, []);
 
   const handleMouseMove = useCallback(
@@ -158,6 +154,43 @@ export function MeetingModeCalibration({
   const isValidRegion = (region: CaptureRegion): boolean => {
     return region.width >= 80 && region.height >= 80;
   };
+
+  // Auto-detect self-view using face detection + edge snapping
+  const handleAutoDetect = useCallback(async () => {
+    if (!screenshot) return;
+
+    setIsAutoDetecting(true);
+    setAutoDetectResult(null);
+
+    try {
+      const result = await autoDetectSelfView(
+        screenshot.dataUrl,
+        screenshot.width,
+        screenshot.height
+      );
+
+      if (result) {
+        setAutoDetectResult(result);
+        // Apply the detected region
+        setCurrentRegion({
+          x: result.x,
+          y: result.y,
+          width: result.width,
+          height: result.height,
+        });
+      } else {
+        // No face detected - show message
+        setError('Could not detect your face. Please draw the region manually.');
+        setTimeout(() => setError(null), 3000);
+      }
+    } catch (err) {
+      console.error('[Calibration] Auto-detect error:', err);
+      setError('Auto-detection failed. Please draw the region manually.');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsAutoDetecting(false);
+    }
+  }, [screenshot]);
 
   const regionTooSmall = currentRegion && !isValidRegion(currentRegion);
 
@@ -226,9 +259,32 @@ export function MeetingModeCalibration({
           Calibrate Self-View for {appName}
         </h3>
         <p className="text-gray-600 text-sm mt-2">
-          Draw a box around your self-view preview in {appName}.
-          This is typically in a corner of the meeting window.
+          {autoDetectResult
+            ? `Auto-detected with ${Math.round(autoDetectResult.confidence * 100)}% confidence. Adjust if needed.`
+            : 'Click "Auto-detect" or draw a box around your self-view preview.'}
         </p>
+        <div className="flex items-center gap-3 mt-3">
+          <button
+            onClick={handleAutoDetect}
+            disabled={isAutoDetecting}
+            className="px-3 py-1.5 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
+          >
+            {isAutoDetecting ? (
+              <>
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Detecting...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Auto-detect
+              </>
+            )}
+          </button>
+          <span className="text-xs text-gray-400">or draw manually</span>
+        </div>
         <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
           <span className="px-2 py-0.5 bg-gray-100 rounded">Esc</span>
           <span>to cancel</span>
@@ -262,7 +318,9 @@ export function MeetingModeCalibration({
                 className={`absolute border-2 pointer-events-none ${
                   regionTooSmall
                     ? 'border-red-500 bg-red-500/20'
-                    : 'border-blue-500 bg-blue-500/20'
+                    : autoDetectResult
+                      ? 'border-green-500 bg-green-500/20'
+                      : 'border-blue-500 bg-blue-500/20'
                 }`}
                 style={{
                   left: displayRegion.x,
@@ -272,17 +330,29 @@ export function MeetingModeCalibration({
                 }}
               >
                 {/* Corner handles */}
-                <div className="absolute -top-1 -left-1 w-3 h-3 bg-white border-2 border-blue-500 rounded-sm" />
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-white border-2 border-blue-500 rounded-sm" />
-                <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 border-blue-500 rounded-sm" />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 border-blue-500 rounded-sm" />
+                <div className={`absolute -top-1 -left-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -top-1 -right-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+
+                {/* Auto-detect badge */}
+                {autoDetectResult && (
+                  <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-green-500 text-white rounded text-xs font-medium whitespace-nowrap flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Auto-detected
+                  </div>
+                )}
 
                 {/* Dimensions label */}
                 <div
                   className={`absolute -bottom-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-xs font-mono whitespace-nowrap ${
                     regionTooSmall
                       ? 'bg-red-500 text-white'
-                      : 'bg-blue-500 text-white'
+                      : autoDetectResult
+                        ? 'bg-green-500 text-white'
+                        : 'bg-blue-500 text-white'
                   }`}
                 >
                   {currentRegion?.width} x {currentRegion?.height}
