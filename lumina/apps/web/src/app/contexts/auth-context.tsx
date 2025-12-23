@@ -119,7 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null);
-          router.push('/login');
+          // Full page reload to clear all client state and cookies
+          window.location.href = '/';
         } else if (event === 'SIGNED_IN' && session) {
           // Refresh user data without reloading (avoids infinite loop)
           loadUser();
@@ -137,7 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut();
       setUser(null);
-      router.push('/login');
+      // Full page reload to home - clears all client state
+      window.location.href = '/';
     } catch (error) {
       console.error('Sign out failed:', error);
     }
