@@ -251,15 +251,34 @@ FROM wellness_events GROUP BY user_id, bucket;
 
 The app has a comprehensive **DEMO_MODE** controlled by a single environment variable.
 
-### Enabling/Disabling Demo Mode
+### Environment Variables
 
 Edit `lumina/apps/desktop/.env`:
 ```bash
-# Set to 'true' for demo, 'false' for production
+# Set to 'true' for demo data, 'false' for production
 VITE_DEMO_MODE=true
+
+# Set to 'true' to bypass auth in development (uses mock user)
+VITE_BYPASS_AUTH=true
 ```
 
-This single variable controls demo data in:
+### Auth Bypass (Development)
+
+When `VITE_BYPASS_AUTH=true`, the app skips Supabase authentication and uses a mock dev user:
+- **Email:** dev@lumina.local
+- **Organization:** Development Org (admin role)
+- **No network calls** to Supabase auth
+
+This is useful for:
+- Rapid UI iteration without login flows
+- Testing features without valid Supabase credentials
+- Offline development
+
+**Note:** Sync to Supabase is skipped when using auth bypass (local-only mode).
+
+### Demo Mode
+
+`VITE_DEMO_MODE=true` controls demo data in:
 
 | Component | What it controls |
 |-----------|------------------|
@@ -300,7 +319,14 @@ Since Zustand stores persist to localStorage:
 
 ### For Production
 
-Set `VITE_DEMO_MODE=false` in `.env` before release. The app will start fresh with:
+Set both variables to `false` in `.env` before release:
+```bash
+VITE_DEMO_MODE=false
+VITE_BYPASS_AUTH=false
+```
+
+The app will start fresh with:
+- Real Supabase authentication required
 - Empty streaks/achievements
 - Onboarding flow shown
 - No historical data

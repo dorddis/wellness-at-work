@@ -127,6 +127,12 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  VideoCall: () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+      <circle cx="8" cy="11" r="2" stroke="currentColor" strokeWidth={2} fill="none" />
+    </svg>
+  ),
   // Window control icons (clean, minimal)
   Bell: () => (
     <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -160,6 +166,22 @@ const Icons = {
 // Web dashboard URL (Vercel deployment)
 const WEB_DASHBOARD_URL = 'https://lumina-rho-sandy.vercel.app';
 
+// Dev mode auth bypass
+const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true';
+
+// Mock user for dev mode (when VITE_BYPASS_AUTH=true)
+const DEV_USER: AuthUser = {
+  id: 'dev-user-00000000-0000-0000-0000-000000000000',
+  email: 'dev@lumina.local',
+  organization: {
+    id: 'dev-org-00000000-0000-0000-0000-000000000000',
+    name: 'Development Org',
+    slug: 'dev-org',
+    role: 'admin',
+    department: null,
+  },
+};
+
 // Detection manager (singleton)
 const landmarkerManager = new FaceLandmarkerManager();
 
@@ -169,7 +191,7 @@ const alertEngine = new AlertEngine();
 // Baseline calibrator (singleton)
 const baselineCalibrator = new BaselineCalibrator();
 
-type View = 'dashboard' | 'monitor' | 'exercises' | 'history' | 'settings';
+type View = 'dashboard' | 'monitor' | 'exercises' | 'history' | 'meetingMode' | 'settings';
 
 export default function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -258,15 +280,21 @@ export default function App() {
     isActive: meetingModeActive,
     autoDetect: meetingAutoDetect,
     calibrations: meetingCalibrations,
+    setEnabled: setMeetingModeEnabled,
     setActive: setMeetingModeActive,
     getCalibration,
     touchCalibration,
+    addCalibration: addMeetingCalibration,
   } = useMeetingModeStore();
 
   // Meeting mode refs
   const meetingVideoRef = useRef<HTMLVideoElement>(null);
   const meetingCanvasRef = useRef<HTMLCanvasElement>(null);
   const meetingStreamRef = useRef<MediaStream | null>(null);
+
+  // Meeting mode calibration UI state (for main app - triggered by meeting detection prompt)
+  const [showCalibrationUI, setShowCalibrationUI] = useState(false);
+  const [calibrationAppName, setCalibrationAppName] = useState<string>('');
 
   // Check window maximize state on mount
   useEffect(() => {
@@ -289,6 +317,14 @@ export default function App() {
   // Check auth on mount
   useEffect(() => {
     async function checkAuth() {
+      // Dev mode bypass - skip auth entirely
+      if (BYPASS_AUTH) {
+        console.log('[Auth] Bypassing auth - using dev user');
+        setAuthUser(DEV_USER);
+        setAuthChecked(true);
+        return;
+      }
+
       try {
         const result = await window.lumina.auth.getUser();
         if (result.user && result.user.organization) {
@@ -386,10 +422,10 @@ export default function App() {
     };
   }, [authUser]);
 
-  // Start camera when detection starts, stop when it stops
+  // Start camera when detection starts (unless in meeting mode), stop when it stops
   useEffect(() => {
-    if (!isDetecting) {
-      // Stop camera when detection stops
+    if (!isDetecting || meetingModeActive) {
+      // Stop camera when detection stops OR when meeting mode is active
       if (currentStreamRef.current) {
         console.log('[Camera] Stopping camera...');
         currentStreamRef.current.getTracks().forEach(track => track.stop());
@@ -399,10 +435,20 @@ export default function App() {
         videoRef.current.srcObject = null;
       }
       setIsVideoReady(false);
+
+      // If meeting mode is active, we don't return - detection continues with screen capture
+      if (!isDetecting) {
+        return;
+      }
+
+      // In meeting mode, set video ready since we'll use the meeting video
+      if (meetingModeActive && meetingVideoRef.current && meetingVideoRef.current.readyState >= 2) {
+        setIsVideoReady(true);
+      }
       return;
     }
 
-    // Start camera when detection starts
+    // Start camera when detection starts (only if not in meeting mode)
     let mounted = true;
 
     async function startCamera() {
@@ -476,11 +522,10 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [isDetecting]);
+  }, [isDetecting, meetingModeActive]);
 
-  // State for meeting detected prompt
+  // State for meeting detected (no in-app prompt, only notification)
   const [pendingMeetingApp, setPendingMeetingApp] = useState<string | null>(null);
-  const [showMeetingPrompt, setShowMeetingPrompt] = useState(false);
   const dismissedMeetingPromptRef = useRef<Set<string>>(new Set());
 
   // Meeting detection polling - ALWAYS check for meetings when detection is running
@@ -530,9 +575,29 @@ export default function App() {
               }
             }
           } else if (!calibration && !dismissedMeetingPromptRef.current.has(result.appName)) {
-            // No calibration - show prompt to set up (only once per app per session)
+            // No calibration - stop camera and show notification only (no in-app popup)
+            // Stop camera immediately when meeting detected
+            if (currentStreamRef.current) {
+              console.log('[MeetingMode] Stopping camera - meeting detected without calibration');
+              currentStreamRef.current.getTracks().forEach(track => track.stop());
+              currentStreamRef.current = null;
+            }
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+
+            // Store pending app for calibration
             setPendingMeetingApp(result.appName);
-            setShowMeetingPrompt(true);
+            dismissedMeetingPromptRef.current.add(result.appName);
+
+            // Show only system notification - user can click to open app and set up
+            // The notification click handler will navigate to Meeting Mode view
+            window.lumina.notification.show({
+              title: `${result.appName} Meeting Detected`,
+              body: 'Click to set up Meeting Mode for eye health tracking during video calls.',
+              silent: false,
+              type: 'meeting-detected',
+            });
           }
         } else {
           // No meeting detected
@@ -547,11 +612,6 @@ export default function App() {
               meetingVideoRef.current.srcObject = null;
             }
             setMeetingModeActive(false);
-          }
-          // Hide prompt if meeting ended
-          if (showMeetingPrompt) {
-            setShowMeetingPrompt(false);
-            setPendingMeetingApp(null);
           }
         }
       } catch (err) {
@@ -572,26 +632,31 @@ export default function App() {
         meetingStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isDetecting, meetingModeEnabled, meetingModeActive, getCalibration, setMeetingModeActive, touchCalibration, showMeetingPrompt]);
+  }, [isDetecting, meetingModeEnabled, meetingModeActive, getCalibration, setMeetingModeActive, touchCalibration]);
 
-  // Handle meeting prompt actions
-  const handleSetupMeetingMode = useCallback(() => {
-    if (pendingMeetingApp) {
-      setCalibrationAppName(pendingMeetingApp);
-      setShowCalibrationUI(true);
-      setShowMeetingPrompt(false);
-      // Enable meeting mode when user sets up
-      setMeetingModeEnabled(true);
-    }
+  // Handle notification click - navigate to Meeting Mode view and start calibration
+  // This is triggered when user clicks the system notification
+  useEffect(() => {
+    // Listen for notification click from main process via IPC
+    const handleMeetingModeNavigate = () => {
+      // Navigate to Meeting Mode view
+      setCurrentView('meetingMode');
+      // If we have a pending app, start calibration
+      if (pendingMeetingApp) {
+        setCalibrationAppName(pendingMeetingApp);
+        setShowCalibrationUI(true);
+        setMeetingModeEnabled(true);
+      }
+    };
+
+    // Register IPC listener for notification clicks
+    window.lumina?.onMeetingModeNavigate?.(handleMeetingModeNavigate);
+
+    return () => {
+      // Cleanup listener if available
+      window.lumina?.offMeetingModeNavigate?.(handleMeetingModeNavigate);
+    };
   }, [pendingMeetingApp, setMeetingModeEnabled]);
-
-  const handleDismissMeetingPrompt = useCallback(() => {
-    if (pendingMeetingApp) {
-      dismissedMeetingPromptRef.current.add(pendingMeetingApp);
-    }
-    setShowMeetingPrompt(false);
-    setPendingMeetingApp(null);
-  }, [pendingMeetingApp]);
 
 
   // Start/stop detection loop - uses setInterval to work in background
@@ -650,7 +715,7 @@ export default function App() {
           }
         }
 
-        const result = landmarkerManager.processVideoFrame(frameSource as HTMLVideoElement);
+        const result = landmarkerManager.processVideoFrame(frameSource);
         if (result) {
           setFaceDetected(result.rawLandmarks !== null);
 
@@ -1081,6 +1146,7 @@ export default function App() {
             { id: 'monitor', label: 'Live Monitor', icon: <Icons.Camera /> },
             { id: 'exercises', label: 'Eye Exercises', icon: <Icons.Eye /> },
             { id: 'history', label: 'History', icon: <Icons.Clock /> },
+            { id: 'meetingMode', label: 'Meeting Mode', icon: <Icons.VideoCall /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -1180,47 +1246,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Meeting detected prompt - shows when meeting found but not calibrated */}
-        {showMeetingPrompt && pendingMeetingApp && (
-          <div className="absolute top-16 right-6 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-200 p-4 animate-in slide-in-from-right">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-semibold text-gray-900">{pendingMeetingApp} Detected</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Enable Meeting Mode to track your eye health during video calls.
-                </p>
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={handleSetupMeetingMode}
-                    className="px-3 py-1.5 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800"
-                  >
-                    Set Up
-                  </button>
-                  <button
-                    onClick={handleDismissMeetingPrompt}
-                    className="px-3 py-1.5 text-gray-600 text-sm font-medium hover:text-gray-800"
-                  >
-                    Not Now
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={handleDismissMeetingPrompt}
-                className="flex-shrink-0 text-gray-400 hover:text-gray-600"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Shared Fixed Header */}
         <div className="flex-shrink-0 px-6 pt-6 pb-4 bg-gray-50">
           <div className="flex items-center justify-between">
@@ -1230,6 +1255,7 @@ export default function App() {
                 {currentView === 'monitor' && 'Live Monitor'}
                 {currentView === 'exercises' && 'Eye Exercises'}
                 {currentView === 'history' && 'History'}
+                {currentView === 'meetingMode' && 'Meeting Mode'}
                 {currentView === 'settings' && 'Settings'}
               </h1>
               <p className="text-gray-500 text-sm">
@@ -1237,6 +1263,7 @@ export default function App() {
                 {currentView === 'monitor' && 'Real-time blink detection and eye tracking'}
                 {currentView === 'exercises' && 'Guided exercises to reduce eye strain and improve eye health'}
                 {currentView === 'history' && 'View your wellness data over time'}
+                {currentView === 'meetingMode' && 'Track eye health during video calls'}
                 {currentView === 'settings' && 'Configure your Lumina experience'}
               </p>
             </div>
@@ -1279,13 +1306,16 @@ export default function App() {
 
         {currentView === 'monitor' && (
           <MonitorView
-            videoRef={videoRef}
+            videoRef={meetingModeActive ? meetingVideoRef : videoRef}
+            meetingCanvasRef={meetingModeActive ? meetingCanvasRef : undefined}
             isDetecting={isDetecting}
             faceDetected={faceDetected}
             blinkCount={blinkCount}
             blinkRate={currentBlinkRate}
             wellnessScore={wellnessScore}
             onToggleDetection={handleToggleDetection}
+            meetingModeActive={meetingModeActive}
+            meetingAppName={useMeetingModeStore.getState().detectedApp}
           />
         )}
 
@@ -1293,9 +1323,92 @@ export default function App() {
 
         {currentView === 'history' && <HistoryView />}
 
+        {currentView === 'meetingMode' && (
+          <MeetingModeView
+            onStartCalibration={(appName: string) => {
+              setCalibrationAppName(appName);
+              setShowCalibrationUI(true);
+            }}
+          />
+        )}
+
         {currentView === 'settings' && <SettingsView user={authUser} onSignOut={handleSignOut} />}
         </div>
       </main>
+
+      {/* Meeting Mode Calibration Overlay (triggered by meeting detection prompt) */}
+      {showCalibrationUI && (
+        <MeetingModeCalibration
+          appName={calibrationAppName}
+          displayId={0}
+          onComplete={(region: CaptureRegion) => {
+            // Save calibration
+            addMeetingCalibration({
+              appName: calibrationAppName,
+              region,
+              displayId: 0,
+            });
+            setShowCalibrationUI(false);
+
+            // Immediately start screen capture since we know meeting is active
+            const appName = calibrationAppName;
+            setCalibrationAppName('');
+            setPendingMeetingApp(null);
+
+            // Start screen capture right away
+            (async () => {
+              try {
+                console.log('[MeetingMode] Starting capture after calibration for:', appName);
+                const sourceId = await window.lumina.meetingMode.getSourceId(0);
+                console.log('[MeetingMode] Got source ID:', sourceId);
+
+                if (sourceId && meetingVideoRef.current) {
+                  const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: {
+                      // @ts-ignore - Electron-specific constraints
+                      mandatory: {
+                        chromeMediaSource: 'desktop',
+                        chromeMediaSourceId: sourceId,
+                        minWidth: 1280,
+                        maxWidth: 3840,
+                        minHeight: 720,
+                        maxHeight: 2160,
+                      },
+                    },
+                  });
+
+                  console.log('[MeetingMode] Got stream:', stream.getVideoTracks()[0]?.label);
+                  meetingStreamRef.current = stream;
+                  meetingVideoRef.current.srcObject = stream;
+
+                  // Wait for video to be ready
+                  await new Promise<void>((resolve) => {
+                    const video = meetingVideoRef.current!;
+                    if (video.readyState >= 2) {
+                      resolve();
+                    } else {
+                      video.onloadeddata = () => resolve();
+                    }
+                  });
+
+                  await meetingVideoRef.current.play();
+                  setMeetingModeActive(true, appName);
+                  console.log('[MeetingMode] Screen capture started successfully');
+                } else {
+                  console.error('[MeetingMode] No source ID or video ref');
+                }
+              } catch (err) {
+                console.error('[MeetingMode] Failed to start screen capture after calibration:', err);
+              }
+            })();
+          }}
+          onCancel={() => {
+            setShowCalibrationUI(false);
+            setCalibrationAppName('');
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1775,31 +1888,45 @@ function DashboardView({
 // Note: EarWaveform now reads from Zustand store, no need to pass currentEarData
 function MonitorView({
   videoRef,
+  meetingCanvasRef,
   isDetecting,
   faceDetected,
   blinkCount,
   blinkRate,
   wellnessScore,
   onToggleDetection,
+  meetingModeActive = false,
+  meetingAppName = null,
 }: {
   videoRef: React.RefObject<HTMLVideoElement>;
+  meetingCanvasRef?: React.RefObject<HTMLCanvasElement>;
   isDetecting: boolean;
   faceDetected: boolean;
   blinkCount: number;
   blinkRate: number;
   wellnessScore: number;
   onToggleDetection: () => void;
+  meetingModeActive?: boolean;
+  meetingAppName?: string | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Draw video to visible canvas
+  // Draw video/cropped canvas to visible canvas
   useEffect(() => {
-    if (!isDetecting || !videoRef.current || !canvasRef.current) {
-      console.log('[MonitorView] Draw skipped:', { isDetecting, hasVideo: !!videoRef.current, hasCanvas: !!canvasRef.current });
+    if (!isDetecting || !canvasRef.current) {
+      console.log('[MonitorView] Draw skipped:', { isDetecting, hasCanvas: !!canvasRef.current });
       return;
     }
 
-    const video = videoRef.current;
+    // In meeting mode, draw from the cropped canvas; otherwise draw from video
+    const sourceVideo = videoRef.current;
+    const sourceCanvas = meetingCanvasRef?.current;
+
+    if (!sourceVideo && !sourceCanvas) {
+      console.log('[MonitorView] No source available');
+      return;
+    }
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -1807,27 +1934,37 @@ function MonitorView({
       return;
     }
 
-    console.log('[MonitorView] Starting draw loop, video readyState:', video.readyState, 'dimensions:', video.videoWidth, 'x', video.videoHeight);
+    console.log('[MonitorView] Starting draw loop, meetingMode:', meetingModeActive, 'hasSourceCanvas:', !!sourceCanvas);
 
     let frameCount = 0;
     const draw = () => {
-      if (video.readyState >= 2) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
+      // In meeting mode with cropped canvas, draw from the cropped canvas
+      if (meetingModeActive && sourceCanvas && sourceCanvas.width > 0 && sourceCanvas.height > 0) {
+        canvas.width = sourceCanvas.width;
+        canvas.height = sourceCanvas.height;
+        ctx.drawImage(sourceCanvas, 0, 0);
         if (frameCount === 0) {
-          console.log('[MonitorView] First frame drawn, canvas:', canvas.width, 'x', canvas.height);
+          console.log('[MonitorView] First frame from cropped canvas:', canvas.width, 'x', canvas.height);
+        }
+        frameCount++;
+      } else if (sourceVideo && sourceVideo.readyState >= 2) {
+        // Fall back to video (camera mode or meeting mode without crop)
+        canvas.width = sourceVideo.videoWidth;
+        canvas.height = sourceVideo.videoHeight;
+        ctx.drawImage(sourceVideo, 0, 0);
+        if (frameCount === 0) {
+          console.log('[MonitorView] First frame from video:', canvas.width, 'x', canvas.height);
         }
         frameCount++;
       } else if (frameCount === 0) {
-        console.log('[MonitorView] Waiting for video, readyState:', video.readyState);
+        console.log('[MonitorView] Waiting for source...');
       }
       if (isDetecting) {
         requestAnimationFrame(draw);
       }
     };
     draw();
-  }, [isDetecting, videoRef]);
+  }, [isDetecting, videoRef, meetingCanvasRef, meetingModeActive]);
 
   return (
     <div className="p-6">
@@ -1853,6 +1990,16 @@ function MonitorView({
                 {isDetecting ? (faceDetected ? 'Detecting' : 'No face') : 'Paused'}
               </span>
             </div>
+
+            {/* Meeting mode indicator */}
+            {meetingModeActive && (
+              <div className="absolute top-4 right-4 flex items-center gap-2 bg-purple-600/90 px-3 py-1.5 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="text-white text-sm font-medium">
+                  Meeting Mode: {meetingAppName || 'Active'}
+                </span>
+              </div>
+            )}
 
             <div className="absolute bottom-4 left-4 bg-black/50 px-3 py-2 rounded-lg">
               <span className="text-white text-lg font-bold">Blinks: {blinkCount}</span>
@@ -2580,24 +2727,6 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
     setTheme,
   } = useSettingsStore();
 
-  // Meeting Mode state
-  const {
-    enabled: meetingModeEnabled,
-    isActive: meetingModeActive,
-    detectedApp: meetingDetectedApp,
-    calibrations: meetingCalibrations,
-    autoDetect: meetingAutoDetect,
-    setEnabled: setMeetingModeEnabled,
-    setAutoDetect: setMeetingAutoDetect,
-    addCalibration: addMeetingCalibration,
-    removeCalibration: removeMeetingCalibration,
-    hasCalibration: hasMeetingCalibration,
-  } = useMeetingModeStore();
-
-  // Calibration UI state
-  const [showCalibrationUI, setShowCalibrationUI] = useState(false);
-  const [calibrationAppName, setCalibrationAppName] = useState<string>('');
-
   const [syncStatus, setSyncStatus] = useState<{
     isConfigured: boolean;
     isSyncing: boolean;
@@ -2940,92 +3069,6 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
           </div>
         </div>
 
-        {/* Meeting Mode Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="font-semibold mb-2">Meeting Mode</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            Continue eye tracking during video calls by capturing your self-view
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Enable Meeting Mode</p>
-                <p className="text-sm text-gray-500">Capture self-view from Zoom/Teams/Meet</p>
-              </div>
-              <button
-                onClick={() => setMeetingModeEnabled(!meetingModeEnabled)}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  meetingModeEnabled ? 'bg-black' : 'bg-gray-300'
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    meetingModeEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-            </div>
-            {meetingModeEnabled && (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Auto-detect meetings</p>
-                    <p className="text-sm text-gray-500">Automatically switch when meeting starts</p>
-                  </div>
-                  <button
-                    onClick={() => setMeetingAutoDetect(!meetingAutoDetect)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      meetingAutoDetect ? 'bg-black' : 'bg-gray-300'
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                        meetingAutoDetect ? 'translate-x-6' : 'translate-x-0.5'
-                      }`}
-                    />
-                  </button>
-                </div>
-                <div className="border-t pt-4">
-                  <p className="font-medium text-sm mb-3">Calibrated Apps</p>
-                  {meetingCalibrations.length === 0 ? (
-                    <p className="text-sm text-gray-500">
-                      No apps calibrated yet. Join a meeting to set up.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {meetingCalibrations.map((cal) => (
-                        <div key={cal.appName} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <span className="font-medium">{cal.appName}</span>
-                            <span className="text-xs text-gray-500 ml-2">
-                              {cal.region.width}x{cal.region.height}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeMeetingCalibration(cal.appName)}
-                            className="text-sm text-red-500 hover:text-red-600"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => {
-                      setCalibrationAppName('Custom');
-                      setShowCalibrationUI(true);
-                    }}
-                    className="w-full mt-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-                  >
-                    Calibrate Self-View Region
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
         {/* Appearance */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="font-semibold mb-4">Appearance</h3>
@@ -3290,26 +3333,223 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
       )}
 
-      {/* Meeting Mode Calibration Overlay */}
-      {showCalibrationUI && (
-        <MeetingModeCalibration
-          appName={calibrationAppName}
-          displayId={0}
-          onComplete={(region: CaptureRegion) => {
-            addMeetingCalibration({
-              appName: calibrationAppName,
-              region,
-              displayId: 0,
-            });
-            setShowCalibrationUI(false);
-            setCalibrationAppName('');
-          }}
-          onCancel={() => {
-            setShowCalibrationUI(false);
-            setCalibrationAppName('');
-          }}
-        />
-      )}
+    </div>
+  );
+}
+
+// Meeting Mode View Component
+interface MeetingModeViewProps {
+  onStartCalibration: (appName: string) => void;
+}
+
+function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
+  const {
+    enabled: meetingModeEnabled,
+    isActive: meetingModeActive,
+    detectedApp: meetingDetectedApp,
+    calibrations: meetingCalibrations,
+    autoDetect: meetingAutoDetect,
+    setEnabled: setMeetingModeEnabled,
+    setAutoDetect: setMeetingAutoDetect,
+    removeCalibration: removeMeetingCalibration,
+  } = useMeetingModeStore();
+
+  const [customAppName, setCustomAppName] = useState('');
+
+  return (
+    <div className="p-6">
+      <div className="space-y-6">
+        {/* Status Card */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Current Status</h3>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+              meetingModeActive
+                ? 'bg-purple-100 text-purple-800'
+                : meetingModeEnabled
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-600'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                meetingModeActive
+                  ? 'bg-purple-500 animate-pulse'
+                  : meetingModeEnabled
+                    ? 'bg-green-500'
+                    : 'bg-gray-400'
+              }`} />
+              {meetingModeActive
+                ? `Active: ${meetingDetectedApp}`
+                : meetingModeEnabled
+                  ? 'Ready'
+                  : 'Disabled'}
+            </div>
+          </div>
+
+          {/* Enable/Disable Toggle */}
+          <div className="flex items-center justify-between py-4 border-b border-gray-100">
+            <div>
+              <p className="font-medium">Enable Meeting Mode</p>
+              <p className="text-sm text-gray-500">Track eye health during video calls</p>
+            </div>
+            <button
+              onClick={() => setMeetingModeEnabled(!meetingModeEnabled)}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                meetingModeEnabled ? 'bg-black' : 'bg-gray-300'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  meetingModeEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Auto-detect Toggle */}
+          {meetingModeEnabled && (
+            <div className="flex items-center justify-between py-4">
+              <div>
+                <p className="font-medium">Auto-detect meetings</p>
+                <p className="text-sm text-gray-500">Automatically switch when meeting starts</p>
+              </div>
+              <button
+                onClick={() => setMeetingAutoDetect(!meetingAutoDetect)}
+                className={`w-12 h-6 rounded-full transition-colors ${
+                  meetingAutoDetect ? 'bg-black' : 'bg-gray-300'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    meetingAutoDetect ? 'translate-x-6' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* How it works */}
+        <div className="bg-blue-50 rounded-xl border border-blue-100 p-6">
+          <h3 className="font-semibold text-blue-900 mb-3">How Meeting Mode Works</h3>
+          <div className="space-y-3 text-sm text-blue-800">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 text-blue-900 font-medium">1</div>
+              <p>When a meeting app (Zoom, Teams, Meet) is detected, the camera is released so the meeting app can use it.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 text-blue-900 font-medium">2</div>
+              <p>Lumina captures your self-view preview (the small video of yourself) from the meeting app.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 text-blue-900 font-medium">3</div>
+              <p>Eye tracking continues on this captured region - no images are saved or transmitted.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Calibrated Apps */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Calibrated Apps</h3>
+            <span className="text-sm text-gray-500">{meetingCalibrations.length} app{meetingCalibrations.length !== 1 ? 's' : ''}</span>
+          </div>
+
+          {meetingCalibrations.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Icons.VideoCall />
+              </div>
+              <p className="text-gray-600 mb-2">No apps calibrated yet</p>
+              <p className="text-sm text-gray-500">
+                When you join a meeting, you'll be prompted to calibrate the self-view region.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {meetingCalibrations.map((cal) => (
+                <div
+                  key={cal.appName}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <Icons.VideoCall />
+                    </div>
+                    <div>
+                      <p className="font-medium">{cal.appName}</p>
+                      <p className="text-xs text-gray-500">
+                        Region: {cal.region.width}x{cal.region.height} px
+                        {cal.lastUsed && (
+                          <span className="ml-2">
+                            Last used: {new Date(cal.lastUsed).toLocaleDateString()}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onStartCalibration(cal.appName)}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg"
+                    >
+                      Recalibrate
+                    </button>
+                    <button
+                      onClick={() => removeMeetingCalibration(cal.appName)}
+                      className="px-3 py-1.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Manual calibration */}
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700 mb-3">Add Custom App</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={customAppName}
+                onChange={(e) => setCustomAppName(e.target.value)}
+                placeholder="App name (e.g., Webex)"
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black"
+              />
+              <button
+                onClick={() => {
+                  if (customAppName.trim()) {
+                    onStartCalibration(customAppName.trim());
+                    setCustomAppName('');
+                  }
+                }}
+                disabled={!customAppName.trim()}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Calibrate
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Privacy Notice */}
+        <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">Privacy First</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Only the small self-view region is captured for blink detection. No meeting content, audio, or other participants are ever accessed. All processing happens locally on your device.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

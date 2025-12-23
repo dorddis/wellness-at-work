@@ -70,8 +70,14 @@
       "target": "nsis"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
     },
+    "afterSign": "scripts/notarize.js",
     "nsis": {
       "oneClick": false,
       "perMachine": false,

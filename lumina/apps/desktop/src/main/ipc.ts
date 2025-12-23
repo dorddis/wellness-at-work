@@ -62,6 +62,9 @@ export function setupIPC(
   database: DatabaseManager,
   syncService: SyncService
 ): void {
+  // Store reference to window manager for notification click handling
+  globalWindowManager = windowManager;
+
   // ============================================================================
   // Window Management
   // ============================================================================
@@ -653,5 +656,82 @@ export function setupIPC(
   ipcMain.handle('meeting:get-displays', async () => {
     const { getDisplays } = await import('./meetingMode');
     return getDisplays();
+  });
+
+  // Capture a screenshot of the primary display for calibration
+  ipcMain.handle('meeting:capture-screenshot', async () => {
+    const { desktopCapturer, screen } = await import('electron');
+
+    // Get actual screen dimensions for full resolution capture
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    const scaleFactor = primaryDisplay.scaleFactor;
+
+    // Capture at actual screen resolution (accounting for HiDPI)
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: Math.round(width * scaleFactor),
+        height: Math.round(height * scaleFactor),
+      },
+    });
+
+    // Get the primary display source
+    const primarySource = sources.find((s) => s.display_id === '0') || sources[0];
+
+    if (primarySource) {
+      // Return as data URL for display in renderer
+      return {
+        dataUrl: primarySource.thumbnail.toDataURL(),
+        width: primarySource.thumbnail.getSize().width,
+        height: primarySource.thumbnail.getSize().height,
+        // Include scale factor so renderer can adjust coordinates
+        scaleFactor,
+      };
+    }
+
+    return null;
+  });
+
+  // ============================================================================
+  // System Notifications
+  // ============================================================================
+
+  // Show a native system notification
+  ipcMain.handle('notification:show', async (_, options: {
+    title: string;
+    body: string;
+    silent?: boolean;
+    type?: 'meeting-detected' | 'general';
+  }) => {
+    const { Notification } = await import('electron');
+
+    if (!Notification.isSupported()) {
+      console.log('[Notification] System notifications not supported');
+      return { success: false, error: 'Notifications not supported' };
+    }
+
+    const notification = new Notification({
+      title: options.title,
+      body: options.body,
+      silent: options.silent ?? false,
+    });
+
+    // Show the notification
+    notification.show();
+
+    // Handle click - bring app to focus and navigate based on type
+    notification.on('click', () => {
+      const wm = globalWindowManager;
+      if (wm) {
+        wm.showHubWindow();
+        // For meeting-detected notifications, send event to navigate to Meeting Mode view
+        if (options.type === 'meeting-detected') {
+          wm.sendToHub('meeting-mode:navigate', {});
+        }
+      }
+    });
+
+    return { success: true };
   });
 }

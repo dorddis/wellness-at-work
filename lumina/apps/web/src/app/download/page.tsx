@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { Nav, Footer } from '@/components/landing';
 import { DownloadButtons } from './DownloadButtons';
-import { Monitor, Apple, CheckCircle, AlertCircle, Download, Sparkles, ChevronRight, Eye, Zap, Video } from 'lucide-react';
+import { Monitor, Apple, CheckCircle, AlertCircle, Download, Sparkles, ChevronRight, Eye, Zap, Video, Terminal, Shield } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Download Lumina - Desktop App',
@@ -166,6 +166,78 @@ export default async function DownloadPage() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Installation Instructions */}
+        <section className="py-16 border-t border-border bg-muted/30">
+          <div className="container">
+            <div className="mx-auto max-w-3xl">
+              <h2 className="text-2xl font-bold text-center mb-10">
+                Installation Instructions
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                {/* Windows */}
+                <div className="p-6 rounded-xl border border-border bg-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Monitor className="w-5 h-5 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Windows</h3>
+                  </div>
+                  <ol className="space-y-3 list-decimal list-inside">
+                    <li className="text-sm text-muted-foreground">
+                      Download the .exe installer
+                    </li>
+                    <li className="text-sm text-muted-foreground">
+                      If SmartScreen appears, click <strong className="text-foreground">More info</strong> then <strong className="text-foreground">Run anyway</strong>
+                    </li>
+                    <li className="text-sm text-muted-foreground">
+                      Follow the installation wizard
+                    </li>
+                    <li className="text-sm text-muted-foreground">
+                      Grant camera permission when prompted
+                    </li>
+                  </ol>
+                </div>
+
+                {/* macOS */}
+                <div className="p-6 rounded-xl border border-border bg-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Apple className="w-5 h-5 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-semibold">macOS</h3>
+                  </div>
+                  <ol className="space-y-3 list-decimal list-inside">
+                    <li className="text-sm text-muted-foreground">
+                      Download the .dmg file
+                    </li>
+                    <li className="text-sm text-muted-foreground">
+                      Open Terminal and run:
+                    </li>
+                  </ol>
+                  <div className="mt-3 p-3 rounded-lg bg-zinc-900 border border-zinc-700">
+                    <code className="text-sm text-green-400 font-mono">
+                      xattr -cr ~/Downloads/Lumina.dmg
+                    </code>
+                  </div>
+                  <ol className="space-y-3 list-decimal list-inside mt-3" start={3}>
+                    <li className="text-sm text-muted-foreground">
+                      Open the .dmg and drag Lumina to Applications
+                    </li>
+                    <li className="text-sm text-muted-foreground">
+                      Grant camera permission in System Settings
+                    </li>
+                  </ol>
+                  <p className="mt-4 text-xs text-muted-foreground flex items-start gap-2">
+                    <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    The xattr command removes the download quarantine. This is required because the app is not yet notarized with Apple.
+                  </p>
                 </div>
               </div>
             </div>

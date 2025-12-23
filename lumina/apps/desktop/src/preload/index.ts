@@ -126,7 +126,24 @@ export interface LuminaAPI {
     getSources: () => Promise<ScreenSource[]>;
     getSourceId: (displayId?: number) => Promise<string | null>;
     getDisplays: () => Promise<DisplayInfo[]>;
+    captureScreenshot: () => Promise<ScreenshotResult | null>;
   };
+
+  // System Notifications
+  notification: {
+    show: (options: { title: string; body: string; silent?: boolean; type?: 'meeting-detected' | 'general' }) => Promise<{ success: boolean; error?: string }>;
+  };
+
+  // Meeting Mode Navigation (from notification clicks)
+  onMeetingModeNavigate: (callback: () => void) => () => void;
+  offMeetingModeNavigate: (callback: () => void) => void;
+}
+
+interface ScreenshotResult {
+  dataUrl: string;
+  width: number;
+  height: number;
+  scaleFactor: number;
 }
 
 interface SyncStatus {
@@ -488,6 +505,22 @@ const luminaAPI: LuminaAPI = {
     getSources: () => ipcRenderer.invoke('meeting:get-sources'),
     getSourceId: (displayId) => ipcRenderer.invoke('meeting:get-source-id', displayId),
     getDisplays: () => ipcRenderer.invoke('meeting:get-displays'),
+    captureScreenshot: () => ipcRenderer.invoke('meeting:capture-screenshot'),
+  },
+
+  notification: {
+    show: (options) => ipcRenderer.invoke('notification:show', options),
+  },
+
+  // Meeting Mode Navigation (from notification clicks)
+  onMeetingModeNavigate: (callback) => {
+    const handler = () => callback();
+    ipcRenderer.on('meeting-mode:navigate', handler);
+    return () => ipcRenderer.removeListener('meeting-mode:navigate', handler);
+  },
+  offMeetingModeNavigate: (callback) => {
+    // Remove listener by reference - but typically the returned cleanup function should be used
+    ipcRenderer.removeAllListeners('meeting-mode:navigate');
   },
 };
 

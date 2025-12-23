@@ -166,13 +166,16 @@ export class FaceLandmarkerManager {
   }
 
   /**
-   * Process a video frame and return detection results
+   * Process a video/canvas frame and return detection results
    *
-   * @param videoElement HTMLVideoElement with webcam feed
+   * @param frameSource HTMLVideoElement (webcam) or HTMLCanvasElement (screen capture crop)
    * @param frameWidth Optional frame width for posture calculation
    * @returns Frame processing result with all detections
    */
-  processVideoFrame(videoElement: HTMLVideoElement, frameWidth?: number): FrameResult | null {
+  processVideoFrame(
+    frameSource: HTMLVideoElement | HTMLCanvasElement,
+    frameWidth?: number
+  ): FrameResult | null {
     if (!this.faceLandmarker || !this.isInitialized) {
       console.error('FaceLandmarker not initialized. Call initialize() first.');
       return null;
@@ -185,15 +188,19 @@ export class FaceLandmarkerManager {
       this.frameWidth = frameWidth;
     }
 
-    // Skip if same frame (video not progressed)
-    if (videoElement.currentTime === this.lastVideoTime) {
-      return null;
+    // Skip if same frame (video not progressed) - only for video elements
+    // Canvas elements don't have currentTime, so we always process them
+    if (frameSource instanceof HTMLVideoElement) {
+      if (frameSource.currentTime === this.lastVideoTime) {
+        return null;
+      }
+      this.lastVideoTime = frameSource.currentTime;
     }
-    this.lastVideoTime = videoElement.currentTime;
 
     // Run face landmark detection
+    // MediaPipe's detectForVideo accepts HTMLVideoElement, HTMLCanvasElement, and ImageData
     const result: FaceLandmarkerResult = this.faceLandmarker.detectForVideo(
-      videoElement,
+      frameSource,
       timestamp
     );
 
