@@ -312,6 +312,13 @@ export default function App() {
   // Meeting mode calibration UI state (for main app - triggered by meeting detection prompt)
   const [showCalibrationUI, setShowCalibrationUI] = useState(false);
   const [calibrationAppName, setCalibrationAppName] = useState<string>('');
+  // Pre-captured screenshot for calibration (captured before window focus)
+  const [preCapturedScreenshot, setPreCapturedScreenshot] = useState<{
+    dataUrl: string;
+    width: number;
+    height: number;
+    scaleFactor: number;
+  } | null>(null);
   // State for meeting detected without calibration (camera paused, waiting for user action)
   const [pendingMeetingApp, setPendingMeetingApp] = useState<string | null>(null);
   const dismissedMeetingPromptRef = useRef<Set<string>>(new Set());
@@ -555,7 +562,11 @@ export default function App() {
       } catch (err) {
         if (mounted) {
           console.error('[Camera] Error:', err);
-          setError(err instanceof Error ? err.message : 'Camera error');
+          // Don't show blocking error if meeting mode is pending - user can still use app
+          // Camera will restart when meeting mode is cancelled or completed
+          if (!pendingMeetingApp && !meetingModeActive) {
+            setError(err instanceof Error ? err.message : 'Camera error');
+          }
         }
       }
     }
@@ -584,6 +595,9 @@ export default function App() {
       try {
         const result = await window.lumina.meetingMode.detectApp();
 
+        // Read current meeting mode state directly from store (avoids stale closure)
+        const currentMeetingModeActive = useMeetingModeStore.getState().isActive;
+
         if (result.isDetected && result.appName) {
           // Meeting detected - check if we have calibration for this app
           const calibration = getCalibration(result.appName);
@@ -595,10 +609,10 @@ export default function App() {
             processName: result.processName,
             hasCalibration: !!calibration,
             storedCalibrations: allCalibrations.map(c => c.appName),
-            meetingModeActive,
+            meetingModeActive: currentMeetingModeActive,
           });
 
-          if (calibration && !meetingModeActive) {
+          if (calibration && !currentMeetingModeActive) {
             // Has calibration - auto-start meeting mode
             // Note: We auto-start regardless of meetingModeEnabled since user has calibrated
             // (having calibration implies user wants this feature)
@@ -623,6 +637,25 @@ export default function App() {
 
                 meetingStreamRef.current = stream;
                 meetingVideoRef.current.srcObject = stream;
+
+                // Listen for stream track ended (e.g., screen share stopped, permission revoked)
+                const videoTrack = stream.getVideoTracks()[0];
+                if (videoTrack) {
+                  videoTrack.onended = () => {
+                    console.log('[MeetingMode] Stream track ended, cleaning up');
+                    const isActive = useMeetingModeStore.getState().isActive;
+                    if (isActive) {
+                      if (meetingStreamRef.current) {
+                        meetingStreamRef.current.getTracks().forEach((t) => t.stop());
+                        meetingStreamRef.current = null;
+                      }
+                      if (meetingVideoRef.current) {
+                        meetingVideoRef.current.srcObject = null;
+                      }
+                      setMeetingModeActive(false);
+                    }
+                  };
+                }
 
                 // Wait for video to be ready before setting active
                 await new Promise<void>((resolve) => {
@@ -678,34 +711,41 @@ export default function App() {
             });
           }
         } else {
-          // No meeting detected
-          if (meetingModeActive) {
-            // Meeting ended - stop screen capture
-            console.log('[MeetingMode] Meeting ended, stopping capture');
-            if (meetingStreamRef.current) {
-              meetingStreamRef.current.getTracks().forEach((track) => track.stop());
-              meetingStreamRef.current = null;
-            }
-            if (meetingVideoRef.current) {
-              meetingVideoRef.current.srcObject = null;
-            }
-            // Clear dismissed prompt for this app so user gets notified next meeting
-            const endedApp = useMeetingModeStore.getState().detectedApp;
-            if (endedApp) {
-              dismissedMeetingPromptRef.current.delete(endedApp);
-            }
-            setMeetingModeActive(false);
-          } else if (pendingMeetingApp) {
-            // Meeting ended before calibration was completed - restart camera
-            console.log('[MeetingMode] Meeting ended without calibration, restarting camera');
-            // Clear dismissed prompt so user gets notified next meeting
-            dismissedMeetingPromptRef.current.delete(pendingMeetingApp);
-            setPendingMeetingApp(null);
-            // Camera will restart automatically via the camera effect (pendingMeetingApp changed)
-          }
+          // No meeting detected - cleanup meeting mode if active
+          cleanupMeetingMode(currentMeetingModeActive, 'Meeting ended');
         }
       } catch (err) {
         console.error('[MeetingMode] Detection error:', err);
+        // On detection error, also cleanup meeting mode to avoid stuck state
+        const currentState = useMeetingModeStore.getState().isActive;
+        cleanupMeetingMode(currentState, 'Detection error');
+      }
+    };
+
+    // Helper to cleanup meeting mode state
+    const cleanupMeetingMode = (wasActive: boolean, reason: string) => {
+      if (wasActive) {
+        console.log(`[MeetingMode] ${reason}, stopping capture`);
+        if (meetingStreamRef.current) {
+          meetingStreamRef.current.getTracks().forEach((track) => track.stop());
+          meetingStreamRef.current = null;
+        }
+        if (meetingVideoRef.current) {
+          meetingVideoRef.current.srcObject = null;
+        }
+        // Clear dismissed prompt for this app so user gets notified next meeting
+        const endedApp = useMeetingModeStore.getState().detectedApp;
+        if (endedApp) {
+          dismissedMeetingPromptRef.current.delete(endedApp);
+        }
+        setMeetingModeActive(false);
+      } else if (pendingMeetingApp) {
+        // Meeting ended before calibration was completed - restart camera
+        console.log(`[MeetingMode] ${reason} without calibration, restarting camera`);
+        // Clear dismissed prompt so user gets notified next meeting
+        dismissedMeetingPromptRef.current.delete(pendingMeetingApp);
+        setPendingMeetingApp(null);
+        // Camera will restart automatically via the camera effect (pendingMeetingApp changed)
       }
     };
 
@@ -750,18 +790,52 @@ export default function App() {
 
   // Handle alert action button click - start calibration directly
   // This is triggered when user clicks "Set Up Now" on the meeting detected alert
+  // The screenshot is pre-captured in main process BEFORE the window is focused
   useEffect(() => {
-    const handleStartCalibration = async () => {
-      // First detect which meeting app is running
+    const handleStartCalibration = async (data: { screenshot?: { dataUrl: string; width: number; height: number; scaleFactor: number } | null }) => {
+      // Store pre-captured screenshot if provided
+      if (data?.screenshot) {
+        console.log('[MeetingMode] Received pre-captured screenshot:', data.screenshot.width, 'x', data.screenshot.height);
+        setPreCapturedScreenshot(data.screenshot);
+      }
+
+      // Use pendingMeetingApp if available (set when alert was shown)
+      // This avoids re-detecting which can fail when Lumina window is focused
+      if (pendingMeetingApp) {
+        console.log('[MeetingMode] Starting calibration for pending app:', pendingMeetingApp);
+        setCalibrationAppName(pendingMeetingApp);
+        setShowCalibrationUI(true);
+        setMeetingModeEnabled(true);
+        return;
+      }
+
+      // Fallback: detect which meeting app is running (may fail if window focused)
       try {
+        console.log('[MeetingMode] No pending app, attempting detection...');
         const result = await window.lumina.meetingMode.detectApp();
         if (result.isDetected && result.appName) {
+          console.log('[MeetingMode] Detected app:', result.appName);
           setCalibrationAppName(result.appName);
           setShowCalibrationUI(true);
           setMeetingModeEnabled(true);
+        } else {
+          console.warn('[MeetingMode] Detection failed, no app found');
+          // Show error notification
+          window.lumina.notification.show({
+            title: 'Calibration Error',
+            body: 'Could not detect meeting app. Please make sure your meeting is visible and try again.',
+            silent: false,
+            type: 'general',
+          });
         }
       } catch (err) {
         console.error('[MeetingMode] Failed to detect app for calibration:', err);
+        window.lumina.notification.show({
+          title: 'Calibration Error',
+          body: 'Failed to detect meeting app. Please try again.',
+          silent: false,
+          type: 'general',
+        });
       }
     };
 
@@ -770,7 +844,7 @@ export default function App() {
     return () => {
       cleanup?.();
     };
-  }, [setMeetingModeEnabled]);
+  }, [pendingMeetingApp, setMeetingModeEnabled]);
 
   // Start/stop detection loop - uses setInterval to work in background
   useEffect(() => {
@@ -785,8 +859,11 @@ export default function App() {
       const intervalMs = 33;
 
       detectionIntervalRef.current = setInterval(() => {
+        // Read current meeting mode state directly from store (avoids stale closure)
+        const currentMeetingMode = useMeetingModeStore.getState().isActive;
+
         // Use meeting video when in meeting mode, otherwise camera
-        const video = meetingModeActive ? meetingVideoRef.current : videoRef.current;
+        const video = currentMeetingMode ? meetingVideoRef.current : videoRef.current;
         if (!video || !landmarkerManager.isReady()) return;
 
         // Wait for video to have valid data
@@ -797,7 +874,7 @@ export default function App() {
         // For meeting mode, we need to crop the screen capture to the calibrated region
         let frameSource: HTMLVideoElement | HTMLCanvasElement = video;
 
-        if (meetingModeActive && meetingCanvasRef.current) {
+        if (currentMeetingMode && meetingCanvasRef.current) {
           const detectedApp = useMeetingModeStore.getState().detectedApp;
           if (detectedApp) {
             const calibration = getCalibration(detectedApp);
@@ -1241,6 +1318,12 @@ export default function App() {
       />
 
       <div className="h-full flex bg-gray-50 relative">
+        {/* Draggable title bar region - invisible but draggable */}
+        <div
+          className="absolute top-0 left-0 right-0 h-10 z-40"
+          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+        />
+
         {/* Floating window controls - top right corner */}
       <div
         className="absolute top-2 right-3 z-50 flex items-center gap-1"
@@ -1305,7 +1388,7 @@ export default function App() {
               onClick={() => setCurrentView(item.id as View)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                 currentView === item.id
-                  ? 'bg-black text-white'
+                  ? 'bg-gray-800 text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -1352,7 +1435,7 @@ export default function App() {
               onClick={() => setCurrentView('settings')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 currentView === 'settings'
-                  ? 'bg-black text-white'
+                  ? 'bg-gray-800 text-white'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
               data-tour="settings"
@@ -1386,12 +1469,18 @@ export default function App() {
             <MeetingModeStatus
               appName={useMeetingModeStore.getState().detectedApp || 'Meeting'}
               onStop={() => {
+                console.log('[MeetingMode] Manual stop requested');
                 if (meetingStreamRef.current) {
                   meetingStreamRef.current.getTracks().forEach((track) => track.stop());
                   meetingStreamRef.current = null;
                 }
                 if (meetingVideoRef.current) {
                   meetingVideoRef.current.srcObject = null;
+                }
+                // Clear dismissed prompt so user gets notified next meeting
+                const stoppedApp = useMeetingModeStore.getState().detectedApp;
+                if (stoppedApp) {
+                  dismissedMeetingPromptRef.current.delete(stoppedApp);
                 }
                 setMeetingModeActive(false);
               }}
@@ -1497,6 +1586,7 @@ export default function App() {
         <MeetingModeCalibration
           appName={calibrationAppName}
           displayId={0}
+          preCapturedScreenshot={preCapturedScreenshot}
           onComplete={(region: CaptureRegion) => {
             // Save calibration
             addMeetingCalibration({
@@ -1505,6 +1595,7 @@ export default function App() {
               displayId: 0,
             });
             setShowCalibrationUI(false);
+            setPreCapturedScreenshot(null); // Clear pre-captured screenshot
 
             const appName = calibrationAppName;
             setCalibrationAppName('');
@@ -1547,6 +1638,25 @@ export default function App() {
                   meetingStreamRef.current = stream;
                   meetingVideoRef.current.srcObject = stream;
 
+                  // Listen for stream track ended (e.g., screen share stopped, permission revoked)
+                  const videoTrack = stream.getVideoTracks()[0];
+                  if (videoTrack) {
+                    videoTrack.onended = () => {
+                      console.log('[MeetingMode] Stream track ended, cleaning up');
+                      const isActive = useMeetingModeStore.getState().isActive;
+                      if (isActive) {
+                        if (meetingStreamRef.current) {
+                          meetingStreamRef.current.getTracks().forEach((t) => t.stop());
+                          meetingStreamRef.current = null;
+                        }
+                        if (meetingVideoRef.current) {
+                          meetingVideoRef.current.srcObject = null;
+                        }
+                        setMeetingModeActive(false);
+                      }
+                    };
+                  }
+
                   // Wait for video to be ready
                   await new Promise<void>((resolve) => {
                     const video = meetingVideoRef.current!;
@@ -1587,10 +1697,18 @@ export default function App() {
             })();
           }}
           onCancel={() => {
+            console.log('[MeetingMode] Calibration cancelled for:', calibrationAppName);
+            // Add to dismissed so we don't prompt again for this meeting session
+            if (calibrationAppName) {
+              dismissedMeetingPromptRef.current.add(calibrationAppName);
+            }
             setShowCalibrationUI(false);
             setCalibrationAppName('');
-            // Clear pending app - camera will restart if meeting ended
+            setPreCapturedScreenshot(null); // Clear pre-captured screenshot
+            // Clear pending app - camera will restart
             setPendingMeetingApp(null);
+            // Clear any error so camera can retry
+            setError(null);
           }}
         />
       )}
@@ -1988,7 +2106,7 @@ function DashboardView({
             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
               isDetecting
                 ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-black text-white hover:bg-gray-800'
+                : 'bg-gray-800 text-white hover:bg-gray-700'
             }`}
           >
             {isDetecting ? 'Stop Monitoring' : 'Start Monitoring'}
@@ -2222,7 +2340,7 @@ function MonitorView({
             className={`w-full mt-4 py-3 rounded-lg font-medium transition-colors ${
               isDetecting
                 ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-black text-white hover:bg-gray-800'
+                : 'bg-gray-800 text-white hover:bg-gray-700'
             }`}
           >
             {isDetecting ? 'Stop Detection' : 'Start Detection'}
@@ -2524,7 +2642,7 @@ function ExercisesView() {
               </div>
               <button
                 onClick={() => handleStartExercise(exercise)}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
               >
                 <Icons.Play />
                 Start Exercise
@@ -2607,7 +2725,7 @@ function ExercisesView() {
                   </p>
                   <button
                     onClick={handleCloseModal}
-                    className="px-6 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800"
+                    className="px-6 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700"
                   >
                     Done
                   </button>
@@ -2625,7 +2743,7 @@ function ExercisesView() {
                   {/* Current step */}
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="w-6 h-6 rounded-full bg-black text-white text-sm font-medium flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-gray-800 text-white text-sm font-medium flex items-center justify-center">
                         {currentStepIndex + 1}
                       </span>
                       <span className="text-sm text-gray-500">
@@ -2644,7 +2762,7 @@ function ExercisesView() {
                         key={idx}
                         className={`w-2 h-2 rounded-full transition-colors ${
                           idx === currentStepIndex
-                            ? 'bg-black'
+                            ? 'bg-gray-800'
                             : idx < currentStepIndex
                             ? 'bg-green-500'
                             : 'bg-gray-300'
@@ -2822,7 +2940,7 @@ function HistoryView() {
         <button
           onClick={handleExportCSV}
           disabled={isExporting}
-          className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 flex items-center gap-2"
+          className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -2853,7 +2971,7 @@ function HistoryView() {
             <div key={i} className="flex-1 flex flex-col items-center">
               <div className="flex-1 w-full flex items-end">
                 <div
-                  className="w-full bg-black rounded-t transition-all"
+                  className="w-full bg-gray-800 rounded-t transition-all"
                   style={{
                     height: `${Math.max((day.totalBlinks / maxBlinks) * 100, 2)}%`,
                     minHeight: day.totalBlinks > 0 ? '8px' : '2px',
@@ -3097,7 +3215,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <button
                 onClick={() => setNotifications(!notifications)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  notifications ? 'bg-black' : 'bg-gray-300'
+                  notifications ? 'bg-gray-800' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -3115,7 +3233,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <button
                 onClick={() => setShowFloatingStatus(!showFloatingStatus)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  showFloatingStatus ? 'bg-black' : 'bg-gray-300'
+                  showFloatingStatus ? 'bg-gray-800' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -3251,7 +3369,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <button
                 onClick={() => setPostureMonitoringEnabled(!postureMonitoringEnabled)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  postureMonitoringEnabled ? 'bg-black' : 'bg-gray-300'
+                  postureMonitoringEnabled ? 'bg-gray-800' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -3329,7 +3447,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   }
                 }}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  cloudSyncEnabled ? 'bg-black' : 'bg-gray-300'
+                  cloudSyncEnabled ? 'bg-gray-800' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -3523,7 +3641,7 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <button
                 onClick={handleClearLocalData}
                 disabled={isClearingData || clearDataConfirmText !== 'DELETE'}
-                className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
               >
                 {isClearingData ? 'Clearing...' : 'Clear All Data'}
               </button>
@@ -3655,7 +3773,7 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
             <button
               onClick={() => setMeetingModeEnabled(!meetingModeEnabled)}
               className={`w-12 h-6 rounded-full transition-colors ${
-                meetingModeEnabled ? 'bg-black' : 'bg-gray-300'
+                meetingModeEnabled ? 'bg-gray-800' : 'bg-gray-300'
               }`}
             >
               <div
@@ -3676,7 +3794,7 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
               <button
                 onClick={() => setMeetingAutoDetect(!meetingAutoDetect)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  meetingAutoDetect ? 'bg-black' : 'bg-gray-300'
+                  meetingAutoDetect ? 'bg-gray-800' : 'bg-gray-300'
                 }`}
               >
                 <div
@@ -3786,7 +3904,7 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
                   }
                 }}
                 disabled={!customAppName.trim()}
-                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Calibrate
               </button>

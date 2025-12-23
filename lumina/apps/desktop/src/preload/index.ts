@@ -141,7 +141,8 @@ export interface LuminaAPI {
   offMeetingModeNavigate: (callback: () => void) => void;
 
   // Meeting Mode Start Calibration (from alert action button)
-  onMeetingModeStartCalibration: (callback: () => void) => () => void;
+  // Receives pre-captured screenshot so we don't need to focus/unfocus
+  onMeetingModeStartCalibration: (callback: (data: { screenshot?: { dataUrl: string; width: number; height: number; scaleFactor: number } | null }) => void) => () => void;
 }
 
 interface ScreenshotResult {
@@ -534,8 +535,9 @@ const luminaAPI: LuminaAPI = {
   },
 
   // Meeting Mode Start Calibration (from alert action button)
+  // Receives pre-captured screenshot so calibration doesn't need to refocus
   onMeetingModeStartCalibration: (callback) => {
-    const handler = () => callback();
+    const handler = (_event: Electron.IpcRendererEvent, data: { screenshot?: { dataUrl: string; width: number; height: number; scaleFactor: number } | null }) => callback(data);
     ipcRenderer.on('meeting-mode:start-calibration', handler);
     return () => ipcRenderer.removeListener('meeting-mode:start-calibration', handler);
   },

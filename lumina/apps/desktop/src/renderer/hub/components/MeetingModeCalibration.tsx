@@ -20,6 +20,13 @@ interface MeetingModeCalibrationProps {
   onCancel: () => void;
   /** Optional existing region to show as starting point */
   existingRegion?: CaptureRegion;
+  /** Pre-captured screenshot (captured before window focus to avoid covering the meeting) */
+  preCapturedScreenshot?: {
+    dataUrl: string;
+    width: number;
+    height: number;
+    scaleFactor: number;
+  } | null;
 }
 
 interface ScreenshotData {
@@ -39,6 +46,7 @@ export function MeetingModeCalibration({
   onComplete,
   onCancel,
   existingRegion,
+  preCapturedScreenshot,
 }: MeetingModeCalibrationProps) {
   const [isSelecting, setIsSelecting] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
@@ -53,13 +61,24 @@ export function MeetingModeCalibration({
   const overlayRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Capture screenshot on mount
-  // No need to minimize - meeting is already visible when user triggers calibration
+  // Use pre-captured screenshot if available, otherwise capture on mount
+  // Pre-captured screenshot is taken BEFORE window focus to avoid covering the meeting
   useEffect(() => {
     async function captureScreen() {
       try {
         setIsLoading(true);
         setError(null);
+
+        // Use pre-captured screenshot if available (captured before window was focused)
+        if (preCapturedScreenshot) {
+          console.log('[Calibration] Using pre-captured screenshot');
+          setScreenshot(preCapturedScreenshot);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fallback: capture now (meeting may be covered by this window)
+        console.log('[Calibration] No pre-captured screenshot, capturing now...');
 
         // Small delay to ensure any UI transitions are complete
         await new Promise((resolve) => setTimeout(resolve, 100));
@@ -81,7 +100,7 @@ export function MeetingModeCalibration({
     }
 
     captureScreen();
-  }, []);
+  }, [preCapturedScreenshot]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -267,7 +286,7 @@ export function MeetingModeCalibration({
           <button
             onClick={handleAutoDetect}
             disabled={isAutoDetecting}
-            className="px-3 py-1.5 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
+            className="px-3 py-1.5 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
           >
             {isAutoDetecting ? (
               <>
@@ -375,7 +394,7 @@ export function MeetingModeCalibration({
         <button
           onClick={handleSave}
           disabled={!currentRegion || !!regionTooSmall}
-          className="px-5 py-2.5 bg-black text-white rounded-lg font-medium shadow-lg hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-gray-800 text-white rounded-lg font-medium shadow-lg hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save for {appName}
         </button>

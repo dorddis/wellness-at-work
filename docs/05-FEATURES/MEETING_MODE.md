@@ -261,6 +261,45 @@ Meeting Mode Privacy:
 
 > **Status:** Phase 1 fully implemented (2024-12)
 
+### Bug Fixes (December 2024)
+
+Several critical bugs were fixed to make meeting mode production-ready:
+
+#### 1. Detection Only Checked First Chrome Process
+**Problem:** `processes.find()` only returned the first Chrome process, but Chrome has many processes and only one has the meeting tab title.
+**Fix:** Changed to `processes.filter()` to check ALL Chrome processes with matching name.
+**File:** `meetingMode.ts:160-162`
+
+#### 2. Stale Closure Values in Detection Loops
+**Problem:** Detection and blink loops used `meetingModeActive` from React closure, which could be stale after state changes.
+**Fix:** Read directly from Zustand store: `useMeetingModeStore.getState().isActive`
+**Files:** `App.tsx:595, 692, 806, 820`
+
+#### 3. "Set Up Now" Button Did Nothing
+**Problem:** When user clicked "Set Up Now" on meeting detection alert, the handler re-detected the meeting app. But by then, Lumina window was focused, causing detection to fail silently.
+**Fix:** Use `pendingMeetingApp` (set when alert was shown) instead of re-detecting. Added error notifications for fallback failures.
+**File:** `App.tsx:798-835`
+
+#### 4. Screenshot Captured After Window Focus
+**Problem:** Clicking "Set Up Now" focused Lumina window, then captured screenshot - showing Lumina instead of the meeting.
+**Fix:** IPC handler now captures screenshot FIRST (before `showHubWindow()`), passes to renderer via IPC event.
+**Files:** `ipc.ts:702-712`, `MeetingModeCalibration.tsx:72-78`
+
+#### 5. Cancel Calibration Caused Infinite Loop
+**Problem:** Canceling calibration cleared `pendingMeetingApp`, but meeting was still running, so detection immediately showed the prompt again.
+**Fix:** Add app to `dismissedMeetingPromptRef` on cancel to skip prompting for same meeting session.
+**File:** `App.tsx:1699-1703`
+
+#### 6. Meeting Mode State Got Stuck
+**Problem:** If detection errored or meeting app crashed, meeting mode state stayed stuck with no way to recover.
+**Fix:** Added cleanup on detection errors, stream track `onended` listeners, and proper cleanup in all error paths.
+**Files:** `App.tsx:694-699, 637-654, 1604-1621`
+
+#### 7. Full-Screen Camera Error Blocked UI
+**Problem:** Camera error during meeting mode showed full-screen error with only "Retry" button - user couldn't do anything.
+**Fix:** Don't set blocking error when meeting mode is pending/active. Clear error on calibration cancel.
+**File:** `App.tsx:565-569, 1711`
+
 ### Phase 1: Manual Calibration (v1.2) - COMPLETE
 
 - [x] Meeting app detection (process monitoring) - `detectMeetingApp()` in `meetingMode.ts`
@@ -275,13 +314,21 @@ Meeting Mode Privacy:
 - `apps/desktop/src/renderer/hub/components/MeetingModeCalibration.tsx` - Region selection UI
 - `apps/desktop/src/renderer/hub/hooks/useMeetingModeCapture.ts` - Capture hook
 
-**Supported apps:** Zoom, Microsoft Teams, Teams (New), Webex, Slack, Google Meet (browser)
+**Supported apps:**
+
+| App | Native | Browser (Chrome/Edge/Firefox) |
+|-----|--------|-------------------------------|
+| Zoom | ✅ | ✅ (`Zoom Meeting`, `app.zoom.us`) |
+| Microsoft Teams | ✅ (Teams, ms-teams) | ✅ (`Microsoft Teams`, `teams.microsoft.com`) |
+| Google Meet | - | ✅ (`Meet -`, `Google Meet`) |
+| Webex | ✅ | ✅ (`Webex`, `webex.com`) |
+| Slack | ✅ | - |
 
 ### Phase 2: Smart Detection (v1.5) - PENDING
 
 - [ ] Auto-detect self-view using face + edge detection
 - [ ] Handle self-view position changes
-- [ ] Support for browser-based meetings (partial - title pattern matching exists)
+- [x] Support for browser-based meetings (**COMPLETE** - title pattern matching for Zoom/Teams/Meet/Webex)
 - [ ] Better handling of multiple monitors (basic support via `getDisplays()`)
 
 ---

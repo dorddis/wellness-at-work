@@ -653,8 +653,13 @@ export function setupIPC(
     return getDisplays();
   });
 
-  // Capture a screenshot of the primary display for calibration
-  ipcMain.handle('meeting:capture-screenshot', async () => {
+  // Helper function to capture a screenshot of the primary display
+  async function captureScreenshot(): Promise<{
+    dataUrl: string;
+    width: number;
+    height: number;
+    scaleFactor: number;
+  } | null> {
     const { desktopCapturer, screen } = await import('electron');
 
     // Get actual screen dimensions for full resolution capture
@@ -686,14 +691,24 @@ export function setupIPC(
     }
 
     return null;
+  }
+
+  // Capture a screenshot of the primary display for calibration
+  ipcMain.handle('meeting:capture-screenshot', async () => {
+    return captureScreenshot();
   });
 
   // Start meeting mode calibration (opens hub and triggers calibration UI)
   ipcMain.handle('meeting:start-calibration', async () => {
-    // Show the hub window
+    // IMPORTANT: Capture screenshot FIRST while meeting is still visible
+    // Then show hub window with the pre-captured screenshot
+    const screenshot = await captureScreenshot();
+
+    // Now show the hub window (this will focus it, but we already have the screenshot)
     windowManager.showHubWindow();
-    // Send event to trigger calibration UI
-    windowManager.sendToHub('meeting-mode:start-calibration', {});
+
+    // Send event to trigger calibration UI with pre-captured screenshot
+    windowManager.sendToHub('meeting-mode:start-calibration', { screenshot });
   });
 
   // ============================================================================

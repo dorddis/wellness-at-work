@@ -154,12 +154,14 @@ export async function detectMeetingApp(): Promise<MeetingDetectionResult> {
     }
 
     // Check each known meeting app
+    // Use filter() instead of find() to check ALL processes with matching name
+    // (Chrome has multiple processes, only one has the meeting tab title)
     for (const app of MEETING_APPS) {
-      const match = processes.find(
+      const matches = processes.filter(
         (p) => p.ProcessName.toLowerCase() === app.process.toLowerCase()
       );
 
-      if (match) {
+      for (const match of matches) {
         // For apps with titlePattern, check window title
         if (app.titlePattern) {
           if (app.titlePattern.test(match.MainWindowTitle)) {
