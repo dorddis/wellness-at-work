@@ -19,6 +19,7 @@ import time
 
 from slope import SlopeDetector, SlopeResult
 from head_motion import HeadMotionTracker, HeadMotionResult
+from gaze_tracker import GazeTracker, GazeResult
 from state_machine import BlinkStateMachine, BlinkPhase, BlinkEvent, StateMachineResult
 from bilateral import BilateralVerifier, BilateralResult
 from posture import PostureAnalyzer, PostureResult
@@ -42,6 +43,9 @@ class DetectionFrame:
 
     # Head motion
     head_motion: HeadMotionResult
+
+    # Gaze tracking
+    gaze: GazeResult
 
     # State machine
     state: StateMachineResult
@@ -84,6 +88,7 @@ class RobustBlinkDetector:
         self.bilateral = BilateralVerifier()
         self.slope_detector = SlopeDetector()
         self.head_motion = HeadMotionTracker()
+        self.gaze_tracker = GazeTracker()
         self.state_machine = BlinkStateMachine()
 
         # New wellness components
@@ -135,15 +140,22 @@ class RobustBlinkDetector:
         # 2. Track head motion
         head_result = self.head_motion.update(landmarks)
 
-        # 3. Calculate slope of average EAR
+        # 3. Track gaze direction (iris position)
+        gaze_result = self.gaze_tracker.update(landmarks, timestamp_ms)
+
+        # 4. Calculate slope of average EAR
         slope_result = self.slope_detector.update(
             bilateral_result.avg_ear,
             timestamp_ms,
         )
 
-        # 4. Update state machine
+        # 5. Update state machine
         effective_closing = slope_result.is_closing and bilateral_result.is_symmetric
         effective_opening = slope_result.is_opening and bilateral_result.is_symmetric
+
+        # Combine movement suppression: head motion OR gaze shift
+        # Both indicate the EAR change is not from a blink
+        is_movement_detected = head_result.is_moving or gaze_result.is_gaze_shift
 
         if slope_result.is_closing and self.state_machine.phase == BlinkPhase.IDLE:
             self.bilateral.start_blink_tracking()
@@ -154,7 +166,7 @@ class RobustBlinkDetector:
             is_at_minimum=slope_result.is_at_minimum,
             current_ear=bilateral_result.avg_ear,
             timestamp_ms=timestamp_ms,
-            head_is_moving=head_result.is_moving,
+            head_is_moving=is_movement_detected,  # Now includes gaze shift
         )
 
         self.state_machine.set_baseline(bilateral_result.combined_baseline)
@@ -198,6 +210,11 @@ class RobustBlinkDetector:
         # BUILD RESULT
         # =====================================================================
 
+        # Enhance rejection reason with gaze shift info if applicable
+        if gaze_result.is_gaze_shift and not blink_detected and self.state_machine.phase != BlinkPhase.IDLE:
+            if rejection_reason:
+                rejection_reason += f" (gaze_shift: v={gaze_result.velocity:.4f}, d={gaze_result.recent_displacement:.3f})"
+
         result = DetectionFrame(
             timestamp_ms=timestamp_ms,
             frame_number=self.frame_count,
@@ -205,6 +222,7 @@ class RobustBlinkDetector:
             avg_ear=bilateral_result.avg_ear,
             slope=slope_result,
             head_motion=head_result,
+            gaze=gaze_result,
             state=state_result,
             phase_name=self.state_machine.get_phase_name(),
             blink_detected=blink_detected,
@@ -236,6 +254,7 @@ class RobustBlinkDetector:
         self.bilateral.reset()
         self.slope_detector.reset()
         self.head_motion.reset()
+        self.gaze_tracker.reset()
         self.state_machine.reset()
         self.posture_analyzer.reset()
         self.yawn_detector.reset()

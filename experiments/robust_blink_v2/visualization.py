@@ -37,6 +37,10 @@ from constants import (
     OPENING_SLOPE_THRESHOLD,
     HEAD_MOTION_THRESHOLD,
     MAR_THRESHOLD,
+    # Iris landmarks for gaze visualization
+    LEFT_IRIS_CENTER_INDEX,
+    RIGHT_IRIS_CENTER_INDEX,
+    GAZE_VELOCITY_THRESHOLD,
 )
 from detector import DetectionFrame
 
@@ -67,6 +71,10 @@ class DebugVisualizer:
         self.mar_history: deque = deque(maxlen=history_length)
         self.yawn_markers: deque = deque(maxlen=history_length)
 
+        # Gaze tracking history
+        self.gaze_ratio_history: deque = deque(maxlen=history_length)
+        self.gaze_shift_markers: deque = deque(maxlen=history_length)
+
         # Graph dimensions
         self.graph_width = 400
         self.graph_height = 100  # Slightly smaller to fit more graphs
@@ -83,6 +91,10 @@ class DebugVisualizer:
         # New: MAR and yawn
         self.mar_history.append(frame.yawn.mar)
         self.yawn_markers.append(1.0 if frame.yawn.is_yawning else 0.0)
+
+        # Gaze tracking
+        self.gaze_ratio_history.append(frame.gaze.smoothed_iris_ratio)
+        self.gaze_shift_markers.append(1.0 if frame.gaze.is_gaze_shift else 0.0)
 
     def draw_landmarks(self, image: np.ndarray, landmarks: list) -> np.ndarray:
         """Draw eye and mouth landmarks on the image."""
@@ -111,6 +123,12 @@ class DebugVisualizer:
             lm = landmarks[idx]
             x, y = int(lm.x * w), int(lm.y * h)
             cv2.circle(image, (x, y), 2, COLOR_YAWN, -1)
+
+        # Draw iris centers (cyan - for gaze tracking)
+        for idx in [LEFT_IRIS_CENTER_INDEX, RIGHT_IRIS_CENTER_INDEX]:
+            lm = landmarks[idx]
+            x, y = int(lm.x * w), int(lm.y * h)
+            cv2.circle(image, (x, y), 3, (255, 255, 0), -1)  # Cyan
 
         return image
 
@@ -167,7 +185,7 @@ class DebugVisualizer:
 
     def draw_status_panel(self, frame: DetectionFrame) -> np.ndarray:
         """Draw status information panel with all metrics."""
-        panel = np.zeros((280, self.graph_width, 3), dtype=np.uint8)
+        panel = np.zeros((300, self.graph_width, 3), dtype=np.uint8)  # Increased for gaze
         panel[:] = (20, 20, 20)
 
         y = 18
@@ -258,6 +276,14 @@ class DebugVisualizer:
         motion_status = "MOVING" if frame.head_motion.is_moving else "stable"
         cv2.putText(panel, f"Head Motion: {motion_status} ({frame.head_motion.velocity:.3f})",
                     (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, motion_color, 1)
+        y += line_height
+
+        # === GAZE TRACKING ===
+        gaze_color = (255, 255, 0) if frame.gaze.is_gaze_shift else COLOR_TEXT  # Cyan when shifting
+        gaze_dir = frame.gaze.gaze_direction
+        gaze_status = "SHIFT!" if frame.gaze.is_gaze_shift else gaze_dir
+        cv2.putText(panel, f"Gaze: {gaze_status} (ratio={frame.gaze.smoothed_iris_ratio:.2f}, v={frame.gaze.velocity:.3f})",
+                    (10, y), cv2.FONT_HERSHEY_SIMPLEX, 0.4, gaze_color, 1)
 
         return panel
 
@@ -292,6 +318,49 @@ class DebugVisualizer:
 
         # Title
         cv2.putText(graph, "MAR (mouth)", (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_TEXT, 1)
+
+        return graph
+
+    def draw_gaze_graph(self) -> np.ndarray:
+        """Draw gaze ratio graph with gaze shift markers."""
+        graph = np.zeros((self.graph_height, self.graph_width, 3), dtype=np.uint8)
+        graph[:] = (30, 30, 30)
+
+        y_min, y_max = 0, 1.0
+
+        # Draw center line (0.5 = looking straight)
+        y_center = int(self.graph_height / 2)
+        cv2.line(graph, (0, y_center), (self.graph_width, y_center), (80, 80, 80), 1)
+
+        # Draw threshold lines for "up" (0.4) and "down" (0.6)
+        y_up = int(self.graph_height - (0.4 - y_min) / (y_max - y_min) * self.graph_height)
+        y_down = int(self.graph_height - (0.6 - y_min) / (y_max - y_min) * self.graph_height)
+        cv2.line(graph, (0, y_up), (self.graph_width, y_up), (60, 60, 60), 1)
+        cv2.line(graph, (0, y_down), (self.graph_width, y_down), (60, 60, 60), 1)
+
+        # Draw data
+        if len(self.gaze_ratio_history) > 1:
+            points = []
+            for i, val in enumerate(self.gaze_ratio_history):
+                x = int(i * self.graph_width / self.history_length)
+                y = int(self.graph_height - (val - y_min) / (y_max - y_min) * self.graph_height)
+                y = max(0, min(self.graph_height - 1, y))
+                points.append((x, y))
+
+            for i in range(len(points) - 1):
+                cv2.line(graph, points[i], points[i + 1], (255, 255, 0), 1)  # Cyan
+
+        # Draw gaze shift markers
+        for i, marker in enumerate(self.gaze_shift_markers):
+            if marker > 0:
+                x = int(i * self.graph_width / self.history_length)
+                cv2.line(graph, (x, 0), (x, self.graph_height), (0, 200, 200), 2)
+
+        # Title
+        cv2.putText(graph, "Gaze (iris ratio)", (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.4, COLOR_TEXT, 1)
+        # Labels
+        cv2.putText(graph, "up", (self.graph_width - 25, y_up + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (100, 100, 100), 1)
+        cv2.putText(graph, "down", (self.graph_width - 35, y_down + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (100, 100, 100), 1)
 
         return graph
 
@@ -364,11 +433,13 @@ class DebugVisualizer:
             color=COLOR_MOTION,
         )
 
+        gaze_graph = self.draw_gaze_graph()
+
         # Status panel
         status_panel = self.draw_status_panel(detection)
 
         # Combine graphs vertically
-        graphs = np.vstack([ear_graph, mar_graph, slope_graph, velocity_graph, status_panel])
+        graphs = np.vstack([ear_graph, mar_graph, slope_graph, velocity_graph, gaze_graph, status_panel])
 
         # Resize camera frame to match graphs height
         target_height = graphs.shape[0]

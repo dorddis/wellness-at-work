@@ -187,11 +187,12 @@ class BlinkStateMachine:
                 duration_ms = timestamp_ms - self.closing_start_ms
                 dip_magnitude = self.baseline_ear - self.min_ear_in_blink
 
-                # Only validate dip magnitude (not duration - a blink is a blink)
+                # Validation: Check dip magnitude (percentage and absolute)
                 min_dip_required = self.baseline_ear * MIN_DIP_PERCENTAGE
                 if dip_magnitude < min_dip_required or dip_magnitude < MIN_DIP_ABSOLUTE:
                     rejection_reason = f"shallow_dip_{dip_magnitude:.3f}_need_{min_dip_required:.3f}"
                     self.phase = BlinkPhase.IDLE
+
                 else:
                     # Valid blink! (duration tracked but not used for rejection)
                     blink_detected = True

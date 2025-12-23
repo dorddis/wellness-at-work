@@ -17,6 +17,16 @@ NOSE_TIP_INDEX = 1
 LEFT_FACE_CORNER_INDEX = 234   # Left cheek
 RIGHT_FACE_CORNER_INDEX = 454  # Right cheek
 
+# Iris landmarks (for gaze tracking)
+LEFT_IRIS_CENTER_INDEX = 468   # Left iris center
+RIGHT_IRIS_CENTER_INDEX = 473  # Right iris center
+
+# Eyelid center landmarks (for iris position calculation)
+LEFT_UPPER_LID_INDEX = 159     # Left eye upper lid center
+LEFT_LOWER_LID_INDEX = 145     # Left eye lower lid center
+RIGHT_UPPER_LID_INDEX = 386    # Right eye upper lid center
+RIGHT_LOWER_LID_INDEX = 374    # Right eye lower lid center
+
 
 # =============================================================================
 # Slope Detection Parameters
@@ -71,6 +81,11 @@ BILATERAL_RATIO_MIN = 0.4  # At least 40% symmetry required (was 0.6, relaxed fo
 # Using percentage instead of absolute value for different eye shapes
 MIN_DIP_PERCENTAGE = 0.08  # Must drop at least 8% of baseline EAR (was 0.12, lowered for small blinks)
 MIN_DIP_ABSOLUTE = 0.012   # Also require minimum absolute drop (was 0.02, lowered for small blinks)
+
+# Maximum EAR during a real blink - if min_ear stays above this, it's not a blink
+# This helps reject "look down" gaze shifts where eyes never fully close
+# Set relative to baseline: min_ear must be < baseline * MAX_EAR_RATIO_FOR_BLINK
+MAX_EAR_RATIO_FOR_BLINK = 0.70  # Eyes must close to at least 70% of baseline to count as blink
 
 
 # =============================================================================
@@ -198,3 +213,35 @@ YAWN_HISTORY_WINDOW_MS = 300000  # 5 minute window for yawn counting
 YAWN_MILD_COUNT = 1              # 1 yawn in 5 min = mild
 YAWN_MODERATE_COUNT = 2          # 2 yawns = moderate
 YAWN_SEVERE_COUNT = 3            # 3+ yawns = severe
+
+
+# =============================================================================
+# Gaze Tracking (Iris Position)
+# =============================================================================
+# Detects vertical gaze shifts (looking up/down) to prevent false blink detection
+# When looking down/up quickly, EAR changes but it's not a blink
+
+# Enable/disable gaze tracking
+GAZE_TRACKING_ENABLED = True
+
+# Number of frames for gaze velocity calculation
+GAZE_VELOCITY_WINDOW_FRAMES = 5
+
+# Minimum iris velocity (ratio units per frame) to be considered a gaze shift
+# Higher = less sensitive (only fast movements rejected)
+# Lower = more sensitive (slower movements also rejected)
+GAZE_VELOCITY_THRESHOLD = 0.015  # Lowered from 0.04 - more sensitive
+
+# Time window (ms) to look for gaze shift during blink detection
+GAZE_DETECTION_WINDOW_MS = 300  # Increased from 200 - look further back
+
+# Minimum total iris displacement (ratio units) to reject a blink
+# Catches cases where velocity is moderate but total movement is large
+GAZE_MIN_DISPLACEMENT_THRESHOLD = 0.05  # Lowered from 0.15 - more sensitive
+
+# EMA smoothing factor for iris position (0 = no smoothing, 1 = no memory)
+GAZE_SMOOTHING_ALPHA = 0.4
+
+# Minimum eye opening (normalized) below which gaze tracking is unreliable
+# When eyes are nearly closed, iris landmarks become noisy
+GAZE_MIN_EYE_OPENING = 0.02
