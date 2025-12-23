@@ -69,7 +69,7 @@ export function BlinkRateTrendChart({
             padding: '8px 12px',
           }}
           labelStyle={{ fontWeight: 500 }}
-          formatter={(value: number) => [`${value.toFixed(1)}/min`, 'Blink Rate']}
+          formatter={(value) => [`${Number(value ?? 0).toFixed(1)}/min`, 'Blink Rate']}
         />
         {showHealthyRange && (
           <>

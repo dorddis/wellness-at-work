@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
                           border: '1px solid #e5e7eb',
                           borderRadius: '8px',
                         }}
-                        formatter={(value: number) => [`${value}%`]}
+                        formatter={(value) => [`${value ?? 0}%`]}
                         labelFormatter={(label) => new Date(label).toLocaleDateString()}
                       />
                       <Legend />
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                       }}
-                      formatter={(value: number) => [`${value}%`]}
+                      formatter={(value) => [`${value ?? 0}%`]}
                     />
                     <Legend />
                     <Bar dataKey="avgScore" name="Wellness" fill="#22c55e" radius={[0, 4, 4, 0]} />

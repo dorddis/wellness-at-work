@@ -16,6 +16,15 @@ import { GoalsStep } from './GoalsStep';
 import { CompleteStep } from './CompleteStep';
 import { Stepper, type Step } from './Stepper';
 
+/** EAR calibration data from calibration step */
+export interface EARCalibrationData {
+  threshold: number;
+  openEAR: number;
+  closedEAR: number;
+  calibratedAt: number;
+  samplesCount: number;
+}
+
 export interface OnboardingFlowProps {
   /** Callback when onboarding is completed */
   onComplete: () => void;
@@ -28,7 +37,10 @@ export interface OnboardingFlowProps {
   /** Callback when camera is selected */
   onCameraSelected?: (cameraId: string) => void;
   /** Callback when calibration data is captured */
-  onCalibrationComplete?: (data: { baselineEar: number }) => void;
+  onCalibrationComplete?: (data: {
+    baselineEar: number;
+    earCalibration: EARCalibrationData | null;
+  }) => void;
   /** Callback when goals are selected */
   onGoalsSelected?: (goals: {
     reduceEyeStrain: boolean;
@@ -70,6 +82,7 @@ export function OnboardingFlow({
 }: OnboardingFlowProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('welcome');
   const [cameraGranted, setCameraGranted] = useState(hasCameraPermission);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [goals, setGoals] = useState({
     reduceEyeStrain: true,
     improvePosture: true,
@@ -95,11 +108,15 @@ export function OnboardingFlow({
 
   const handleCameraSelected = (cameraId: string) => {
     setCameraGranted(true);
+    setSelectedCameraId(cameraId);
     onCameraSelected?.(cameraId);
     goToNextStep();
   };
 
-  const handleCalibrationComplete = (data: { baselineEar: number }) => {
+  const handleCalibrationComplete = (data: {
+    baselineEar: number;
+    earCalibration: EARCalibrationData | null;
+  }) => {
     onCalibrationComplete?.(data);
     goToNextStep();
   };
@@ -134,6 +151,7 @@ export function OnboardingFlow({
             onNext={handleCalibrationComplete}
             onBack={goToPrevStep}
             onSkip={goToNextStep}
+            selectedCameraId={selectedCameraId}
           />
         );
       case 'goals':
@@ -161,7 +179,7 @@ export function OnboardingFlow({
         {/* Progress bar (thin line at very top) */}
         <div className="h-1 bg-gray-100">
           <motion.div
-            className="h-full bg-black"
+            className="h-full bg-gray-800"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}

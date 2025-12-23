@@ -82,7 +82,7 @@ export function WellnessScoreChart({
             padding: '8px 12px',
           }}
           labelStyle={{ fontWeight: 500 }}
-          formatter={(value: number) => [`${value}/100`, 'Wellness Score']}
+          formatter={(value) => [`${value ?? 0}/100`, 'Wellness Score']}
         />
         {/* Good threshold */}
         <ReferenceLine

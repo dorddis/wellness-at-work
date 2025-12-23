@@ -396,7 +396,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-              className="w-20 h-20 bg-black rounded-full flex items-center justify-center mb-6"
+              className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6"
             >
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -491,7 +491,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+              className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
             >
               Start Calibration
             </button>
@@ -510,7 +510,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
         {state === 'complete' && (
           <button
             onClick={handleComplete}
-            className="w-full py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+            className="w-full py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
           >
             Continue
           </button>
@@ -526,7 +526,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+              className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
             >
               Try Again
             </button>

@@ -100,7 +100,7 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
         </button>
         <button
           onClick={onNext}
-          className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+          className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
         >
           I Understand
         </button>

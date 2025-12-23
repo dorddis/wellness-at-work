@@ -91,8 +91,8 @@ export function DepartmentComparisonChart({
             padding: '8px 12px',
           }}
           labelStyle={{ fontWeight: 500 }}
-          formatter={(value: number) => [
-            metric === 'score' ? `${value}/100` : `${value}/min`,
+          formatter={(value) => [
+            metric === 'score' ? `${value ?? 0}/100` : `${value ?? 0}/min`,
             label,
           ]}
         />

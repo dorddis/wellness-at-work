@@ -295,8 +295,8 @@ export default function BreaksPage() {
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
                   }}
-                  formatter={(value: number, name: string, props: any) => [
-                    `${value}% (${props.payload.completed}/${props.payload.total})`,
+                  formatter={(value, name, props) => [
+                    `${value ?? 0}% (${props.payload.completed}/${props.payload.total})`,
                     'Compliance',
                   ]}
                 />

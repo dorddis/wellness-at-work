@@ -87,7 +87,7 @@ export function BlinkRateChart({
               fontSize: 12,
             }}
             labelStyle={{ color: 'hsl(var(--foreground))' }}
-            formatter={(value: number) => [`${value.toFixed(1)} blinks/min`]}
+            formatter={(value) => [`${Number(value ?? 0).toFixed(1)} blinks/min`]}
           />
 
           {/* Baseline reference lines */}

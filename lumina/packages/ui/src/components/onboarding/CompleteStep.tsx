@@ -76,7 +76,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 1.0, bounce: 0.3, delay: 0.3 }}
-          className="w-24 h-24 bg-black rounded-full flex items-center justify-center mb-6"
+          className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6"
         >
           <motion.svg
             className="w-12 h-12 text-white"
@@ -166,7 +166,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
       >
         <button
           onClick={onComplete}
-          className="w-full py-4 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors text-lg"
+          className="w-full py-4 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors text-lg"
         >
           Open Dashboard
         </button>
@@ -179,7 +179,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
 }
 
 function TipItem({ icon, text }: { icon: string; text: string }) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.ReactElement> = {
     tray: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

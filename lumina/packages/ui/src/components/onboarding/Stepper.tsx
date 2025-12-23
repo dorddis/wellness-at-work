@@ -120,7 +120,7 @@ export function Stepper({
                         width: isCompleted ? '100%' : '0%',
                       }}
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className="absolute inset-y-0 left-0 bg-black rounded-full"
+                      className="absolute inset-y-0 left-0 bg-gray-800 rounded-full"
                     />
                   </div>
                 </div>

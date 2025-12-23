@@ -119,13 +119,13 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
               onClick={() => toggleGoal(goal.id)}
               className={`w-full flex items-start gap-4 text-left p-4 rounded-xl border-2 transition-all ${
                 selectedGoals[goal.id]
-                  ? 'border-black bg-gray-50'
+                  ? 'border-gray-800 bg-gray-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  selectedGoals[goal.id] ? 'bg-black' : 'bg-gray-100'
+                  selectedGoals[goal.id] ? 'bg-gray-800' : 'bg-gray-100'
                 }`}
               >
                 <GoalIcon type={goal.icon} selected={selectedGoals[goal.id]} />
@@ -136,7 +136,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
               </div>
               <div
                 className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  selectedGoals[goal.id] ? 'border-black bg-black' : 'border-gray-300'
+                  selectedGoals[goal.id] ? 'border-gray-800 bg-gray-800' : 'border-gray-300'
                 }`}
               >
                 {selectedGoals[goal.id] && (
@@ -174,7 +174,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           disabled={!hasAnyGoal}
           className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors ${
             hasAnyGoal
-              ? 'bg-black text-white hover:bg-gray-800'
+              ? 'bg-gray-800 text-white hover:bg-gray-700'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           }`}
         >

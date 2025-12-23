@@ -26,7 +26,7 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
         {logoSrc ? (
           <img src={logoSrc} alt="Lumina" className="w-24 h-24 rounded-2xl" />
         ) : (
-          <div className="w-24 h-24 bg-black rounded-2xl flex items-center justify-center">
+          <div className="w-24 h-24 bg-gray-800 rounded-2xl flex items-center justify-center">
             <svg className="w-14 h-14 text-white" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
@@ -73,7 +73,7 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
       >
         <button
           onClick={onNext}
-          className="w-full py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+          className="w-full py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
         >
           Get Started
         </button>
@@ -91,7 +91,7 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
 }
 
 function Feature({ icon, label }: { icon: string; label: string }) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, React.ReactElement> = {
     eye: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

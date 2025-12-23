@@ -244,7 +244,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
         <button
           onClick={handleContinue}
           disabled={!permissionGranted || cameras.length === 0}
-          className="flex-1 py-3 px-6 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue
         </button>

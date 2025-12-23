@@ -217,7 +217,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Sending...' : 'Continue with Email'}
               </button>
@@ -277,7 +277,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
             <button
               type="submit"
               disabled={loading || otpCode.length < 6}
-              className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Verifying...' : 'Verify'}
             </button>
@@ -328,7 +328,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
             <button
               type="submit"
               disabled={loading || !inviteCode}
-              className="w-full py-3 bg-black text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Joining...' : 'Join Organization'}
             </button>

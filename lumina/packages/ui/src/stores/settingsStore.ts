@@ -3,6 +3,20 @@ import { persist } from 'zustand/middleware';
 
 export type SoundPreference = 'silence' | 'chime' | 'bell' | 'soft-ping' | 'nature';
 
+/** Full EAR calibration data for persistence */
+export interface StoredEARCalibration {
+  /** Computed optimal threshold for this user */
+  threshold: number;
+  /** 75th percentile - typical open eye EAR */
+  openEAR: number;
+  /** 10th percentile - typical closed eye EAR */
+  closedEAR: number;
+  /** When calibration was completed (ISO string) */
+  calibratedAt: string;
+  /** Number of samples used */
+  samplesCount: number;
+}
+
 export interface SettingsState {
   // User preferences
   notifications: boolean;
@@ -15,6 +29,7 @@ export interface SettingsState {
 
   // Detection settings
   earThreshold: number;
+  earCalibration: StoredEARCalibration | null;
   alertCooldownMinutes: number;
 
   // Break settings
@@ -36,6 +51,7 @@ export interface SettingsState {
   // Onboarding
   hasCompletedOnboarding: boolean;
   onboardingStep: number;
+  hasCompletedProductTour: boolean;
 
   // Wellness goals (set during onboarding)
   wellnessGoals: {
@@ -62,6 +78,7 @@ export interface SettingsState {
   setShowFloatingStatus: (enabled: boolean) => void;
   setSelectedCameraId: (cameraId: string | null) => void;
   setEarThreshold: (threshold: number) => void;
+  setEarCalibration: (calibration: StoredEARCalibration | null) => void;
   setAlertCooldownMinutes: (minutes: number) => void;
   setBreakSettings: (settings: {
     breakIntervalMinutes?: number;
@@ -77,6 +94,7 @@ export interface SettingsState {
   setPostureSensitivity: (sensitivity: 'low' | 'medium' | 'high') => void;
   setOnboardingComplete: () => void;
   setOnboardingStep: (step: number) => void;
+  setProductTourComplete: () => void;
   setWellnessGoals: (goals: Partial<SettingsState['wellnessGoals']>) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setCloudSyncEnabled: (enabled: boolean) => void;
@@ -99,6 +117,7 @@ const initialState = DEMO_MODE ? {
   showFloatingStatus: true,
   selectedCameraId: null,
   earThreshold: 0.21,
+  earCalibration: null,
   alertCooldownMinutes: 10,
   // Break settings
   breakIntervalMinutes: 20,
@@ -116,6 +135,7 @@ const initialState = DEMO_MODE ? {
   // Onboarding - COMPLETE in demo mode
   hasCompletedOnboarding: true,
   onboardingStep: 7,
+  hasCompletedProductTour: true,
   // Wellness goals - all selected
   wellnessGoals: {
     reduceEyeStrain: true,
@@ -137,6 +157,7 @@ const initialState = DEMO_MODE ? {
   showFloatingStatus: true,
   selectedCameraId: null,
   earThreshold: 0.21,
+  earCalibration: null,
   alertCooldownMinutes: 10,
   // Break settings (20-20-20 rule defaults)
   breakIntervalMinutes: 20,
@@ -154,6 +175,7 @@ const initialState = DEMO_MODE ? {
   // Onboarding
   hasCompletedOnboarding: false,
   onboardingStep: 0,
+  hasCompletedProductTour: false,
   // Wellness goals
   wellnessGoals: {
     reduceEyeStrain: true,
@@ -181,6 +203,10 @@ export const useSettingsStore = create<SettingsState>()(
       setShowFloatingStatus: (enabled) => set({ showFloatingStatus: enabled }),
       setSelectedCameraId: (cameraId) => set({ selectedCameraId: cameraId }),
       setEarThreshold: (threshold) => set({ earThreshold: threshold }),
+      setEarCalibration: (calibration) => set({
+        earCalibration: calibration,
+        earThreshold: calibration?.threshold ?? 0.21,
+      }),
       setAlertCooldownMinutes: (minutes) => set({ alertCooldownMinutes: minutes }),
 
       setBreakSettings: (settings) => set((state) => ({
@@ -200,6 +226,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       setOnboardingComplete: () => set({ hasCompletedOnboarding: true, onboardingStep: 7 }),
       setOnboardingStep: (step) => set({ onboardingStep: step }),
+      setProductTourComplete: () => set({ hasCompletedProductTour: true }),
 
       setWellnessGoals: (goals) => set((state) => ({
         wellnessGoals: { ...state.wellnessGoals, ...goals },
@@ -219,7 +246,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'lumina-settings',
-      version: 4, // v4: Added selectedCameraId for camera selection during onboarding
+      version: 6, // v6: Added hasCompletedProductTour for product tour tracking
     }
   )
 );
