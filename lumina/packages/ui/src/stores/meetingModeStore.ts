@@ -197,6 +197,15 @@ export const useMeetingModeStore = create<MeetingModeState>()(
     {
       name: 'lumina-meeting-mode',
       version: 1,
+      // Only persist settings and calibrations, NOT runtime state
+      // This prevents stale meeting mode state after app restart
+      partialize: (state) => ({
+        enabled: state.enabled,
+        calibrations: state.calibrations,
+        captureRate: state.captureRate,
+        autoDetect: state.autoDetect,
+        // Explicitly NOT persisting: isActive, detectedApp, lastError
+      }),
     }
   )
 );

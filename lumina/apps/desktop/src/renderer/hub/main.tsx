@@ -6,9 +6,7 @@ import '@lumina/ui/globals.css';
 const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  // Note: StrictMode removed because it causes double-execution of effects,
+  // which breaks async operations like PowerShell detection and camera acquisition
+  root.render(<App />);
 }

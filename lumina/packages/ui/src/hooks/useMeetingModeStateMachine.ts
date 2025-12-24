@@ -115,7 +115,6 @@ export function useMeetingModeStateMachine(
     calibrations,
     setActive: setStoreActive,
     getCalibration,
-    hasCalibration,
     touchCalibration,
   } = useMeetingModeStore();
 
@@ -439,18 +438,18 @@ export function useMeetingModeStateMachine(
   // ==========================================================================
   // MEETING DETECTION POLLING
   // ==========================================================================
-  // NOTE: Polling is DISABLED while running alongside existing App.tsx code.
-  // The existing code handles detection; this hook just tracks state.
-  // Enable polling when this hook fully replaces the old meeting mode code.
-  // ==========================================================================
 
-  /*
-  // DISABLED: Causes duplicate polling when running alongside existing code
+  // Use refs to avoid effect restarts when these functions change
+  const sendRef = useRef(send);
+  sendRef.current = send;
+
   useEffect(() => {
     if (!isDetecting || !meetingModeEnabled) return;
 
+    let isPollingActive = true;
+
     const checkForMeeting = async () => {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current || !isPollingActive) return;
 
       const machine = machineRef.current;
       const currentPhase = machine.getPhase();
@@ -467,7 +466,7 @@ export function useMeetingModeStateMachine(
         // Detect meeting via IPC (uses actual API: detectApp)
         const meetingAPI = getMeetingModeAPI();
         const result = await meetingAPI?.detectApp();
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || !isPollingActive) return;
 
         if (result?.isDetected && result.appName) {
           const appName = result.appName;
@@ -486,19 +485,18 @@ export function useMeetingModeStateMachine(
             return;
           }
 
-          // Check if we have calibration
-          const hasCalib = hasCalibration(appName);
+          // Check if we have calibration - read directly from store to avoid dependency
+          const hasCalib = useMeetingModeStore.getState().hasCalibration(appName);
 
-          // Send meeting detected event
-          // Note: sourceId is obtained later via getWindowSourceId/getSourceId when starting capture
-          send({
+          // Send meeting detected event via ref (avoids effect restart)
+          sendRef.current({
             type: 'MEETING_DETECTED',
             appName,
             hasCalibration: hasCalib,
           });
         } else if (currentPhase === MeetingModePhase.CAPTURE_ACTIVE) {
           // Meeting ended while we were capturing
-          send({ type: 'MEETING_ENDED' });
+          sendRef.current({ type: 'MEETING_ENDED' });
         }
       } catch (error) {
         console.error('[MeetingMode] Detection error:', error);
@@ -512,10 +510,10 @@ export function useMeetingModeStateMachine(
     const interval = setInterval(checkForMeeting, MEETING_DETECTION_INTERVAL_MS);
 
     return () => {
+      isPollingActive = false;
       clearInterval(interval);
     };
-  }, [isDetecting, meetingModeEnabled, hasCalibration, send]);
-  */
+  }, [isDetecting, meetingModeEnabled]); // Minimal dependencies - stable values only
 
   // ==========================================================================
   // CLEANUP ON UNMOUNT
