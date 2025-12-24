@@ -73,7 +73,6 @@ export class FaceLandmarkerManager {
   private lastVideoTime = -1;
   private useCalibration: boolean;
   private frameWidth: number = 640;
-  private debugFrameCount: number = 0;
 
   constructor() {
     // Use robust slope-based detection for better mini blink accuracy
@@ -241,34 +240,8 @@ export class FaceLandmarkerManager {
     // Run robust slope-based blink detection
     const robustResult = this.robustBlinkDetector.detect(landmarks, confidence, timestamp);
 
-    // Debug logging disabled in production for performance
-    // Enable via DEBUG_BLINK_DETECTION=true environment variable
-    if (process.env.DEBUG_BLINK_DETECTION === 'true') {
-      if (this.debugFrameCount % 30 === 0) {
-        console.log('[BlinkDetector]', {
-          avgEAR: robustResult.avgEar.toFixed(3),
-          slope: robustResult.slope.slope.toFixed(6),
-          phase: robustResult.phaseName,
-          isClosing: robustResult.slope.isClosing,
-          isOpening: robustResult.slope.isOpening,
-          isSymmetric: robustResult.bilateral.isSymmetric,
-          headMoving: robustResult.headIsMoving,
-          baseline: robustResult.threshold.toFixed(3),
-          calibrating: robustResult.bilateral.leftEye.baseline === 0.3,
-          blinkCount: this.robustBlinkDetector.getBlinkCount(),
-        });
-      }
-      if (robustResult.isBlink) {
-        console.log('[BlinkDetector] BLINK DETECTED!', {
-          blinkEvent: robustResult.blinkEvent,
-          count: this.robustBlinkDetector.getBlinkCount(),
-        });
-      }
-      if (robustResult.rejectionReason) {
-        console.log('[BlinkDetector] Rejected:', robustResult.rejectionReason);
-      }
-    }
-    this.debugFrameCount++;
+    // Debug logging removed - was causing "process is not defined" error in browser
+    // To debug blink detection, temporarily add console.logs here
 
     // Convert to BlinkDetectionResult format for compatibility
     const blinkResult: BlinkDetectionResult = {
