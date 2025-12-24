@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo, memo } from 'react';
 import {
   LineChart,
   Line,
@@ -41,8 +41,10 @@ export interface EarWaveformProps {
  *
  * Data is read from the Zustand sessionStore, which persists across navigation.
  * Use the paused prop to skip rendering when the component is not visible.
+ *
+ * Memoized to prevent unnecessary re-renders from parent component updates.
  */
-export function EarWaveform({
+export const EarWaveform = memo(function EarWaveform({
   windowSize = 150, // ~5 seconds at 30fps
   threshold = 0.21,
   height = 120,
@@ -52,12 +54,26 @@ export function EarWaveform({
   paused = false,
   useSlope = false,
 }: EarWaveformProps) {
-  // Read waveform data from Zustand store (persists across navigation)
-  const storeData = useSessionStore((state) => state.waveformData);
-  const blinkPositions = useSessionStore((state) => state.blinkPositions);
+  // Subscribe to update counter (triggers re-render when new data arrives)
+  // This is throttled to ~10 updates/sec instead of 30 for performance
+  const updateCounter = useSessionStore((state) => state.waveformUpdateCounter);
+  const getWaveformData = useSessionStore((state) => state.getWaveformData);
+  const getBlinkPositions = useSessionStore((state) => state.getBlinkPositions);
 
-  // When paused, show empty; otherwise show live data from store
-  const rawData = paused ? [] : storeData.slice(-windowSize);
+  // Read data from circular buffer (O(n) reconstruction, but only on UI updates)
+  // useMemo ensures we only reconstruct when updateCounter changes
+  const rawData = useMemo(() => {
+    if (paused) return [];
+    const data = getWaveformData();
+    return data.slice(-windowSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused, updateCounter, windowSize]);
+
+  const blinkPositions = useMemo(() => {
+    if (paused) return [];
+    return getBlinkPositions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused, updateCounter]);
 
   // If useSlope is true, map slope values to ear field for chart display
   const data = useSlope
@@ -201,4 +217,4 @@ export function EarWaveform({
       </div>
     </div>
   );
-}
+});

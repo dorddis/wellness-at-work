@@ -241,44 +241,34 @@ export class FaceLandmarkerManager {
     // Run robust slope-based blink detection
     const robustResult = this.robustBlinkDetector.detect(landmarks, confidence, timestamp);
 
-    // Debug logging (every 30 frames to avoid spam)
-    if (this.debugFrameCount % 30 === 0) {
-      console.log('[BlinkDetector]', {
-        avgEAR: robustResult.avgEar.toFixed(3),
-        slope: robustResult.slope.slope.toFixed(6),
-        phase: robustResult.phaseName,
-        isClosing: robustResult.slope.isClosing,
-        isOpening: robustResult.slope.isOpening,
-        isSymmetric: robustResult.bilateral.isSymmetric,
-        headMoving: robustResult.headIsMoving,
-        baseline: robustResult.threshold.toFixed(3),
-        calibrating: robustResult.bilateral.leftEye.baseline === 0.3,
-        blinkCount: this.robustBlinkDetector.getBlinkCount(),
-      });
-    }
-    this.debugFrameCount++;
-
-    // Log blink events
-    if (robustResult.isBlink) {
-      console.log('[BlinkDetector] BLINK DETECTED!', {
-        blinkEvent: robustResult.blinkEvent,
-        count: this.robustBlinkDetector.getBlinkCount(),
-      });
-    }
-
-    // Log rejections for debugging
-    if (robustResult.rejectionReason) {
-      // Enhanced logging for eye movement rejections (hybrid validation)
-      if (robustResult.rejectionReason.startsWith('eye_movement')) {
-        console.log('[BlinkDetector] Eye movement rejected (not a blink):', {
-          reason: robustResult.rejectionReason,
+    // Debug logging disabled in production for performance
+    // Enable via DEBUG_BLINK_DETECTION=true environment variable
+    if (process.env.DEBUG_BLINK_DETECTION === 'true') {
+      if (this.debugFrameCount % 30 === 0) {
+        console.log('[BlinkDetector]', {
           avgEAR: robustResult.avgEar.toFixed(3),
+          slope: robustResult.slope.slope.toFixed(6),
+          phase: robustResult.phaseName,
+          isClosing: robustResult.slope.isClosing,
+          isOpening: robustResult.slope.isOpening,
+          isSymmetric: robustResult.bilateral.isSymmetric,
+          headMoving: robustResult.headIsMoving,
           baseline: robustResult.threshold.toFixed(3),
+          calibrating: robustResult.bilateral.leftEye.baseline === 0.3,
+          blinkCount: this.robustBlinkDetector.getBlinkCount(),
         });
-      } else {
+      }
+      if (robustResult.isBlink) {
+        console.log('[BlinkDetector] BLINK DETECTED!', {
+          blinkEvent: robustResult.blinkEvent,
+          count: this.robustBlinkDetector.getBlinkCount(),
+        });
+      }
+      if (robustResult.rejectionReason) {
         console.log('[BlinkDetector] Rejected:', robustResult.rejectionReason);
       }
     }
+    this.debugFrameCount++;
 
     // Convert to BlinkDetectionResult format for compatibility
     const blinkResult: BlinkDetectionResult = {

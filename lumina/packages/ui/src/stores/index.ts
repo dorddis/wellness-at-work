@@ -1,5 +1,10 @@
 // Session & Alerts
-export { useSessionStore, type SessionState } from './sessionStore';
+export {
+  useSessionStore,
+  type SessionState,
+  type DetectionUpdate,
+  type EarDataPoint,
+} from './sessionStore';
 export { useAlertStore, type AlertState, type Alert } from './alertStore';
 
 // Settings
