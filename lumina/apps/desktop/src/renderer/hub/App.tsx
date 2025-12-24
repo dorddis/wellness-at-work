@@ -236,6 +236,14 @@ export default function App() {
   const prevEarRef = useRef<{ ear: number; timestamp: number } | null>(null);
   // Database write queue - flushed every 2 seconds
   const dbWriteQueueRef = useRef<DatabaseWrite[]>([]);
+  // Refs for values used in blink rate update interval (avoids 12-dependency effect)
+  const blinkCountRef = useRef<number>(0);
+  const faceDetectedRef = useRef<boolean>(false);
+  const currentPostureRef = useRef<PostureResult | null>(null);
+  const currentYawnRef = useRef<YawnResult | null>(null);
+  const currentDrowsinessRef = useRef<DrowsinessResult | null>(null);
+  const userBaselineRef = useRef<Baseline | null>(null);
+  const isCalibratingRef = useRef<boolean>(false);
 
   // Auth state
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -999,14 +1007,26 @@ export default function App() {
     };
   }, []);
 
+  // Sync refs for blink rate update interval (prevents 12-dependency effect from restarting)
+  useEffect(() => {
+    blinkCountRef.current = blinkCount;
+    faceDetectedRef.current = faceDetected;
+    currentPostureRef.current = currentPosture;
+    currentYawnRef.current = currentYawn;
+    currentDrowsinessRef.current = currentDrowsiness;
+    userBaselineRef.current = userBaseline;
+    isCalibratingRef.current = isCalibrating;
+  }, [blinkCount, faceDetected, currentPosture, currentYawn, currentDrowsiness, userBaseline, isCalibrating]);
+
   // Update blink rate periodically and evaluate alerts
+  // Uses refs for frequently-changing values to avoid interval restart on every blink
   useEffect(() => {
     if (!isDetecting || !sessionStartTime) return;
 
     const updateRate = () => {
       const elapsedMs = Date.now() - sessionStartTime;
       const elapsedMinutes = Math.max(elapsedMs / 60000, 1 / 60);
-      const blinkRate = Math.round((blinkCount / elapsedMinutes) * 10) / 10;
+      const blinkRate = Math.round((blinkCountRef.current / elapsedMinutes) * 10) / 10;
 
       updateBlinkRate(blinkRate);
       setSessionDuration(Math.floor(elapsedMs / 1000));
@@ -1024,11 +1044,11 @@ export default function App() {
         blinkRate,
         wellnessScore: score,
         isDetecting: true,
-        faceDetected,
+        faceDetected: faceDetectedRef.current,
       });
 
       // Add sample to baseline calibrator if calibrating
-      if (isCalibrating && !baselineCalibrator.isCalibrated()) {
+      if (isCalibratingRef.current && !baselineCalibrator.isCalibrated()) {
         baselineCalibrator.addSample(blinkRate);
         setCalibrationProgress(baselineCalibrator.getProgress());
 
@@ -1062,10 +1082,10 @@ export default function App() {
         blinkRate,
         avgEAR: 0.25, // Default - would track from blinks
         sessionDurationMs: elapsedMs,
-        baseline: userBaseline,
-        posture: currentPosture,
-        yawn: currentYawn,
-        drowsiness: currentDrowsiness,
+        baseline: userBaselineRef.current,
+        posture: currentPostureRef.current,
+        yawn: currentYawnRef.current,
+        drowsiness: currentDrowsinessRef.current,
       };
 
       const newAlerts = alertEngine.evaluate(metrics);
@@ -1099,7 +1119,7 @@ export default function App() {
     updateRate();
     const interval = setInterval(updateRate, 5000);
     return () => clearInterval(interval);
-  }, [isDetecting, sessionStartTime, blinkCount, faceDetected, updateBlinkRate, updateWellnessScore, addAlert, isCalibrating, userBaseline, currentPosture, currentYawn, currentDrowsiness]);
+  }, [isDetecting, sessionStartTime]); // Only restart when detection starts/stops
 
   // Toggle detection
   const handleToggleDetection = () => {
@@ -2127,7 +2147,6 @@ function MonitorView({
   // Draw video/cropped canvas to visible canvas
   useEffect(() => {
     if (!isDetecting || !canvasRef.current) {
-      console.log('[MonitorView] Draw skipped:', { isDetecting, hasCanvas: !!canvasRef.current });
       return;
     }
 
@@ -2136,18 +2155,15 @@ function MonitorView({
     const sourceCanvas = meetingCanvasRef?.current;
 
     if (!sourceVideo && !sourceCanvas) {
-      console.log('[MonitorView] No source available');
       return;
     }
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      console.log('[MonitorView] No canvas context');
       return;
     }
 
-    let frameCount = 0;
     let animationFrameId: number;
     const draw = () => {
       // In meeting mode with cropped canvas, draw from the cropped canvas
@@ -2155,19 +2171,11 @@ function MonitorView({
         canvas.width = sourceCanvas.width;
         canvas.height = sourceCanvas.height;
         ctx.drawImage(sourceCanvas, 0, 0);
-        if (frameCount === 0) {
-          console.log('[MonitorView] First frame from cropped canvas:', canvas.width, 'x', canvas.height);
-        }
-        frameCount++;
       } else if (sourceVideo && sourceVideo.readyState >= 2) {
         // Fall back to video (camera mode or meeting mode without crop)
         canvas.width = sourceVideo.videoWidth;
         canvas.height = sourceVideo.videoHeight;
         ctx.drawImage(sourceVideo, 0, 0);
-        if (frameCount === 0) {
-          console.log('[MonitorView] First frame from video:', canvas.width, 'x', canvas.height);
-        }
-        frameCount++;
       }
       // Continue draw loop while detecting
       if (isDetecting) {
