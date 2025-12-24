@@ -68,7 +68,7 @@ describe('BlinkStateMachine', () => {
       // Head starts moving
       const result = stateMachine.update(true, false, false, 0.25, 1050, true);
       expect(stateMachine.phase).toBe(BlinkPhase.IDLE);
-      expect(result.rejectionReason).toBe('head_motion_during_closing');
+      expect(result.rejectionReason).toBe('movement_during_closing');
     });
   });
 
