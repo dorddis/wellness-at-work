@@ -26,6 +26,7 @@ See `lumina/` folder for the implementation.
 | Local Storage | better-sqlite3 (WAL mode) |
 | Cloud Backend | Supabase (Auth + PostgreSQL + RLS) |
 | Packaging | electron-builder |
+| Release Hosting | Cloudflare R2 (private repo, public downloads) |
 
 ## Legacy Tech Stack (Original PyQt6 approach - archived)
 
@@ -60,7 +61,29 @@ pnpm build:web        # Build Next.js
 
 # Lint
 pnpm lint
+
+# Release (triggers GitHub Actions → R2 upload)
+git tag v1.0.0 && git push origin v1.0.0
+# Or manual: gh workflow run release.yml -f version=1.0.0
 ```
+
+## Release Infrastructure
+
+**Repository:** Private (code not publicly accessible)
+**Downloads:** Public via Cloudflare R2 CDN
+
+```
+GitHub Actions (on tag push)
+    → Build Win + Mac installers
+    → Upload to R2: pub-e3da78107a3f4e5c9db5419df773c20f.r2.dev
+    → Update Supabase `releases` table
+    → Website auto-displays new version
+```
+
+**GitHub Secrets Required:**
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET` (lumina-releases), `R2_PUBLIC_URL`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
 
 ## Legacy Commands (PyQt6 - archived)
 

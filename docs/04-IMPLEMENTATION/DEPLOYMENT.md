@@ -1,6 +1,6 @@
 # Deployment Guide - Lumina
 
-**Last Updated:** December 23, 2025
+**Last Updated:** December 24, 2025
 **Status:** Production-ready
 **Source:** Extracted from session logs + implementation experience
 
@@ -308,6 +308,89 @@ signtool verify /pa Lumina-Setup.exe
 codesign --verify --deep --strict --verbose=2 Lumina.app
 spctl -a -vvv -t install Lumina.app
 ```
+
+---
+
+## Release Hosting (Cloudflare R2)
+
+**Status:** Production-ready (December 24, 2025)
+
+The repository is **private**. Desktop installers are hosted on Cloudflare R2 for public downloads.
+
+### Architecture
+
+```
+GitHub Actions (private repo)
+        │
+        ▼
+   Build Windows + macOS installers
+        │
+        ▼
+   Upload to Cloudflare R2 bucket
+        │
+        ├── /releases/v1.0.0/Lumina-Setup-1.0.0.exe
+        ├── /releases/v1.0.0/Lumina-1.0.0-arm64.dmg
+        ├── /latest.yml (Windows auto-update manifest)
+        └── /latest-mac.yml (macOS auto-update manifest)
+        │
+        ▼
+   Update Supabase `releases` table with URLs
+        │
+        ▼
+   Website reads from Supabase → displays R2 download links
+```
+
+### R2 Configuration
+
+**Bucket:** `lumina-releases`
+**Public URL:** `https://pub-e3da78107a3f4e5c9db5419df773c20f.r2.dev`
+**Access:** Public read, private write
+
+### GitHub Secrets Required
+
+| Secret | Description |
+|--------|-------------|
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_ACCESS_KEY_ID` | R2 API token access key |
+| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
+| `R2_BUCKET` | Bucket name (`lumina-releases`) |
+| `R2_PUBLIC_URL` | Public URL for downloads |
+
+### Triggering a Release
+
+```bash
+# Option 1: Git tag (recommended for production)
+git tag v1.0.0
+git push origin v1.0.0
+
+# Option 2: Manual workflow dispatch
+gh workflow run release.yml -f version=1.0.0
+```
+
+### Auto-Updates
+
+The desktop app uses `electron-updater` with generic provider:
+
+```json
+{
+  "build": {
+    "publish": [{
+      "provider": "generic",
+      "url": "https://pub-e3da78107a3f4e5c9db5419df773c20f.r2.dev"
+    }]
+  }
+}
+```
+
+Auto-updater checks `/latest.yml` (Windows) or `/latest-mac.yml` (macOS) for new versions.
+
+### Cost
+
+| Component | Monthly Cost |
+|-----------|--------------|
+| Storage (~500MB) | ~$0.01 |
+| Egress | **$0** (R2 free egress) |
+| Total | ~$0.01/month |
 
 ---
 
