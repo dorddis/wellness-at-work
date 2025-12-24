@@ -26,7 +26,6 @@ interface MeetingModeCalibrationProps {
     width: number;
     height: number;
     scaleFactor: number;
-    windowBounds?: { x: number; y: number; width: number; height: number };
     isWindowCapture?: boolean;
   } | null;
 }
@@ -36,7 +35,6 @@ interface ScreenshotData {
   width: number;
   height: number;
   scaleFactor: number;
-  windowBounds?: { x: number; y: number; width: number; height: number };
   isWindowCapture?: boolean;
 }
 
@@ -462,16 +460,55 @@ export function MeetingModeCalibration({
 interface MeetingModeStatusProps {
   appName: string;
   onStop: () => void;
+  /** Callback when user wants to recalibrate (self-view moved) */
+  onRecalibrate?: () => void;
+  /** Whether capture is stale (no face detected for extended period) */
+  isStale?: boolean;
 }
 
-export function MeetingModeStatus({ appName, onStop }: MeetingModeStatusProps) {
+export function MeetingModeStatus({ appName, onStop, onRecalibrate, isStale }: MeetingModeStatusProps) {
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-800 rounded-lg text-sm">
-      <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-      <span className="font-medium">Meeting Mode: {appName}</span>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
+      isStale
+        ? 'bg-amber-100 text-amber-800'
+        : 'bg-purple-100 text-purple-800'
+    }`}>
+      <div className={`w-2 h-2 rounded-full ${
+        isStale
+          ? 'bg-amber-500 animate-pulse'
+          : 'bg-purple-500 animate-pulse'
+      }`} />
+      <span className="font-medium">
+        {isStale ? 'No face detected' : `Meeting Mode: ${appName}`}
+      </span>
+      {onRecalibrate && (
+        <button
+          onClick={onRecalibrate}
+          className={`ml-1 p-1 rounded transition-colors ${
+            isStale ? 'hover:bg-amber-200' : 'hover:bg-purple-200'
+          }`}
+          title="Recalibrate self-view region"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      )}
       <button
         onClick={onStop}
-        className="ml-1 p-1 hover:bg-purple-200 rounded transition-colors"
+        className={`ml-1 p-1 rounded transition-colors ${
+          isStale ? 'hover:bg-amber-200' : 'hover:bg-purple-200'
+        }`}
         title="Stop meeting mode"
       >
         <svg

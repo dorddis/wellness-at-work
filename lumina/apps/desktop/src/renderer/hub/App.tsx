@@ -339,6 +339,7 @@ export default function App() {
     send: sendMeetingEvent,
     isCapturing: isMeetingCapturing,
     isWaitingForCalibration,
+    isStale: isMeetingStale,
     stateDescription: meetingStateDescription,
     reset: resetMeetingStateMachine,
   } = useMeetingModeStateMachine({
@@ -1371,6 +1372,12 @@ export default function App() {
           <div className="absolute top-16 right-6 z-40">
             <MeetingModeStatus
               appName={meetingContext.detectedApp || 'Meeting'}
+              isStale={isMeetingStale}
+              onRecalibrate={() => {
+                console.log('[MeetingMode] Recalibration requested');
+                // Send RECALIBRATION_REQUESTED event - state machine handles stopping capture and showing calibration UI
+                sendMeetingEvent({ type: 'RECALIBRATION_REQUESTED' });
+              }}
               onStop={() => {
                 console.log('[MeetingMode] Manual stop requested');
                 // Send USER_STOPPED event - state machine handles cleanup

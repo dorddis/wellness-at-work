@@ -665,7 +665,6 @@ export function setupIPC(
     width: number;
     height: number;
     scaleFactor: number;
-    windowBounds?: { x: number; y: number; width: number; height: number };
     isWindowCapture: boolean;
   } | null> {
     const { desktopCapturer, screen } = await import('electron');
@@ -694,55 +693,11 @@ export function setupIPC(
       if (matchingWindow) {
         console.log(`[Screenshot] Found window: "${matchingWindow.name}"`);
 
-        // Get window bounds using PowerShell (Windows only)
-        let windowBounds: { x: number; y: number; width: number; height: number } | undefined;
-
-        try {
-          const { exec } = await import('child_process');
-          const { promisify } = await import('util');
-          const execAsync = promisify(exec);
-
-          // PowerShell script to get window bounds by title
-          const escapedTitle = matchingWindow.name.replace(/'/g, "''");
-          const psScript = `
-            Add-Type @"
-              using System;
-              using System.Runtime.InteropServices;
-              public class Win32 {
-                [DllImport("user32.dll")]
-                public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
-                [DllImport("user32.dll")]
-                public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-              }
-              public struct RECT {
-                public int Left, Top, Right, Bottom;
-              }
-"@
-            $hwnd = [Win32]::FindWindow($null, '${escapedTitle}')
-            $rect = New-Object RECT
-            [Win32]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
-            @{Left=$rect.Left; Top=$rect.Top; Right=$rect.Right; Bottom=$rect.Bottom} | ConvertTo-Json
-          `;
-          const encoded = Buffer.from(psScript, 'utf16le').toString('base64');
-          const { stdout } = await execAsync(`powershell -EncodedCommand ${encoded}`, { timeout: 5000 });
-          const bounds = JSON.parse(stdout.trim());
-          windowBounds = {
-            x: bounds.Left,
-            y: bounds.Top,
-            width: bounds.Right - bounds.Left,
-            height: bounds.Bottom - bounds.Top,
-          };
-          console.log(`[Screenshot] Window bounds:`, windowBounds);
-        } catch (err) {
-          console.log(`[Screenshot] Could not get window bounds:`, err);
-        }
-
         return {
           dataUrl: matchingWindow.thumbnail.toDataURL(),
           width: matchingWindow.thumbnail.getSize().width,
           height: matchingWindow.thumbnail.getSize().height,
           scaleFactor,
-          windowBounds,
           isWindowCapture: true,
         };
       } else {

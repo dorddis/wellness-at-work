@@ -40,6 +40,9 @@ export enum MeetingModePhase {
 
   /** Recoverable error state (capture failed, permission denied, etc.) */
   ERROR = 'ERROR',
+
+  /** Face detection timeout - no face detected for 5+ minutes, awaiting user action */
+  CAPTURE_STALE = 'CAPTURE_STALE',
 }
 
 // ============================================================================
@@ -136,6 +139,54 @@ export interface RetryEvent {
   type: 'RETRY';
 }
 
+// ============================================================================
+// NEW EVENTS - Phase 3 additions for recalibration and face timeout
+// ============================================================================
+
+/**
+ * Event: User wants to recalibrate during active capture.
+ */
+export interface RecalibrationRequestedEvent {
+  type: 'RECALIBRATION_REQUESTED';
+}
+
+/**
+ * Event: No face detected for 5+ minutes during active capture.
+ */
+export interface FaceDetectionTimeoutEvent {
+  type: 'FACE_DETECTION_TIMEOUT';
+  duration: number; // milliseconds since last face detected
+}
+
+/**
+ * Event: Face detected (used to auto-recover from CAPTURE_STALE).
+ */
+export interface FaceDetectedEvent {
+  type: 'FACE_DETECTED';
+}
+
+/**
+ * Event: User accepted recalibration prompt (from CAPTURE_STALE).
+ */
+export interface RecalibrationAcceptedEvent {
+  type: 'RECALIBRATION_ACCEPTED';
+}
+
+/**
+ * Event: User dismissed recalibration prompt (from CAPTURE_STALE).
+ */
+export interface RecalibrationDismissedEvent {
+  type: 'RECALIBRATION_DISMISSED';
+}
+
+/**
+ * Event: Calibration was deleted externally while capture is active.
+ */
+export interface CalibrationInvalidatedEvent {
+  type: 'CALIBRATION_INVALIDATED';
+  appName: string;
+}
+
 /**
  * Union of all possible events.
  */
@@ -150,7 +201,14 @@ export type MeetingModeEvent =
   | CaptureStoppedEvent
   | UserStoppedEvent
   | UserDismissedPromptEvent
-  | RetryEvent;
+  | RetryEvent
+  // Phase 3 additions
+  | RecalibrationRequestedEvent
+  | FaceDetectionTimeoutEvent
+  | FaceDetectedEvent
+  | RecalibrationAcceptedEvent
+  | RecalibrationDismissedEvent
+  | CalibrationInvalidatedEvent;
 
 // ============================================================================
 // ACTIONS - Commands returned by state machine (executed by hook)
@@ -321,6 +379,17 @@ export interface MeetingModeContext {
   /** Video dimensions (set when capture ready) */
   videoWidth: number;
   videoHeight: number;
+
+  // ========== Phase 3 additions ==========
+
+  /** Previous calibration saved during recalibration (for cancel recovery) */
+  previousCalibration: MeetingCalibration | null;
+
+  /** Whether we're in a recalibration flow (affects cancel behavior) */
+  isRecalibrating: boolean;
+
+  /** Timestamp of last face detection (for timeout tracking) */
+  lastFaceDetected: number;
 }
 
 // ============================================================================
@@ -412,11 +481,21 @@ export const VALID_TRANSITIONS: TransitionDefinition[] = [
     to: MeetingModePhase.STARTING_CAPTURE,
     actions: ['HIDE_CALIBRATION_UI', 'START_CAPTURE'],
   },
+  // Normal cancel: go to webcam
   {
     from: MeetingModePhase.CALIBRATING,
     event: 'CALIBRATION_CANCELLED',
     to: MeetingModePhase.WEBCAM_ACTIVE,
+    condition: 'isRecalibrating=false',
     actions: ['HIDE_CALIBRATION_UI', 'START_WEBCAM'],
+  },
+  // Phase 3: Recalibration cancel - resume with old calibration
+  {
+    from: MeetingModePhase.CALIBRATING,
+    event: 'CALIBRATION_CANCELLED',
+    to: MeetingModePhase.STARTING_CAPTURE,
+    condition: 'isRecalibrating=true',
+    actions: ['HIDE_CALIBRATION_UI', 'START_CAPTURE'],
   },
   {
     from: MeetingModePhase.CALIBRATING,
@@ -464,6 +543,53 @@ export const VALID_TRANSITIONS: TransitionDefinition[] = [
     to: MeetingModePhase.ERROR,
     actions: ['STOP_CAPTURE', 'SHOW_NOTIFICATION'],
   },
+  // Phase 3: Recalibration during active capture
+  {
+    from: MeetingModePhase.CAPTURE_ACTIVE,
+    event: 'RECALIBRATION_REQUESTED',
+    to: MeetingModePhase.CALIBRATING,
+    actions: ['STOP_CAPTURE', 'SHOW_CALIBRATION_UI'],
+  },
+  // Phase 3: Face detection timeout
+  {
+    from: MeetingModePhase.CAPTURE_ACTIVE,
+    event: 'FACE_DETECTION_TIMEOUT',
+    to: MeetingModePhase.CAPTURE_STALE,
+    actions: ['SHOW_NOTIFICATION'],
+  },
+  // Phase 3: Calibration invalidated externally
+  {
+    from: MeetingModePhase.CAPTURE_ACTIVE,
+    event: 'CALIBRATION_INVALIDATED',
+    to: MeetingModePhase.MEETING_DETECTED,
+    actions: ['STOP_CAPTURE', 'SHOW_NOTIFICATION'],
+  },
+
+  // From CAPTURE_STALE (Phase 3)
+  {
+    from: MeetingModePhase.CAPTURE_STALE,
+    event: 'RECALIBRATION_ACCEPTED',
+    to: MeetingModePhase.CALIBRATING,
+    actions: ['STOP_CAPTURE', 'SHOW_CALIBRATION_UI'],
+  },
+  {
+    from: MeetingModePhase.CAPTURE_STALE,
+    event: 'RECALIBRATION_DISMISSED',
+    to: MeetingModePhase.CAPTURE_ACTIVE,
+    actions: [],
+  },
+  {
+    from: MeetingModePhase.CAPTURE_STALE,
+    event: 'FACE_DETECTED',
+    to: MeetingModePhase.CAPTURE_ACTIVE,
+    actions: [],
+  },
+  {
+    from: MeetingModePhase.CAPTURE_STALE,
+    event: 'MEETING_ENDED',
+    to: MeetingModePhase.STOPPING_CAPTURE,
+    actions: ['STOP_CAPTURE'],
+  },
 
   // From STOPPING_CAPTURE
   {
@@ -474,10 +600,20 @@ export const VALID_TRANSITIONS: TransitionDefinition[] = [
   },
 
   // From ERROR
+  // Smart retry: if meeting still detected, go to STARTING_CAPTURE
+  {
+    from: MeetingModePhase.ERROR,
+    event: 'RETRY',
+    to: MeetingModePhase.STARTING_CAPTURE,
+    condition: 'detectedApp != null',
+    actions: ['START_CAPTURE'],
+  },
+  // Fallback retry: go to WEBCAM_ACTIVE
   {
     from: MeetingModePhase.ERROR,
     event: 'RETRY',
     to: MeetingModePhase.WEBCAM_ACTIVE,
+    condition: 'detectedApp == null',
     actions: ['START_WEBCAM'],
   },
   {
@@ -526,5 +662,9 @@ export function createInitialContext(): MeetingModeContext {
     phaseStartedAt: Date.now(),
     videoWidth: 0,
     videoHeight: 0,
+    // Phase 3 additions
+    previousCalibration: null,
+    isRecalibrating: false,
+    lastFaceDetected: Date.now(),
   };
 }

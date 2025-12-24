@@ -61,7 +61,7 @@ export interface UseMeetingModeStateMachineReturn {
   context: MeetingModeContext;
   /** Send an event to the state machine */
   send: (event: MeetingModeEvent) => TransitionResult;
-  /** Whether screen capture is currently active */
+  /** Whether screen capture is currently active (includes CAPTURE_STALE) */
   isCapturing: boolean;
   /** Whether waiting for calibration */
   isWaitingForCalibration: boolean;
@@ -69,10 +69,14 @@ export interface UseMeetingModeStateMachineReturn {
   isStarting: boolean;
   /** Whether webcam should be active */
   shouldWebcamBeActive: boolean;
+  /** Whether in stale capture state (face timeout) */
+  isStale: boolean;
   /** Human-readable state description */
   stateDescription: string;
   /** Force reset the state machine */
   reset: () => void;
+  /** Call this when face is detected to update timeout tracking */
+  onFaceDetected: () => void;
 }
 
 // ============================================================================
@@ -81,6 +85,8 @@ export interface UseMeetingModeStateMachineReturn {
 
 const MEETING_DETECTION_INTERVAL_MS = 3000;
 const CAPTURE_READY_TIMEOUT_MS = 10000;
+const FACE_DETECTION_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const FACE_TIMEOUT_CHECK_INTERVAL_MS = 30 * 1000; // Check every 30 seconds
 
 // ============================================================================
 // HOOK IMPLEMENTATION
@@ -516,6 +522,93 @@ export function useMeetingModeStateMachine(
   }, [isDetecting, meetingModeEnabled]); // Minimal dependencies - stable values only
 
   // ==========================================================================
+  // FACE DETECTION TIMEOUT TRACKING (Phase 3)
+  // ==========================================================================
+
+  // Track last face detection timestamp
+  const lastFaceDetectedRef = useRef<number>(Date.now());
+
+  // Callback for App.tsx to call when face is detected
+  const onFaceDetected = useCallback(() => {
+    lastFaceDetectedRef.current = Date.now();
+    const machine = machineRef.current;
+
+    // If in CAPTURE_STALE, auto-recover to CAPTURE_ACTIVE
+    if (machine.getPhase() === MeetingModePhase.CAPTURE_STALE) {
+      sendRef.current({ type: 'FACE_DETECTED' });
+    }
+  }, []);
+
+  // Periodic check for face detection timeout
+  useEffect(() => {
+    const machine = machineRef.current;
+    const currentPhase = machine.getPhase();
+
+    // Only check in CAPTURE_ACTIVE phase
+    if (currentPhase !== MeetingModePhase.CAPTURE_ACTIVE) {
+      return;
+    }
+
+    const checkFaceTimeout = () => {
+      if (!isMountedRef.current) return;
+
+      const currentPhaseNow = machineRef.current.getPhase();
+      if (currentPhaseNow !== MeetingModePhase.CAPTURE_ACTIVE) return;
+
+      const elapsed = Date.now() - lastFaceDetectedRef.current;
+      if (elapsed >= FACE_DETECTION_TIMEOUT_MS) {
+        if (debug) {
+          console.log('[MeetingMode] Face detection timeout:', elapsed, 'ms');
+        }
+        sendRef.current({
+          type: 'FACE_DETECTION_TIMEOUT',
+          duration: elapsed,
+        });
+      }
+    };
+
+    const interval = setInterval(checkFaceTimeout, FACE_TIMEOUT_CHECK_INTERVAL_MS);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [phase, debug]); // Re-run when phase changes
+
+  // ==========================================================================
+  // CALIBRATION INVALIDATION DETECTION (Phase 3)
+  // ==========================================================================
+
+  // Watch for calibration deletions while capture is active
+  useEffect(() => {
+    const machine = machineRef.current;
+    const currentPhase = machine.getPhase();
+
+    // Only check in CAPTURE_ACTIVE or CAPTURE_STALE
+    if (
+      currentPhase !== MeetingModePhase.CAPTURE_ACTIVE &&
+      currentPhase !== MeetingModePhase.CAPTURE_STALE
+    ) {
+      return;
+    }
+
+    const ctx = machine.getContext();
+    const activeAppName = ctx.detectedApp;
+    if (!activeAppName) return;
+
+    // Check if calibration still exists
+    const calibrationExists = useMeetingModeStore.getState().hasCalibration(activeAppName);
+    if (!calibrationExists) {
+      if (debug) {
+        console.log('[MeetingMode] Calibration invalidated for:', activeAppName);
+      }
+      sendRef.current({
+        type: 'CALIBRATION_INVALIDATED',
+        appName: activeAppName,
+      });
+    }
+  }, [calibrations, phase, debug]); // Re-run when calibrations change
+
+  // ==========================================================================
   // CLEANUP ON UNMOUNT
   // ==========================================================================
 
@@ -544,14 +637,18 @@ export function useMeetingModeStateMachine(
     phase,
     context,
     send,
-    isCapturing: phase === MeetingModePhase.CAPTURE_ACTIVE,
+    isCapturing:
+      phase === MeetingModePhase.CAPTURE_ACTIVE ||
+      phase === MeetingModePhase.CAPTURE_STALE,
     isWaitingForCalibration:
       phase === MeetingModePhase.MEETING_DETECTED ||
       phase === MeetingModePhase.CALIBRATING,
     isStarting: phase === MeetingModePhase.STARTING_CAPTURE,
     shouldWebcamBeActive: phase === MeetingModePhase.WEBCAM_ACTIVE,
+    isStale: phase === MeetingModePhase.CAPTURE_STALE,
     stateDescription: machineRef.current.getStateDescription(),
     reset,
+    onFaceDetected,
   };
 }
 

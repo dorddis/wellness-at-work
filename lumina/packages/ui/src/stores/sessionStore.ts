@@ -113,6 +113,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   setDetecting: (detecting: boolean) => {
+    const currentState = get().isDetecting;
+    if (currentState !== detecting) {
+      console.log('[SessionStore] setDetecting:', detecting, 'from:', currentState);
+      // Log stack trace when detection stops to find the caller
+      if (!detecting) {
+        console.trace('[SessionStore] Detection stopping - stack trace:');
+      }
+    }
     set({ isDetecting: detecting });
   },
 

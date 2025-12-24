@@ -688,4 +688,601 @@ describe('MeetingModeStateMachine', () => {
       expect(logActions.length).toBe(0);
     });
   });
+
+  // ==========================================================================
+  // PHASE 3: RECALIBRATION DURING CAPTURE
+  // ==========================================================================
+
+  describe('recalibration during capture (Phase 3)', () => {
+    beforeEach(() => {
+      // Get to CAPTURE_ACTIVE state
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      // Set up a calibration (required for recalibration to save previous)
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+    });
+
+    it('transitions to CALIBRATING on RECALIBRATION_REQUESTED', () => {
+      const result = machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.CALIBRATING);
+      expect(result.context.isRecalibrating).toBe(true);
+      expect(result.context.previousCalibration).not.toBeNull();
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('STOP_CAPTURE');
+      expect(actionTypes).toContain('SHOW_CALIBRATION_UI');
+    });
+
+    it('saves previous calibration for cancel recovery', () => {
+      // Set up initial calibration
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+
+      const ctx = machine.getContext();
+      expect(ctx.previousCalibration).not.toBeNull();
+      expect(ctx.previousCalibration?.appName).toBe('Zoom');
+      expect(ctx.previousCalibration?.region.x).toBe(100);
+    });
+
+    it('returns to STARTING_CAPTURE with OLD calibration when cancelled', () => {
+      // Set up calibration
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      // Request recalibration
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CALIBRATING);
+
+      // Cancel recalibration
+      const result = machine.transition({ type: 'CALIBRATION_CANCELLED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.STARTING_CAPTURE);
+      expect(result.context.isRecalibrating).toBe(false);
+      expect(result.context.previousCalibration).toBeNull();
+      // Should still have original calibration
+      expect(result.context.activeCalibration?.region.x).toBe(100);
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('HIDE_CALIBRATION_UI');
+      expect(actionTypes).toContain('START_CAPTURE');
+    });
+
+    it('uses NEW calibration when recalibration completed', () => {
+      // Set up old calibration
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      // Request recalibration
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+
+      // Complete with new calibration
+      const result = machine.transition({
+        type: 'CALIBRATION_COMPLETED',
+        appName: 'Zoom',
+        region: { x: 500, y: 500, width: 400, height: 300 }, // New region
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        displayId: 1,
+      });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.STARTING_CAPTURE);
+      expect(result.context.isRecalibrating).toBe(false);
+      expect(result.context.previousCalibration).toBeNull();
+      // Should have new calibration
+      expect(result.context.activeCalibration?.region.x).toBe(500);
+      expect(result.context.activeCalibration?.displayId).toBe(1);
+    });
+
+    it('clears recalibration state when meeting ends during recalibration', () => {
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+      expect(machine.getContext().isRecalibrating).toBe(true);
+
+      const result = machine.transition({ type: 'MEETING_ENDED' });
+
+      expect(result.phase).toBe(MeetingModePhase.WEBCAM_ACTIVE);
+      expect(result.context.isRecalibrating).toBe(false);
+      expect(result.context.previousCalibration).toBeNull();
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: FACE DETECTION TIMEOUT (CAPTURE_STALE)
+  // ==========================================================================
+
+  describe('face detection timeout (Phase 3)', () => {
+    beforeEach(() => {
+      // Get to CAPTURE_ACTIVE state
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Google Meet',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+    });
+
+    it('transitions to CAPTURE_STALE on FACE_DETECTION_TIMEOUT', () => {
+      const result = machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000, // 5 minutes
+      });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.CAPTURE_STALE);
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('SHOW_NOTIFICATION');
+
+      // Check notification message
+      const notification = result.actions.find((a) => a.type === 'SHOW_NOTIFICATION');
+      expect(notification?.message).toContain('5 minutes');
+    });
+
+    it('isCapturing() returns true in CAPTURE_STALE (capture still running)', () => {
+      machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000,
+      });
+
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_STALE);
+      expect(machine.isCapturing()).toBe(true);
+    });
+
+    it('isStale() returns true in CAPTURE_STALE', () => {
+      machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000,
+      });
+
+      expect(machine.isStale()).toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: CAPTURE_STALE STATE
+  // ==========================================================================
+
+  describe('CAPTURE_STALE state (Phase 3)', () => {
+    beforeEach(() => {
+      // Get to CAPTURE_STALE state
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Google Meet',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      machine.setActiveCalibration({
+        appName: 'Google Meet',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+      machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000,
+      });
+    });
+
+    it('transitions to CALIBRATING on RECALIBRATION_ACCEPTED', () => {
+      const result = machine.transition({ type: 'RECALIBRATION_ACCEPTED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.CALIBRATING);
+      expect(result.context.isRecalibrating).toBe(true);
+      expect(result.context.previousCalibration).not.toBeNull();
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('STOP_CAPTURE');
+      expect(actionTypes).toContain('SHOW_CALIBRATION_UI');
+    });
+
+    it('returns to CAPTURE_ACTIVE on RECALIBRATION_DISMISSED', () => {
+      const result = machine.transition({ type: 'RECALIBRATION_DISMISSED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.CAPTURE_ACTIVE);
+
+      // No actions needed - continue as-is (exclude debug LOG_TRANSITION)
+      const nonDebugActions = result.actions.filter((a) => a.type !== 'LOG_TRANSITION');
+      expect(nonDebugActions.length).toBe(0);
+    });
+
+    it('resets lastFaceDetected on RECALIBRATION_DISMISSED', () => {
+      const beforeDismiss = machine.getContext().lastFaceDetected;
+
+      // Wait a tiny bit to ensure timestamp changes
+      machine.transition({ type: 'RECALIBRATION_DISMISSED' });
+
+      expect(machine.getContext().lastFaceDetected).toBeGreaterThanOrEqual(beforeDismiss);
+    });
+
+    it('auto-recovers to CAPTURE_ACTIVE on FACE_DETECTED', () => {
+      const result = machine.transition({ type: 'FACE_DETECTED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.CAPTURE_ACTIVE);
+      // No actions - just continue (exclude debug LOG_TRANSITION)
+      const nonDebugActions = result.actions.filter((a) => a.type !== 'LOG_TRANSITION');
+      expect(nonDebugActions.length).toBe(0);
+    });
+
+    it('transitions to STOPPING_CAPTURE on MEETING_ENDED', () => {
+      const result = machine.transition({ type: 'MEETING_ENDED' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.STOPPING_CAPTURE);
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('STOP_CAPTURE');
+    });
+
+    it('getStateDescription includes "stale"', () => {
+      expect(machine.getStateDescription()).toContain('stale');
+      expect(machine.getStateDescription()).toContain('Google Meet');
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: CALIBRATION INVALIDATION
+  // ==========================================================================
+
+  describe('calibration invalidation (Phase 3)', () => {
+    beforeEach(() => {
+      // Get to CAPTURE_ACTIVE state
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+    });
+
+    it('transitions to MEETING_DETECTED on CALIBRATION_INVALIDATED', () => {
+      const result = machine.transition({
+        type: 'CALIBRATION_INVALIDATED',
+        appName: 'Zoom',
+      });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.MEETING_DETECTED);
+      expect(result.context.activeCalibration).toBeNull();
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('STOP_CAPTURE');
+      expect(actionTypes).toContain('SHOW_NOTIFICATION');
+    });
+
+    it('shows recalibration prompt notification', () => {
+      const result = machine.transition({
+        type: 'CALIBRATION_INVALIDATED',
+        appName: 'Zoom',
+      });
+
+      const notification = result.actions.find((a) => a.type === 'SHOW_NOTIFICATION');
+      expect(notification?.title).toContain('Calibration');
+      expect(notification?.message).toContain('Zoom');
+      expect(notification?.actions).toBeDefined();
+      expect(notification?.actions?.some((a) => a.action === 'CALIBRATION_STARTED')).toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: SMART ERROR RETRY
+  // ==========================================================================
+
+  describe('smart error retry (Phase 3)', () => {
+    it('goes to STARTING_CAPTURE on RETRY when meeting still detected', () => {
+      // Get to ERROR state with meeting context preserved
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+      machine.transition({
+        type: 'CAPTURE_FAILED',
+        error: 'Permission denied',
+        recoverable: true,
+      });
+
+      expect(machine.getPhase()).toBe(MeetingModePhase.ERROR);
+
+      // Retry with meeting still active
+      const result = machine.transition({ type: 'RETRY' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.STARTING_CAPTURE);
+      expect(result.context.lastError).toBeNull();
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('START_CAPTURE');
+      expect(actionTypes).not.toContain('START_WEBCAM');
+    });
+
+    it('falls back to WEBCAM_ACTIVE when no meeting context', () => {
+      // Get to ERROR state, then clear meeting context
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_FAILED',
+        error: 'Permission denied',
+        recoverable: true,
+      });
+
+      expect(machine.getPhase()).toBe(MeetingModePhase.ERROR);
+      // Note: activeCalibration is null (wasn't set)
+
+      const result = machine.transition({ type: 'RETRY' });
+
+      expect(result.transitioned).toBe(true);
+      expect(result.phase).toBe(MeetingModePhase.WEBCAM_ACTIVE);
+
+      const actionTypes = result.actions.map((a) => a.type);
+      expect(actionTypes).toContain('START_WEBCAM');
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: HELPER METHODS
+  // ==========================================================================
+
+  describe('Phase 3 helper methods', () => {
+    it('isRecalibrating() returns correct state', () => {
+      expect(machine.isRecalibrating()).toBe(false);
+
+      // Get to CAPTURE_ACTIVE and start recalibration
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+
+      expect(machine.isRecalibrating()).toBe(true);
+
+      // Cancel recalibration
+      machine.transition({ type: 'CALIBRATION_CANCELLED' });
+      expect(machine.isRecalibrating()).toBe(false);
+    });
+
+    it('updateFaceDetected() updates timestamp', () => {
+      const before = machine.getContext().lastFaceDetected;
+      machine.updateFaceDetected();
+      const after = machine.getContext().lastFaceDetected;
+
+      expect(after).toBeGreaterThanOrEqual(before);
+    });
+
+    it('getTimeSinceLastFace() returns elapsed time', () => {
+      machine.updateFaceDetected();
+      const elapsed = machine.getTimeSinceLastFace();
+
+      expect(elapsed).toBeGreaterThanOrEqual(0);
+      expect(elapsed).toBeLessThan(1000); // Should be very recent
+    });
+  });
+
+  // ==========================================================================
+  // PHASE 3: COMPLEX FLOWS
+  // ==========================================================================
+
+  describe('Phase 3 complex flows', () => {
+    it('handles full recalibration flow: capture -> recalibrate -> new calibration -> capture', () => {
+      // Start with active capture
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Zoom',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      machine.setActiveCalibration({
+        appName: 'Zoom',
+        region: { x: 100, y: 100, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_ACTIVE);
+
+      // User requests recalibration (moved self-view)
+      machine.transition({ type: 'RECALIBRATION_REQUESTED' });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CALIBRATING);
+      expect(machine.isRecalibrating()).toBe(true);
+
+      // User completes new calibration
+      machine.transition({
+        type: 'CALIBRATION_COMPLETED',
+        appName: 'Zoom',
+        region: { x: 500, y: 600, width: 350, height: 250 },
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        displayId: 0,
+      });
+      expect(machine.getPhase()).toBe(MeetingModePhase.STARTING_CAPTURE);
+
+      // Capture starts
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_ACTIVE);
+      expect(machine.isRecalibrating()).toBe(false);
+      expect(machine.getContext().activeCalibration?.region.x).toBe(500);
+    });
+
+    it('handles face timeout -> auto-recovery flow', () => {
+      // Get to CAPTURE_ACTIVE
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Google Meet',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+
+      // Face timeout
+      machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000,
+      });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_STALE);
+
+      // Face detected - auto-recover
+      machine.transition({ type: 'FACE_DETECTED' });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_ACTIVE);
+      expect(machine.isStale()).toBe(false);
+    });
+
+    it('handles face timeout -> recalibration -> cancel -> resume', () => {
+      // Get to CAPTURE_ACTIVE with calibration
+      machine.transition({
+        type: 'MEETING_DETECTED',
+        appName: 'Google Meet',
+        hasCalibration: true,
+      });
+      machine.transition({
+        type: 'CAPTURE_READY',
+        videoWidth: 1920,
+        videoHeight: 1080,
+      });
+      machine.setActiveCalibration({
+        appName: 'Google Meet',
+        region: { x: 200, y: 200, width: 300, height: 200 },
+        displayId: 0,
+        calibrationWidth: 1920,
+        calibrationHeight: 1080,
+        createdAt: Date.now(),
+        lastUsed: Date.now(),
+      });
+
+      // Face timeout
+      machine.transition({
+        type: 'FACE_DETECTION_TIMEOUT',
+        duration: 5 * 60 * 1000,
+      });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CAPTURE_STALE);
+
+      // User accepts recalibration
+      machine.transition({ type: 'RECALIBRATION_ACCEPTED' });
+      expect(machine.getPhase()).toBe(MeetingModePhase.CALIBRATING);
+      expect(machine.isRecalibrating()).toBe(true);
+
+      // User cancels - should go back to STARTING_CAPTURE with old calibration
+      machine.transition({ type: 'CALIBRATION_CANCELLED' });
+      expect(machine.getPhase()).toBe(MeetingModePhase.STARTING_CAPTURE);
+      expect(machine.getContext().activeCalibration?.region.x).toBe(200);
+    });
+  });
 });

@@ -126,6 +126,10 @@ export class MeetingModeStateMachine {
       case MeetingModePhase.ERROR:
         this.handleError(event, actions);
         break;
+
+      case MeetingModePhase.CAPTURE_STALE:
+        this.handleCaptureStale(event, actions);
+        break;
     }
 
     const transitioned = this.phase !== previousPhase;
@@ -237,6 +241,10 @@ export class MeetingModeStateMachine {
           lastUsed: Date.now(),
         };
 
+        // Clear recalibration state
+        this.context.isRecalibrating = false;
+        this.context.previousCalibration = null;
+
         this.phase = MeetingModePhase.STARTING_CAPTURE;
         actions.push({ type: 'HIDE_CALIBRATION_UI' });
         actions.push({
@@ -247,17 +255,36 @@ export class MeetingModeStateMachine {
         break;
 
       case 'CALIBRATION_CANCELLED':
-        this.phase = MeetingModePhase.WEBCAM_ACTIVE;
-        this.context.detectedApp = null;
-        // Remember cancellation as dismissal
-        if (this.context.detectedApp) {
-          this.context.dismissedPrompts.add(this.context.detectedApp);
+        if (this.context.isRecalibrating && this.context.previousCalibration) {
+          // Recalibration cancelled - resume with previous calibration
+          this.context.activeCalibration = this.context.previousCalibration;
+          this.context.previousCalibration = null;
+          this.context.isRecalibrating = false;
+          this.phase = MeetingModePhase.STARTING_CAPTURE;
+          actions.push({ type: 'HIDE_CALIBRATION_UI' });
+          actions.push({
+            type: 'START_CAPTURE',
+            appName: this.context.detectedApp || this.context.activeCalibration.appName,
+            displayId: this.context.activeCalibration.displayId,
+          });
+        } else {
+          // Normal cancel - go to webcam
+          const appToRemember = this.context.detectedApp;
+          this.phase = MeetingModePhase.WEBCAM_ACTIVE;
+          this.context.detectedApp = null;
+          // Remember cancellation as dismissal
+          if (appToRemember) {
+            this.context.dismissedPrompts.add(appToRemember.toLowerCase());
+          }
+          actions.push({ type: 'HIDE_CALIBRATION_UI' });
+          actions.push({ type: 'START_WEBCAM' });
         }
-        actions.push({ type: 'HIDE_CALIBRATION_UI' });
-        actions.push({ type: 'START_WEBCAM' });
         break;
 
       case 'MEETING_ENDED':
+        // Clear recalibration state
+        this.context.isRecalibrating = false;
+        this.context.previousCalibration = null;
         this.phase = MeetingModePhase.WEBCAM_ACTIVE;
         this.context.detectedApp = null;
         actions.push({ type: 'HIDE_CALIBRATION_UI' });
@@ -339,6 +366,49 @@ export class MeetingModeStateMachine {
             : undefined,
         });
         break;
+
+      // Phase 3: User-initiated recalibration
+      case 'RECALIBRATION_REQUESTED':
+        // Save current calibration for cancel recovery
+        this.context.previousCalibration = this.context.activeCalibration;
+        this.context.isRecalibrating = true;
+        this.phase = MeetingModePhase.CALIBRATING;
+        actions.push({ type: 'STOP_CAPTURE' });
+        actions.push({
+          type: 'SHOW_CALIBRATION_UI',
+          appName: this.context.detectedApp || 'Unknown',
+        });
+        break;
+
+      // Phase 3: Face detection timeout (5+ minutes)
+      case 'FACE_DETECTION_TIMEOUT':
+        this.phase = MeetingModePhase.CAPTURE_STALE;
+        actions.push({
+          type: 'SHOW_NOTIFICATION',
+          title: 'No Face Detected',
+          message: `No face detected for ${Math.round(event.duration / 60000)} minutes. Would you like to recalibrate?`,
+          actions: [
+            { label: 'Recalibrate', action: 'RECALIBRATION_ACCEPTED' },
+            { label: 'Dismiss', action: 'RECALIBRATION_DISMISSED' },
+          ],
+        });
+        break;
+
+      // Phase 3: Calibration deleted externally
+      case 'CALIBRATION_INVALIDATED':
+        this.context.activeCalibration = null;
+        this.phase = MeetingModePhase.MEETING_DETECTED;
+        actions.push({ type: 'STOP_CAPTURE' });
+        actions.push({
+          type: 'SHOW_NOTIFICATION',
+          title: 'Calibration Removed',
+          message: `Calibration for ${event.appName} was deleted. Please recalibrate.`,
+          actions: [
+            { label: 'Set Up Now', action: 'CALIBRATION_STARTED' },
+            { label: 'Dismiss', action: 'USER_DISMISSED_PROMPT' },
+          ],
+        });
+        break;
     }
   }
 
@@ -350,8 +420,53 @@ export class MeetingModeStateMachine {
       this.context.sourceId = null;
       this.context.videoWidth = 0;
       this.context.videoHeight = 0;
+      // Clear recalibration state
+      this.context.isRecalibrating = false;
+      this.context.previousCalibration = null;
       actions.push({ type: 'CLEAR_CANVAS' });
       actions.push({ type: 'START_WEBCAM' });
+    }
+  }
+
+  /**
+   * Handle CAPTURE_STALE state (Phase 3: face detection timeout)
+   * User is prompted to recalibrate after 5+ minutes without face detection.
+   */
+  private handleCaptureStale(event: MeetingModeEvent, actions: MeetingModeAction[]): void {
+    switch (event.type) {
+      case 'RECALIBRATION_ACCEPTED':
+        // User accepted recalibration prompt
+        this.context.previousCalibration = this.context.activeCalibration;
+        this.context.isRecalibrating = true;
+        this.phase = MeetingModePhase.CALIBRATING;
+        actions.push({ type: 'STOP_CAPTURE' });
+        actions.push({
+          type: 'SHOW_CALIBRATION_UI',
+          appName: this.context.detectedApp || 'Unknown',
+        });
+        break;
+
+      case 'RECALIBRATION_DISMISSED':
+        // User dismissed prompt - continue as-is
+        this.phase = MeetingModePhase.CAPTURE_ACTIVE;
+        // Reset face detection timer
+        this.context.lastFaceDetected = Date.now();
+        break;
+
+      case 'FACE_DETECTED':
+        // Face auto-detected - recover to CAPTURE_ACTIVE
+        this.phase = MeetingModePhase.CAPTURE_ACTIVE;
+        this.context.lastFaceDetected = Date.now();
+        break;
+
+      case 'MEETING_ENDED':
+        // Meeting ended while stale
+        this.phase = MeetingModePhase.STOPPING_CAPTURE;
+        if (this.context.detectedApp) {
+          this.context.dismissedPrompts.delete(this.context.detectedApp);
+        }
+        actions.push({ type: 'STOP_CAPTURE' });
+        break;
     }
   }
 
@@ -360,8 +475,20 @@ export class MeetingModeStateMachine {
       case 'RETRY':
         this.context.lastError = null;
         this.context.errorRecoverable = false;
-        this.phase = MeetingModePhase.WEBCAM_ACTIVE;
-        actions.push({ type: 'START_WEBCAM' });
+
+        // Phase 3: Smart retry - if meeting still detected, go to STARTING_CAPTURE
+        if (this.context.detectedApp && this.context.activeCalibration) {
+          this.phase = MeetingModePhase.STARTING_CAPTURE;
+          actions.push({
+            type: 'START_CAPTURE',
+            appName: this.context.detectedApp,
+            displayId: this.context.activeCalibration.displayId,
+          });
+        } else {
+          // Fallback: go to webcam
+          this.phase = MeetingModePhase.WEBCAM_ACTIVE;
+          actions.push({ type: 'START_WEBCAM' });
+        }
         break;
 
       case 'MEETING_ENDED':
@@ -394,9 +521,13 @@ export class MeetingModeStateMachine {
 
   /**
    * Check if currently in an active capture state.
+   * Includes CAPTURE_STALE since capture is still running.
    */
   isCapturing(): boolean {
-    return this.phase === MeetingModePhase.CAPTURE_ACTIVE;
+    return (
+      this.phase === MeetingModePhase.CAPTURE_ACTIVE ||
+      this.phase === MeetingModePhase.CAPTURE_STALE
+    );
   }
 
   /**
@@ -496,8 +627,38 @@ export class MeetingModeStateMachine {
         return `Stopping screen capture: ${app}`;
       case MeetingModePhase.ERROR:
         return `Error: ${error}`;
+      case MeetingModePhase.CAPTURE_STALE:
+        return `Screen capture stale: ${app} (no face detected)`;
       default:
         return `Unknown state: ${phase}`;
     }
+  }
+
+  /**
+   * Check if in a stale capture state (face timeout).
+   */
+  isStale(): boolean {
+    return this.phase === MeetingModePhase.CAPTURE_STALE;
+  }
+
+  /**
+   * Check if currently recalibrating (during active session).
+   */
+  isRecalibrating(): boolean {
+    return this.context.isRecalibrating;
+  }
+
+  /**
+   * Update face detection timestamp (call when face is detected).
+   */
+  updateFaceDetected(): void {
+    this.context.lastFaceDetected = Date.now();
+  }
+
+  /**
+   * Get time since last face detection (ms).
+   */
+  getTimeSinceLastFace(): number {
+    return Date.now() - this.context.lastFaceDetected;
   }
 }
