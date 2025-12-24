@@ -57,9 +57,8 @@
     },
     "publish": [
       {
-        "provider": "github",
-        "owner": "dorddis",
-        "repo": "wellness-at-work"
+        "provider": "generic",
+        "url": "https://pub-e3da78107a3f4e5c9db5419df773c20f.r2.dev"
       }
     ],
     "files": [
