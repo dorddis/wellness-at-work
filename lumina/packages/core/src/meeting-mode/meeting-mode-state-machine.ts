@@ -423,7 +423,8 @@ export class MeetingModeStateMachine {
       // Clear recalibration state
       this.context.isRecalibrating = false;
       this.context.previousCalibration = null;
-      actions.push({ type: 'CLEAR_CANVAS' });
+      // Note: Don't clear canvas here - let it serve as fallback until camera is ready
+      // The draw function in MonitorView will naturally switch to camera once available
       actions.push({ type: 'START_WEBCAM' });
     }
   }

@@ -373,7 +373,9 @@ describe('MeetingModeStateMachine', () => {
       expect(result.context.sourceId).toBeNull();
 
       const actionTypes = result.actions.map((a) => a.type);
-      expect(actionTypes).toContain('CLEAR_CANVAS');
+      // Note: CLEAR_CANVAS is intentionally NOT emitted here to allow the meeting canvas
+      // to serve as fallback while the camera is starting up (prevents blank screen)
+      expect(actionTypes).not.toContain('CLEAR_CANVAS');
       expect(actionTypes).toContain('START_WEBCAM');
     });
   });

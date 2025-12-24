@@ -382,7 +382,16 @@ export default function App() {
       setShowCalibrationUI(false);
     },
     onShowNotification: (title, message, actions) => {
-      // TODO: Wire to actual notification system during refactor
+      // When state machine wants to show a notification about meeting detection,
+      // automatically trigger calibration UI if the action is CALIBRATION_STARTED
+      const calibrationAction = actions?.find(a => a.action === 'CALIBRATION_STARTED');
+      if (calibrationAction && meetingContext.detectedApp) {
+        // Directly show calibration UI instead of showing a notification
+        setCalibrationAppName(meetingContext.detectedApp);
+        setShowCalibrationUI(true);
+        setMeetingModeEnabled(true);
+        sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: meetingContext.detectedApp });
+      }
     },
     debug: false, // Set to true for transition logging
   });
@@ -1539,8 +1548,9 @@ export default function App() {
 
         {currentView === 'monitor' && (
           <MonitorView
-            videoRef={meetingModeActive ? meetingVideoRef : videoRef}
-            meetingCanvasRef={meetingModeActive ? meetingCanvasRef : undefined}
+            videoRef={videoRef}
+            meetingVideoRef={meetingVideoRef}
+            meetingCanvasRef={meetingCanvasRef}
             isDetecting={isDetecting}
             faceDetected={faceDetected}
             blinkCount={blinkCount}
@@ -2115,6 +2125,7 @@ function DashboardView({
 // Note: EarWaveform now reads from Zustand store, no need to pass currentEarData
 function MonitorView({
   videoRef,
+  meetingVideoRef,
   meetingCanvasRef,
   isDetecting,
   faceDetected,
@@ -2129,7 +2140,8 @@ function MonitorView({
   onCameraChange,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  meetingCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  meetingVideoRef: React.RefObject<HTMLVideoElement | null>;
+  meetingCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   isDetecting: boolean;
   faceDetected: boolean;
   blinkCount: number;
@@ -2145,18 +2157,15 @@ function MonitorView({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Draw video/cropped canvas to visible canvas
+  // Priority: camera video > meeting canvas > meeting video > nothing (keep last frame)
   useEffect(() => {
     if (!isDetecting || !canvasRef.current) {
       return;
     }
 
-    // In meeting mode, draw from the cropped canvas; otherwise draw from video
-    const sourceVideo = videoRef.current;
-    const sourceCanvas = meetingCanvasRef?.current;
-
-    if (!sourceVideo && !sourceCanvas) {
-      return;
-    }
+    const cameraVideo = videoRef.current;
+    const meetingVideo = meetingVideoRef.current;
+    const meetingCanvas = meetingCanvasRef.current;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -2166,17 +2175,33 @@ function MonitorView({
 
     let animationFrameId: number;
     const draw = () => {
-      // In meeting mode with cropped canvas, draw from the cropped canvas
-      if (meetingModeActive && sourceCanvas && sourceCanvas.width > 0 && sourceCanvas.height > 0) {
-        canvas.width = sourceCanvas.width;
-        canvas.height = sourceCanvas.height;
-        ctx.drawImage(sourceCanvas, 0, 0);
-      } else if (sourceVideo && sourceVideo.readyState >= 2) {
-        // Fall back to video (camera mode or meeting mode without crop)
-        canvas.width = sourceVideo.videoWidth;
-        canvas.height = sourceVideo.videoHeight;
-        ctx.drawImage(sourceVideo, 0, 0);
+      // Priority 1: Camera video when ready (normal mode, or transitioning from meeting)
+      if (!meetingModeActive && cameraVideo && cameraVideo.readyState >= 2 && cameraVideo.videoWidth > 0) {
+        canvas.width = cameraVideo.videoWidth;
+        canvas.height = cameraVideo.videoHeight;
+        ctx.drawImage(cameraVideo, 0, 0);
       }
+      // Priority 2: Meeting mode with cropped canvas (active meeting mode)
+      else if (meetingModeActive && meetingCanvas && meetingCanvas.width > 0 && meetingCanvas.height > 0) {
+        canvas.width = meetingCanvas.width;
+        canvas.height = meetingCanvas.height;
+        ctx.drawImage(meetingCanvas, 0, 0);
+      }
+      // Priority 3: Fallback to meeting canvas during transition (camera not ready yet)
+      else if (!meetingModeActive && meetingCanvas && meetingCanvas.width > 0 && meetingCanvas.height > 0) {
+        // Keep showing meeting canvas while camera is starting
+        canvas.width = meetingCanvas.width;
+        canvas.height = meetingCanvas.height;
+        ctx.drawImage(meetingCanvas, 0, 0);
+      }
+      // Priority 4: Meeting video directly (if no cropped canvas available)
+      else if (meetingModeActive && meetingVideo && meetingVideo.readyState >= 2 && meetingVideo.videoWidth > 0) {
+        canvas.width = meetingVideo.videoWidth;
+        canvas.height = meetingVideo.videoHeight;
+        ctx.drawImage(meetingVideo, 0, 0);
+      }
+      // If nothing is ready, keep the last frame (don't draw)
+
       // Continue draw loop while detecting
       if (isDetecting) {
         animationFrameId = requestAnimationFrame(draw);
@@ -2191,7 +2216,7 @@ function MonitorView({
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isDetecting, videoRef, meetingCanvasRef, meetingModeActive]);
+  }, [isDetecting, videoRef, meetingVideoRef, meetingCanvasRef, meetingModeActive]);
 
   return (
     <div className="p-6">
