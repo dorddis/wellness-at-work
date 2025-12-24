@@ -23,10 +23,10 @@ interface ReleaseNote {
 
 const releases: ReleaseNote[] = [
   {
-    version: '1.2.0',
+    version: '0.1.6',
     date: 'December 2025',
-    title: 'Cross-Platform Release',
-    type: 'major',
+    title: 'Cross-Platform & Private Distribution',
+    type: 'minor',
     highlights: [
       {
         icon: <Apple className="w-5 h-5" />,
@@ -34,9 +34,9 @@ const releases: ReleaseNote[] = [
         description: 'Native macOS app with Apple Silicon optimization',
       },
       {
-        icon: <Eye className="w-5 h-5" />,
-        title: 'Enhanced Blink Detection',
-        description: 'Improved accuracy in varying lighting conditions',
+        icon: <Shield className="w-5 h-5" />,
+        title: 'Cloud Distribution',
+        description: 'Fast global downloads via Cloudflare R2 CDN',
       },
       {
         icon: <Zap className="w-5 h-5" />,
@@ -46,34 +46,11 @@ const releases: ReleaseNote[] = [
     ],
     changes: [
       'Added native macOS build with .dmg installer',
+      'Migrated to Cloudflare R2 for fast global downloads',
+      'Repository now private with public download links',
       'Improved blink detection algorithm for better accuracy with glasses',
       'Fixed authentication flow for seamless sign-in',
-      'Added sticky header in desktop app for quick access to controls',
       'Optimized MediaPipe initialization for faster startup',
-    ],
-  },
-  {
-    version: '0.1.9',
-    date: 'December 2025',
-    title: 'Stability & Distribution',
-    type: 'minor',
-    highlights: [
-      {
-        icon: <Shield className="w-5 h-5" />,
-        title: 'Cloud Distribution',
-        description: 'Fast global downloads via Cloudflare CDN',
-      },
-      {
-        icon: <Monitor className="w-5 h-5" />,
-        title: 'Windows Improvements',
-        description: 'Fixed installer issues and improved compatibility',
-      },
-    ],
-    changes: [
-      'Migrated to Cloudflare R2 for fast global downloads',
-      'Fixed Windows installer compatibility issues',
-      'Added automatic version detection in downloads page',
-      'Improved error handling for camera access',
     ],
   },
   {
