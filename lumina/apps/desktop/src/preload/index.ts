@@ -547,10 +547,3 @@ const luminaAPI: LuminaAPI = {
 };
 
 contextBridge.exposeInMainWorld('lumina', luminaAPI);
-
-// Type declaration for renderer
-declare global {
-  interface Window {
-    lumina: LuminaAPI;
-  }
-}
