@@ -50,10 +50,10 @@ export function CameraLoader({ status, error }: CameraLoaderProps) {
   if (status === 'ready') return null;
 
   return (
-    <div className="absolute inset-0 bg-white z-40 flex flex-col items-center justify-center">
+    <div className="absolute inset-0 bg-background z-40 flex flex-col items-center justify-center">
       {/* Camera icon with pulse animation */}
       <div className="relative mb-6">
-        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
+        <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center">
           {status === 'error' ? (
             // Error icon
             <svg
@@ -72,7 +72,7 @@ export function CameraLoader({ status, error }: CameraLoaderProps) {
           ) : (
             // Camera icon
             <svg
-              className="w-10 h-10 text-gray-600"
+              className="w-10 h-10 text-muted-foreground"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -95,22 +95,22 @@ export function CameraLoader({ status, error }: CameraLoaderProps) {
 
         {/* Pulse animation ring (when not error) */}
         {status !== 'error' && (
-          <div className="absolute inset-0 rounded-full bg-gray-300 animate-ping opacity-20" />
+          <div className="absolute inset-0 rounded-full bg-muted animate-ping opacity-20" />
         )}
       </div>
 
       {/* Status message */}
-      <p className="text-gray-800 font-medium mb-1">{title}</p>
-      <p className="text-gray-500 text-sm mb-6">
+      <p className="text-foreground font-medium mb-1">{title}</p>
+      <p className="text-muted-foreground text-sm mb-6">
         {status === 'error' && error ? error : subtitle}
       </p>
 
       {/* Loading indicator (when not error) */}
       {status !== 'error' && (
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       )}
 
@@ -118,7 +118,7 @@ export function CameraLoader({ status, error }: CameraLoaderProps) {
       {status === 'error' && (
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+          className="mt-4 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
         >
           Retry
         </button>

@@ -13,13 +13,13 @@ interface AppLoaderProps {
 
 export function AppLoader({ message = 'Loading...' }: AppLoaderProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background">
       {/* Brand logo placeholder */}
       <div className="mb-8">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-sm">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-secondary to-muted flex items-center justify-center shadow-sm">
           {/* Eye icon */}
           <svg
-            className="w-10 h-10 text-gray-600"
+            className="w-10 h-10 text-muted-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -41,13 +41,13 @@ export function AppLoader({ message = 'Loading...' }: AppLoaderProps) {
       </div>
 
       {/* Brand name */}
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Lumina</h1>
+      <h1 className="text-2xl font-semibold text-foreground mb-6">Lumina</h1>
 
       {/* Spinner */}
-      <div className="w-8 h-8 border-3 border-gray-200 border-t-gray-900 rounded-full animate-spin mb-4" />
+      <div className="w-8 h-8 border-3 border-muted border-t-foreground rounded-full animate-spin mb-4" />
 
       {/* Message */}
-      <p className="text-sm text-gray-500">{message}</p>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

@@ -67,13 +67,13 @@ export function MeetingModeNotification({
 
   return (
     <div className="fixed top-4 right-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 max-w-sm overflow-hidden">
+      <div className="bg-card rounded-xl shadow-2xl border border-border max-w-sm overflow-hidden">
         {/* Header with icon and close button */}
         <div className="flex items-start gap-3 p-4 pb-2">
           {/* Meeting icon */}
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-950/50 flex items-center justify-center">
             <svg
-              className="w-5 h-5 text-purple-600"
+              className="w-5 h-5 text-purple-600 dark:text-purple-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -89,10 +89,10 @@ export function MeetingModeNotification({
 
           {/* Title and message */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-600 mt-0.5">{message}</p>
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">{message}</p>
             {appName && (
-              <p className="text-xs text-purple-600 font-medium mt-1">
+              <p className="text-xs text-purple-600 dark:text-purple-400 font-medium mt-1">
                 {appName}
               </p>
             )}
@@ -101,11 +101,11 @@ export function MeetingModeNotification({
           {/* Close button */}
           <button
             onClick={onDismiss}
-            className="flex-shrink-0 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex-shrink-0 p-1 rounded-lg hover:bg-secondary transition-colors"
             aria-label="Dismiss"
           >
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-muted-foreground/70"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -130,7 +130,7 @@ export function MeetingModeNotification({
                 className={`flex-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   index === 0
                     ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-secondary text-foreground/80 hover:bg-muted'
                 }`}
               >
                 {action.label}

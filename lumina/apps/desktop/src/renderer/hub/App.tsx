@@ -1147,7 +1147,7 @@ export default function App() {
   // Loading state (camera init)
   if (isLoading) {
     return (
-      <div className="h-full bg-gray-50">
+      <div className="h-full bg-muted/50">
         <CameraLoader status="loading-model" />
       </div>
     );
@@ -1162,7 +1162,7 @@ export default function App() {
       onComplete={setProductTourComplete}
       onNavigate={handleTourNavigate}
     >
-      <div className="h-full flex bg-gray-50 relative">
+      <div className="h-full flex bg-muted/50 relative">
         {/* Draggable title bar region - invisible but draggable */}
         <div
           className="absolute top-0 left-0 right-0 h-10 z-40"
@@ -1176,7 +1176,7 @@ export default function App() {
       >
         {/* Notification bell */}
         <button
-          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          className="p-1.5 hover:bg-foreground/5 rounded-md transition-colors text-muted-foreground/70 hover:text-muted-foreground"
           title="Notifications"
         >
           <Icons.Bell />
@@ -1187,21 +1187,21 @@ export default function App() {
         {/* Window controls */}
         <button
           onClick={handleMinimize}
-          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          className="p-1.5 hover:bg-foreground/5 rounded-md transition-colors text-muted-foreground/70 hover:text-muted-foreground"
           title="Minimize"
         >
           <Icons.Minimize />
         </button>
         <button
           onClick={handleMaximize}
-          className="p-1.5 hover:bg-black/5 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+          className="p-1.5 hover:bg-foreground/5 rounded-md transition-colors text-muted-foreground/70 hover:text-muted-foreground"
           title={isMaximized ? 'Restore' : 'Maximize'}
         >
           {isMaximized ? <Icons.Restore /> : <Icons.Maximize />}
         </button>
         <button
           onClick={handleClose}
-          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md transition-colors text-gray-400"
+          className="p-1.5 hover:bg-red-500/10 hover:text-red-500 rounded-md transition-colors text-muted-foreground/70"
           title="Close"
         >
           <Icons.Close />
@@ -1209,14 +1209,14 @@ export default function App() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-56 bg-white border-r border-gray-200 flex flex-col" data-tour="sidebar">
+      <aside className="w-56 bg-card border-r border-border flex flex-col" data-tour="sidebar">
         {/* Logo - draggable area */}
         <div
-          className="h-14 flex items-center px-4 border-b border-gray-200"
+          className="h-14 flex items-center px-4 border-b border-border"
           style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
         >
           <img src={luminaLogo} alt="Lumina" className="h-8 w-8 object-contain" />
-          <span className="ml-2 text-lg font-bold">Lumina</span>
+          <span className="ml-2 text-lg font-bold text-foreground">Lumina</span>
         </div>
 
         {/* Navigation */}
@@ -1233,8 +1233,8 @@ export default function App() {
                 onClick={() => setCurrentView(item.id as View)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   currentView === item.id
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:bg-secondary'
                 }`}
               >
                 {item.icon}
@@ -1265,15 +1265,15 @@ export default function App() {
         </nav>
 
         {/* Bottom utility section (Flow style) */}
-        <div className="border-t border-gray-200">
+        <div className="border-t border-border">
           {/* Session status */}
           <div className="px-4 py-3">
-            <div className={`flex items-center gap-2 text-sm ${isDetecting ? 'text-green-600' : 'text-gray-500'}`}>
-              <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <div className={`flex items-center gap-2 text-sm ${isDetecting ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${isDetecting ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'}`} />
               {isDetecting ? 'Monitoring Active' : 'Monitoring Paused'}
             </div>
             {isDetecting && sessionDuration > 0 && (
-              <p className="text-xs text-gray-500 mt-1">Session: {formatDuration(sessionDuration)}</p>
+              <p className="text-xs text-muted-foreground mt-1">Session: {formatDuration(sessionDuration)}</p>
             )}
           </div>
 
@@ -1281,14 +1281,14 @@ export default function App() {
           <div className="px-3 py-2 space-y-1">
             <button
               onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/invite`)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors"
             >
               <Icons.Users />
               Invite your team
             </button>
             <button
               onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/referral`)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors"
             >
               <Icons.Gift />
               Get a free month
@@ -1296,13 +1296,13 @@ export default function App() {
           </div>
 
           {/* Settings & Help */}
-          <div className="px-3 py-2 border-t border-gray-100 space-y-1">
+          <div className="px-3 py-2 border-t border-border/50 space-y-1">
             <button
               onClick={() => setCurrentView('settings')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 currentView === 'settings'
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:bg-secondary'
               }`}
               data-tour="settings"
             >
@@ -1311,7 +1311,7 @@ export default function App() {
             </button>
             <button
               onClick={() => window.lumina?.system.openExternal(`${WEB_DASHBOARD_URL}/help`)}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-secondary transition-colors"
             >
               <Icons.HelpCircle />
               Help
@@ -1390,10 +1390,10 @@ export default function App() {
         )}
 
         {/* Shared Fixed Header */}
-        <div className="flex-shrink-0 px-6 pt-6 pb-4 bg-gray-50">
+        <div className="flex-shrink-0 px-6 pt-6 pb-4 bg-muted/50">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 {currentView === 'dashboard' && 'My Wellness Dashboard'}
                 {currentView === 'monitor' && 'Live Monitor'}
                 {currentView === 'exercises' && 'Eye Exercises'}
@@ -1401,7 +1401,7 @@ export default function App() {
                 {currentView === 'meetingMode' && 'Meeting Mode'}
                 {currentView === 'settings' && 'Settings'}
               </h1>
-              <p className="text-gray-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 {currentView === 'dashboard' && 'Track your eye health and prevent strain'}
                 {currentView === 'monitor' && 'Real-time blink detection and eye tracking'}
                 {currentView === 'exercises' && 'Guided exercises to reduce eye strain and improve eye health'}

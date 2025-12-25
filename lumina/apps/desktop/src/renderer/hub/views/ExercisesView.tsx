@@ -123,27 +123,27 @@ export function ExercisesView() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'relaxation': return 'bg-blue-100 text-blue-700';
-      case 'focus': return 'bg-purple-100 text-purple-700';
-      case 'mobility': return 'bg-green-100 text-green-700';
-      case 'strain_relief': return 'bg-amber-100 text-amber-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'relaxation': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300';
+      case 'focus': return 'bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300';
+      case 'mobility': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300';
+      case 'strain_relief': return 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300';
+      default: return 'bg-secondary text-foreground/80';
     }
   };
 
   const getDifficultyBadge = (difficulty: string) => {
     switch (difficulty) {
-      case 'beginner': return 'bg-green-100 text-green-700';
-      case 'intermediate': return 'bg-amber-100 text-amber-700';
-      case 'advanced': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'beginner': return 'bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300';
+      case 'intermediate': return 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300';
+      case 'advanced': return 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300';
+      default: return 'bg-secondary text-foreground/80';
     }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <div className="text-gray-500">Loading exercises...</div>
+        <div className="text-muted-foreground">Loading exercises...</div>
       </div>
     );
   }
@@ -152,39 +152,39 @@ export function ExercisesView() {
     <div className="p-6 space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <div className="text-sm text-gray-500">Today</div>
-          <div className="text-2xl font-bold">{stats?.todayMinutes ?? 0} min</div>
-          <div className="text-xs text-gray-400">{stats?.todaySessions ?? 0} sessions</div>
+        <div className="bg-card rounded-xl p-4 border border-border">
+          <div className="text-sm text-muted-foreground">Today</div>
+          <div className="text-2xl font-bold text-foreground">{stats?.todayMinutes ?? 0} min</div>
+          <div className="text-xs text-muted-foreground/70">{stats?.todaySessions ?? 0} sessions</div>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <div className="text-sm text-gray-500">This Week</div>
-          <div className="text-2xl font-bold">{stats?.weekMinutes ?? 0} min</div>
-          <div className="text-xs text-gray-400">{stats?.weekSessions ?? 0} sessions</div>
+        <div className="bg-card rounded-xl p-4 border border-border">
+          <div className="text-sm text-muted-foreground">This Week</div>
+          <div className="text-2xl font-bold text-foreground">{stats?.weekMinutes ?? 0} min</div>
+          <div className="text-xs text-muted-foreground/70">{stats?.weekSessions ?? 0} sessions</div>
         </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <div className="text-sm text-gray-500">Total</div>
-          <div className="text-2xl font-bold">{stats?.totalSessions ?? 0}</div>
-          <div className="text-xs text-gray-400">exercises completed</div>
+        <div className="bg-card rounded-xl p-4 border border-border">
+          <div className="text-sm text-muted-foreground">Total</div>
+          <div className="text-2xl font-bold text-foreground">{stats?.totalSessions ?? 0}</div>
+          <div className="text-xs text-muted-foreground/70">exercises completed</div>
         </div>
       </div>
 
       {/* Exercise Grid */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">All Exercises</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">All Exercises</h2>
         <div className="grid grid-cols-2 gap-4">
           {exercises.map((exercise) => (
             <div
               key={exercise.id}
-              className="bg-white rounded-xl p-4 border border-gray-200 hover:shadow-md transition-shadow"
+              className="bg-card rounded-xl p-4 border border-border hover:shadow-md transition-shadow"
             >
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-600 flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground flex-shrink-0">
                   <Icons.Eye />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 truncate">{exercise.name}</h3>
-                  <p className="text-sm text-gray-500 line-clamp-2 mb-2">{exercise.description}</p>
+                  <h3 className="font-medium text-foreground truncate">{exercise.name}</h3>
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{exercise.description}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getCategoryColor(exercise.category)}`}>
                       {exercise.category.replace('_', ' ')}
@@ -192,7 +192,7 @@ export function ExercisesView() {
                     <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getDifficultyBadge(exercise.difficulty)}`}>
                       {exercise.difficulty}
                     </span>
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
                       <Icons.Clock />
                       {exercise.durationSeconds}s
                     </span>
@@ -201,7 +201,7 @@ export function ExercisesView() {
               </div>
               <button
                 onClick={() => handleStartExercise(exercise)}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
               >
                 <Icons.Play />
                 Start Exercise
@@ -213,23 +213,23 @@ export function ExercisesView() {
 
       {/* Recent Activity */}
       {sessions.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900">Recent Activity</h2>
+        <div className="bg-card rounded-xl border border-border">
+          <div className="px-4 py-3 border-b border-border/50">
+            <h2 className="font-semibold text-foreground">Recent Activity</h2>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border/50">
             {sessions.slice(0, 5).map((session) => {
               const exercise = exercises.find((e) => e.id === session.exercise_id);
               return (
                 <div key={session.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground">
                     <Icons.Eye />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">
+                    <p className="font-medium text-foreground truncate">
                       {exercise?.name ?? 'Unknown Exercise'}
                     </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       {new Date(session.started_at).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
@@ -241,12 +241,12 @@ export function ExercisesView() {
                   </div>
                   <div className="flex items-center gap-2">
                     {session.status === 'completed' ? (
-                      <span className="flex items-center gap-1 text-sm text-green-600">
+                      <span className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
                         <Icons.Check />
                         Completed
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-400">{session.status}</span>
+                      <span className="text-sm text-muted-foreground/70">{session.status}</span>
                     )}
                   </div>
                 </div>
@@ -259,13 +259,13 @@ export function ExercisesView() {
       {/* Exercise Modal */}
       {activeExercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">{activeExercise.name}</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <h3 className="text-lg font-semibold text-foreground">{activeExercise.name}</h3>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground/70 hover:text-muted-foreground"
               >
                 <Icons.X />
               </button>
@@ -275,16 +275,16 @@ export function ExercisesView() {
             <div className="p-6">
               {isComplete ? (
                 <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center text-green-500 mb-4">
+                  <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center text-green-500 mb-4">
                     <Icons.Check />
                   </div>
-                  <h4 className="text-xl font-semibold text-gray-900 mb-2">Great job!</h4>
-                  <p className="text-gray-500 mb-6">
+                  <h4 className="text-xl font-semibold text-foreground mb-2">Great job!</h4>
+                  <p className="text-muted-foreground mb-6">
                     You completed the {activeExercise.name} exercise.
                   </p>
                   <button
                     onClick={handleCloseModal}
-                    className="px-6 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700"
+                    className="px-6 py-2 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90"
                   >
                     Done
                   </button>
@@ -293,23 +293,23 @@ export function ExercisesView() {
                 <>
                   {/* Countdown display */}
                   <div className="text-center mb-6">
-                    <div className="w-32 h-32 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                      <span className="text-5xl font-bold text-gray-900">{countdown}</span>
+                    <div className="w-32 h-32 mx-auto rounded-full bg-secondary flex items-center justify-center mb-4">
+                      <span className="text-5xl font-bold text-foreground">{countdown}</span>
                     </div>
-                    <p className="text-sm text-gray-500">seconds remaining</p>
+                    <p className="text-sm text-muted-foreground">seconds remaining</p>
                   </div>
 
                   {/* Current step */}
-                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <div className="bg-muted/50 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="w-6 h-6 rounded-full bg-gray-800 text-white text-sm font-medium flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-foreground text-background text-sm font-medium flex items-center justify-center">
                         {currentStepIndex + 1}
                       </span>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-muted-foreground">
                         Step {currentStepIndex + 1} of {activeExercise.instructions.length}
                       </span>
                     </div>
-                    <p className="text-lg font-medium text-gray-900">
+                    <p className="text-lg font-medium text-foreground">
                       {activeExercise.instructions[currentStepIndex]?.text}
                     </p>
                   </div>
@@ -321,10 +321,10 @@ export function ExercisesView() {
                         key={idx}
                         className={`w-2 h-2 rounded-full transition-colors ${
                           idx === currentStepIndex
-                            ? 'bg-gray-800'
+                            ? 'bg-foreground'
                             : idx < currentStepIndex
                             ? 'bg-green-500'
-                            : 'bg-gray-300'
+                            : 'bg-muted'
                         }`}
                       />
                     ))}
@@ -334,13 +334,13 @@ export function ExercisesView() {
                   <div className="flex gap-3">
                     <button
                       onClick={togglePause}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-lg text-foreground/80 font-medium hover:bg-muted/50"
                     >
                       {isPaused ? <><Icons.Play /> Resume</> : <><Icons.Pause /> Pause</>}
                     </button>
                     <button
                       onClick={handleCloseModal}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg font-medium hover:bg-red-50 dark:hover:bg-red-950/50"
                     >
                       Cancel
                     </button>
