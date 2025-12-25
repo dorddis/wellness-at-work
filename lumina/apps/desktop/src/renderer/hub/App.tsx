@@ -6,7 +6,6 @@ import {
   useStreakStore,
   useAchievementStore,
   useMeetingModeStore,
-  useMeetingModeStateMachine,
   PrivacyIndicator,
   PostureStatusCard,
   WeeklyTrendCard,
@@ -21,6 +20,9 @@ import {
   type DayData,
   type CaptureRegion,
   type SelectOption,
+  // Desktop-only hooks (depend on @mediapipe/tasks-vision)
+  // Re-exported from hooks file for desktop use only
+  useMeetingModeStateMachine,
 } from '@lumina/ui';
 import {
   FaceLandmarkerManager,
@@ -122,6 +124,7 @@ export default function App() {
     setWellnessGoals,
     setSelectedCameraId: saveSelectedCameraId,
     selectedCameraId: savedCameraId,
+    earCalibration,
     setEarCalibration,
     hasCompletedProductTour,
     setProductTourComplete,
@@ -365,11 +368,24 @@ export default function App() {
     async function initMediaPipe() {
       try {
         console.log('[MediaPipe] Initializing FaceLandmarker...');
+
+        // Convert stored calibration format (ISO string) to EARCalibration format (timestamp)
+        const existingCalibration = earCalibration
+          ? {
+              threshold: earCalibration.threshold,
+              openEAR: earCalibration.openEAR,
+              closedEAR: earCalibration.closedEAR,
+              calibratedAt: new Date(earCalibration.calibratedAt).getTime(),
+              samplesCount: earCalibration.samplesCount,
+            }
+          : undefined;
+
         await landmarkerManager.initialize({
           delegate: 'GPU',
           runningMode: 'VIDEO',
+          existingCalibration,
         });
-        console.log('[MediaPipe] Initialized successfully');
+        console.log('[MediaPipe] Initialized successfully', existingCalibration ? '(with calibration)' : '(no calibration)');
 
         // List available cameras (for UI)
         const devices = await navigator.mediaDevices.enumerateDevices();
