@@ -213,7 +213,7 @@ export function TourTooltip() {
           initial={{ opacity: 0, scale: 0.95, x, y }}
           animate={{ opacity: 1, scale: 1, x, y }}
           exit={{ opacity: 0, scale: 0.95, x, y }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
           className="w-80 bg-white rounded-xl border border-gray-200 shadow-xl pointer-events-auto"
           role="dialog"
           aria-labelledby="tour-title"

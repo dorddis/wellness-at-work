@@ -7,6 +7,7 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { LuminaTour, TOUR_STEP_ORDER, TOUR_STEPS, type ViewType } from './tourSteps';
@@ -128,6 +129,10 @@ export function TourProvider({
   const registeredStepsRef = useRef<Map<LuminaTour, HTMLElement>>(new Map());
   const expectedStepsRef = useRef<Set<LuminaTour>>(new Set());
 
+  // Use ref for current step index to avoid recreating callbacks
+  const currentStepIndexRef = useRef(state.currentStepIndex);
+  currentStepIndexRef.current = state.currentStepIndex;
+
   // Calculate current step
   const currentStepId = state.isActive ? TOUR_STEP_ORDER[state.currentStepIndex] : null;
   const currentStep = currentStepId ? TOUR_STEPS[currentStepId] : null;
@@ -168,15 +173,15 @@ export function TourProvider({
     return registeredStepsRef.current.get(id);
   }, []);
 
-  // Actions
+  // Actions - use refs to keep callbacks stable
   const next = useCallback(() => {
-    if (state.currentStepIndex >= TOUR_STEP_ORDER.length - 1) {
+    if (currentStepIndexRef.current >= TOUR_STEP_ORDER.length - 1) {
       dispatch({ type: 'COMPLETE' });
       onComplete?.();
     } else {
       dispatch({ type: 'NEXT' });
     }
-  }, [state.currentStepIndex, onComplete]);
+  }, [onComplete]);
 
   const prev = useCallback(() => {
     dispatch({ type: 'PREV' });
@@ -199,19 +204,23 @@ export function TourProvider({
     }
   }, [enabled, state.isReady, state.isActive]);
 
-  const value: TourContextValue = {
-    state,
-    currentStepId,
-    currentStep,
-    totalSteps: TOUR_STEP_ORDER.length,
-    register,
-    unregister,
-    getElement,
-    next,
-    prev,
-    skip,
-    complete,
-  };
+  // Memoize context value to prevent unnecessary re-renders
+  const value = useMemo<TourContextValue>(
+    () => ({
+      state,
+      currentStepId,
+      currentStep,
+      totalSteps: TOUR_STEP_ORDER.length,
+      register,
+      unregister,
+      getElement,
+      next,
+      prev,
+      skip,
+      complete,
+    }),
+    [state, currentStepId, currentStep, register, unregister, getElement, next, prev, skip, complete]
+  );
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

@@ -26,16 +26,20 @@ export function TourElement({ stepId, children, className = '' }: TourElementPro
   const ref = useRef<HTMLDivElement>(null);
   const tour = useTourOptional();
 
-  // Self-register with provider
-  useEffect(() => {
-    if (!tour || !ref.current) return;
+  // Extract stable functions to avoid re-running effect on every step change
+  const register = tour?.register;
+  const unregister = tour?.unregister;
 
-    tour.register(stepId, ref.current);
+  // Self-register with provider - only runs once on mount
+  useEffect(() => {
+    if (!register || !unregister || !ref.current) return;
+
+    register(stepId, ref.current);
 
     return () => {
-      tour.unregister(stepId);
+      unregister(stepId);
     };
-  }, [tour, stepId]);
+  }, [stepId, register, unregister]);
 
   // Determine if this element is currently active
   const isActive = tour?.currentStepId === stepId;
