@@ -9,7 +9,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
-// Desktop-only - uses @mediapipe/tasks-vision
+// Desktop-only - uses @mediapipe/tasks-vision (aliased to false in web builds)
+// @ts-ignore - Module exists in desktop, aliased away in web via next.config.ts
 import { FaceLandmarkerManager } from '@lumina/core/detection/faceLandmarker';
 import {
   EARCalibrator,

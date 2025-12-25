@@ -1,5 +1,6 @@
 import type { NextConfig } from 'next';
-import webpack from 'webpack';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const webpack = require('webpack');
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@lumina/ui', '@lumina/api'],
