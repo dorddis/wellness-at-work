@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { EarWaveform, Select, type SelectOption } from '@lumina/ui';
+import { EarWaveform, Select, TourElement, LuminaTour, type SelectOption } from '@lumina/ui';
 import { Icons } from '../components';
 
 export interface MonitorViewProps {
@@ -110,6 +110,7 @@ export function MonitorView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Camera view */}
         <div className="lg:col-span-2">
+          <TourElement stepId={LuminaTour.LIVE_MONITOR_PREVIEW}>
           <div className="bg-black rounded-xl overflow-hidden aspect-video relative">
             {isDetecting ? (
               <canvas ref={canvasRef} className="w-full h-full object-cover" />
@@ -144,6 +145,7 @@ export function MonitorView({
               <span className="text-white text-lg font-bold">Blinks: {blinkCount}</span>
             </div>
           </div>
+          </TourElement>
 
           {/* Camera selection dropdown - only when not in meeting mode and cameras available */}
           {!meetingModeActive && cameras.length > 1 && onCameraChange && (

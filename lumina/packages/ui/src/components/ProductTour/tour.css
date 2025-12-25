@@ -1,0 +1,57 @@
+/**
+ * Product Tour CSS
+ *
+ * CSS-only styling for tour elements (Sentry's approach).
+ * Visual state changes via data attributes, not React re-renders.
+ */
+
+/* Overlay with frosted glass effect */
+[data-tour-overlay="true"] {
+  backdrop-filter: blur(2px);
+}
+
+/* Active tour element - pops above overlay */
+[data-tour-active="true"] {
+  position: relative;
+  z-index: 9999;
+  border-radius: 12px;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.2),
+    0 4px 24px rgba(0, 0, 0, 0.2);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+}
+
+/* Subtle animation on active element */
+[data-tour-active="true"]::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+  animation: tour-pulse 2s infinite;
+}
+
+@keyframes tour-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+/* Tooltip styling */
+[data-tour-tooltip="true"] {
+  font-family: inherit;
+}
+
+/* Ensure tooltip arrow inherits correct colors */
+[data-tour-tooltip="true"] svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}

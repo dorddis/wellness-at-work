@@ -98,8 +98,8 @@ const initialState = DEMO_MODE
       autoDetect: true,
     }
   : {
-      // Production: Disabled by default, no calibrations
-      enabled: false,
+      // Production: Enabled by default for enterprise users
+      enabled: true,
       isActive: false,
       detectedApp: null,
       lastError: null,

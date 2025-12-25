@@ -1,81 +1,63 @@
 'use client';
 
-import { createPortal } from 'react-dom';
-import { useEffect, useState } from 'react';
-import { useTour } from './useTour';
+import React from 'react';
+import { TourProvider, type TourProviderProps } from './TourContext';
 import { TourOverlay } from './TourOverlay';
 import { TourTooltip } from './TourTooltip';
-import type { ProductTourProps } from './types';
+import './tour.css';
+
+export interface ProductTourProps extends TourProviderProps {
+  /** Whether the tour should be running (for backward compatibility) */
+  run?: boolean;
+}
 
 /**
- * ProductTour Component
+ * ProductTour - Main tour orchestrator
  *
- * Orchestrates the guided product tour experience.
- * Shows a spotlight overlay and positioned tooltip for each step.
+ * Combines TourProvider, TourOverlay, and TourTooltip into a single component.
+ * Wrap your app content with this component and use TourElement to mark
+ * tour steps.
  *
- * Based on customer retention research:
- * - 46% of wellness apps are abandoned
- * - Gamification drives 22% better retention
- * - Alert fatigue is #1 killer
+ * Architecture based on Sentry Engineering Blog:
+ * - Context + useReducer for state
+ * - CSS-only styling via data attributes
+ * - Self-registering tour elements
+ * - Never re-parents children
  *
- * The tour highlights retention-driving features in ~75 seconds.
+ * @example
+ * ```tsx
+ * <ProductTour
+ *   enabled={hasCompletedOnboarding && !hasCompletedProductTour}
+ *   onComplete={setProductTourComplete}
+ *   onNavigate={setActiveView}
+ * >
+ *   <TourElement stepId={LuminaTour.WELLNESS_SCORE}>
+ *     <WellnessScoreCard />
+ *   </TourElement>
+ *   ...
+ * </ProductTour>
+ * ```
  */
 export function ProductTour({
+  children,
   run,
+  enabled = true,
   onComplete,
   onNavigate,
-  currentView = 'dashboard',
 }: ProductTourProps) {
-  const [mounted, setMounted] = useState(false);
+  // Support both 'run' (old API) and 'enabled' (new API)
+  const isEnabled = run !== undefined ? run : enabled;
 
-  // Ensure we only render portal on client
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const {
-    isActive,
-    currentStep,
-    totalSteps,
-    next,
-    prev,
-    skip,
-    currentStepData,
-    targetElement,
-  } = useTour({
-    onComplete,
-    onNavigate,
-    currentView,
-  });
-
-  // Don't render if not running or not mounted
-  if (!run || !isActive || !mounted) {
-    return null;
-  }
-
-  // Render tour in portal to ensure it's above everything
-  return createPortal(
-    <>
-      {/* Overlay with spotlight cutout */}
-      <TourOverlay
-        targetElement={targetElement}
-        isVisible={!!currentStepData}
-        padding={currentStepData?.spotlightPadding ?? 8}
-      />
-
-      {/* Positioned tooltip */}
-      <TourTooltip
-        targetElement={targetElement}
-        step={currentStepData}
-        stepNumber={currentStep + 1}
-        totalSteps={totalSteps}
-        isVisible={!!currentStepData && !!targetElement}
-        onNext={next}
-        onPrev={prev}
-        onSkip={skip}
-      />
-    </>,
-    document.body
+  return (
+    <TourProvider
+      enabled={isEnabled}
+      onComplete={onComplete}
+      onNavigate={onNavigate}
+    >
+      {children}
+      <TourOverlay />
+      <TourTooltip />
+    </TourProvider>
   );
 }
 

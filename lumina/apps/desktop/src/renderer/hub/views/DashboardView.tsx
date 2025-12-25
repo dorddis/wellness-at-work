@@ -8,6 +8,8 @@ import {
   StreakBadge,
   AchievementBadge,
   ACHIEVEMENTS,
+  TourElement,
+  LuminaTour,
   type DayData,
 } from '@lumina/ui';
 import type { Baseline, PostureResult, YawnResult, DrowsinessResult } from '@lumina/core';
@@ -218,8 +220,9 @@ export function DashboardView({
         {/* Top Row: Wellness Score + Daily Streak */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Wellness Score Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
+        <TourElement stepId={LuminaTour.WELLNESS_SCORE} className="h-full">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 h-full flex flex-col">
+          <div className="flex items-center justify-between mb-4 flex-grow">
             <div>
               <p className="text-sm text-gray-500 mb-1">Wellness Score</p>
               <div className="flex items-baseline gap-2">
@@ -249,10 +252,35 @@ export function DashboardView({
               </div>
             </div>
           </div>
+          {/* Quick Start Button */}
+          <TourElement stepId={LuminaTour.QUICK_START}>
+            <button
+              onClick={onToggleDetection}
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                isDetecting
+                  ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-gray-900 text-white hover:bg-gray-800'
+              }`}
+            >
+              {isDetecting ? (
+                <>
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Monitoring Active
+                </>
+              ) : (
+                <>
+                  <Icons.Camera />
+                  Start Monitoring
+                </>
+              )}
+            </button>
+          </TourElement>
         </div>
+        </TourElement>
 
         {/* Daily Streak Card */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <TourElement stepId={LuminaTour.STREAKS} className="h-full">
+        <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
           <p className="text-sm text-gray-500 mb-3">Today's Streaks</p>
           <div className="grid grid-cols-2 gap-3">
             <StreakBadge
@@ -289,6 +317,7 @@ export function DashboardView({
             />
           </div>
         </div>
+        </TourElement>
       </div>
 
       {/* Live Metrics Section */}
@@ -328,7 +357,8 @@ export function DashboardView({
           </div>
 
           {/* Next Break */}
-          <div className="bg-gray-50 rounded-lg p-4" data-tour="break-timer">
+          <TourElement stepId={LuminaTour.BREAK_TIMER}>
+          <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-center gap-2 mb-1">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -340,6 +370,7 @@ export function DashboardView({
             </span>
             <p className="text-xs text-gray-500 mt-1">{todayStats.breaksCount} breaks today</p>
           </div>
+          </TourElement>
 
           {/* Face Detection */}
           <div className="bg-gray-50 rounded-lg p-4">
@@ -379,7 +410,8 @@ export function DashboardView({
       </div>
 
       {/* Achievements Section */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6" data-tour="achievements">
+      <TourElement stepId={LuminaTour.ACHIEVEMENTS}>
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold">Achievements</h3>
           <span className="text-sm text-gray-500">{unlockedCount}/9 unlocked</span>
@@ -397,6 +429,7 @@ export function DashboardView({
           ))}
         </div>
       </div>
+      </TourElement>
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">

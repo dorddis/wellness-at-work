@@ -49,4 +49,15 @@ export { PreBreakToast, type PreBreakToastProps } from './PreBreakToast';
 // Desktop app imports directly: import { OnboardingFlow } from '@lumina/ui/components/onboarding';
 
 // Product Tour
-export { ProductTour, type ProductTourProps } from './ProductTour';
+export {
+  ProductTour,
+  TourElement,
+  TourProvider,
+  useTour,
+  LuminaTour,
+  TOUR_STEPS,
+  type ProductTourProps,
+  type TourElementProps,
+  type TourContextValue,
+  type ViewType,
+} from './ProductTour';

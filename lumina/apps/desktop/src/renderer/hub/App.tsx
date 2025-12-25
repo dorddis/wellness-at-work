@@ -14,11 +14,14 @@ import {
   PreBreakToast,
   EarWaveform,
   ProductTour,
+  TourElement,
+  LuminaTour,
   Select,
   ACHIEVEMENTS,
   type DayData,
   type CaptureRegion,
   type SelectOption,
+  type ViewType,
 } from '@lumina/ui';
 // Desktop-only component - imports @lumina/core which has @mediapipe/tasks-vision
 // Must import directly to avoid breaking web builds
@@ -301,6 +304,14 @@ export default function App() {
     // Send dismiss event to state machine
     sendMeetingEvent({ type: 'USER_DISMISSED_PROMPT' });
   }, [sendMeetingEvent]);
+
+  // Handle tour navigation to switch views
+  const handleTourNavigate = useCallback((view: ViewType) => {
+    // Map tour ViewType to app View type
+    if (view === 'dashboard' || view === 'monitor' || view === 'meetingMode' || view === 'history' || view === 'settings') {
+      setCurrentView(view as View);
+    }
+  }, []);
 
   // Check window maximize state on mount
   useEffect(() => {
@@ -1129,13 +1140,11 @@ export default function App() {
   // This allows users to still navigate the app and try meeting mode, settings, etc.
 
   return (
-    <>
-      {/* Product Tour - runs after onboarding is complete */}
-      <ProductTour
-        run={hasCompletedOnboarding && !hasCompletedProductTour}
-        onComplete={setProductTourComplete}
-      />
-
+    <ProductTour
+      enabled={hasCompletedOnboarding && !hasCompletedProductTour}
+      onComplete={setProductTourComplete}
+      onNavigate={handleTourNavigate}
+    >
       <div className="h-full flex bg-gray-50 relative">
         {/* Draggable title bar region - invisible but draggable */}
         <div
@@ -1201,20 +1210,41 @@ export default function App() {
             { id: 'exercises', label: 'Eye Exercises', icon: <Icons.Eye /> },
             { id: 'history', label: 'History', icon: <Icons.Clock /> },
             { id: 'meetingMode', label: 'Meeting Mode', icon: <Icons.VideoCall /> },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setCurrentView(item.id as View)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                currentView === item.id
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
+          ].map((item) => {
+            const buttonElement = (
+              <button
+                onClick={() => setCurrentView(item.id as View)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  currentView === item.id
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            );
+
+            // Wrap Live Monitor nav with TourElement for product tour
+            if (item.id === 'monitor') {
+              return (
+                <TourElement key={item.id} stepId={LuminaTour.LIVE_MONITOR_NAV}>
+                  {buttonElement}
+                </TourElement>
+              );
+            }
+
+            // Wrap Meeting Mode nav with TourElement for product tour
+            if (item.id === 'meetingMode') {
+              return (
+                <TourElement key={item.id} stepId={LuminaTour.MEETING_MODE_NAV}>
+                  {buttonElement}
+                </TourElement>
+              );
+            }
+
+            return React.cloneElement(buttonElement, { key: item.id });
+          })}
         </nav>
 
         {/* Bottom utility section (Flow style) */}
@@ -1557,6 +1587,6 @@ export default function App() {
         autoDismissSeconds={30}
       />
       </div>
-    </>
+    </ProductTour>
   );
 }

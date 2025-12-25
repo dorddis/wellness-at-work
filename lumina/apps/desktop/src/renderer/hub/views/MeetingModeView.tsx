@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMeetingModeStore } from '@lumina/ui';
+import { useMeetingModeStore, TourElement, LuminaTour } from '@lumina/ui';
 import { Icons } from '../components';
 
 export interface MeetingModeViewProps {
@@ -132,9 +132,10 @@ export function MeetingModeView({ onStartCalibration, onRemoveCalibration, onRes
         </div>
 
         {/* Calibrated Apps */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Calibrated Apps</h3>
+        <TourElement stepId={LuminaTour.MEETING_CALIBRATION}>
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Calibrated Apps</h3>
             <span className="text-sm text-gray-500">{meetingCalibrations.length} app{meetingCalibrations.length !== 1 ? 's' : ''}</span>
           </div>
 
@@ -215,7 +216,8 @@ export function MeetingModeView({ onStartCalibration, onRemoveCalibration, onRes
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        </TourElement>
 
         {/* Privacy Notice */}
         <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
