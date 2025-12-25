@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Meeting Mode State Machine Hook
  *
