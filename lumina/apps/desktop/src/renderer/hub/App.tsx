@@ -39,7 +39,7 @@ import {
 import luminaLogo from './assets/lumina-logo.png';
 import AuthScreen from './AuthScreen';
 import { AppLoader, CameraLoader, HistorySkeleton, type CameraStatus } from './components';
-import { MeetingModeCalibration, MeetingModeStatus } from './components/MeetingModeCalibration';
+import { MeetingModeCalibration, MeetingModeStatus, type CalibrationResult } from './components/MeetingModeCalibration';
 
 // Auth user type
 interface AuthUser {
@@ -384,16 +384,24 @@ export default function App() {
     onHideCalibrationUI: () => {
       setShowCalibrationUI(false);
     },
-    onShowNotification: (title, message, actions) => {
+    onShowNotification: (title, message, actions, appName) => {
       // When state machine wants to show a notification about meeting detection,
       // automatically trigger calibration UI if the action is CALIBRATION_STARTED
       const calibrationAction = actions?.find(a => a.action === 'CALIBRATION_STARTED');
-      if (calibrationAction && meetingContext.detectedApp) {
+      const detectedAppName = appName || meetingContext.detectedApp;
+      if (calibrationAction && detectedAppName) {
         // Directly show calibration UI instead of showing a notification
-        setCalibrationAppName(meetingContext.detectedApp);
+        setCalibrationAppName(detectedAppName);
         setShowCalibrationUI(true);
         setMeetingModeEnabled(true);
-        sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: meetingContext.detectedApp });
+        sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: detectedAppName });
+      } else {
+        // Fallback: show OS notification when conditions not met
+        window.lumina?.notification?.show({
+          title,
+          body: message,
+          silent: false,
+        });
       }
     },
     debug: false, // Set to true for transition logging
@@ -1143,6 +1151,22 @@ export default function App() {
 
   // Toggle detection
   const handleToggleDetection = () => {
+    // Always reset meeting mode state on toggle (acts as a reboot)
+    setPreCapturedScreenshot(null);
+    setShowCalibrationUI(false);
+    setCalibrationAppName('');
+    resetMeetingStateMachine();
+    useMeetingModeStore.getState().setActive(false);
+    useMeetingModeStore.getState().setError(null);
+    // Stop any active meeting stream
+    if (meetingStreamRef.current) {
+      meetingStreamRef.current.getTracks().forEach(t => t.stop());
+      meetingStreamRef.current = null;
+    }
+    if (meetingVideoRef.current) {
+      meetingVideoRef.current.srcObject = null;
+    }
+
     if (!isDetecting) {
       setDetecting(true);
       startSession();
@@ -1316,14 +1340,8 @@ export default function App() {
     );
   }
 
-  // Error state
-  if (error) {
-    return (
-      <div className="h-full bg-gray-50">
-        <CameraLoader status="error" error={error} />
-      </div>
-    );
-  }
+  // Camera error is now shown as a dismissable banner, not a blocking screen
+  // This allows users to still navigate the app and try meeting mode, settings, etc.
 
   return (
     <>
@@ -1479,6 +1497,46 @@ export default function App() {
         <video ref={meetingVideoRef} className="hidden" muted playsInline />
         <canvas ref={meetingCanvasRef} className="hidden" />
 
+        {/* Camera error banner - dismissable, non-blocking */}
+        {error && (
+          <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-800">Camera unavailable</p>
+                <p className="text-xs text-red-600">{error}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setError(null);
+                  // Trigger camera restart by toggling detection
+                  if (isDetecting) {
+                    handleToggleDetection();
+                    setTimeout(() => handleToggleDetection(), 100);
+                  }
+                }}
+                className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => setError(null)}
+                className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Meeting mode status indicator */}
         {isMeetingCapturing && (
           <div className="absolute top-16 right-6 z-40">
@@ -1568,6 +1626,22 @@ export default function App() {
             blinkRate={currentBlinkRate}
             wellnessScore={wellnessScore}
             onToggleDetection={handleToggleDetection}
+            onReset={() => {
+              // Reset all meeting mode state
+              setPreCapturedScreenshot(null);
+              setShowCalibrationUI(false);
+              setCalibrationAppName('');
+              resetMeetingStateMachine();
+              useMeetingModeStore.getState().setActive(false);
+              useMeetingModeStore.getState().setError(null);
+              if (meetingStreamRef.current) {
+                meetingStreamRef.current.getTracks().forEach(t => t.stop());
+                meetingStreamRef.current = null;
+              }
+              if (meetingVideoRef.current) {
+                meetingVideoRef.current.srcObject = null;
+              }
+            }}
             meetingModeActive={meetingModeActive}
             meetingAppName={useMeetingModeStore.getState().detectedApp}
             cameras={cameras}
@@ -1586,6 +1660,27 @@ export default function App() {
               setCalibrationAppName(appName);
               setShowCalibrationUI(true);
             }}
+            onRemoveCalibration={(appName: string) => {
+              useMeetingModeStore.getState().removeCalibration(appName);
+              setPreCapturedScreenshot(null);
+            }}
+            onReset={() => {
+              // Reset all meeting mode state
+              setPreCapturedScreenshot(null);
+              setShowCalibrationUI(false);
+              setCalibrationAppName('');
+              resetMeetingStateMachine();
+              useMeetingModeStore.getState().setActive(false);
+              useMeetingModeStore.getState().setError(null);
+              // Stop any active meeting stream
+              if (meetingStreamRef.current) {
+                meetingStreamRef.current.getTracks().forEach(t => t.stop());
+                meetingStreamRef.current = null;
+              }
+              if (meetingVideoRef.current) {
+                meetingVideoRef.current.srcObject = null;
+              }
+            }}
           />
         )}
 
@@ -1599,20 +1694,24 @@ export default function App() {
           appName={calibrationAppName}
           displayId={0}
           preCapturedScreenshot={preCapturedScreenshot}
-          onComplete={(region: CaptureRegion) => {
-            console.log('[MeetingMode] Calibration completed for:', calibrationAppName);
+          onComplete={(result: CalibrationResult) => {
+            console.log('[MeetingMode] Calibration completed for:', calibrationAppName,
+              'dimensions:', result.calibrationWidth, 'x', result.calibrationHeight,
+              'isWindowCapture:', result.isWindowCapture);
 
-            // Get calibration dimensions (use screenshot dimensions, or default to 1920x1080)
-            const calibrationWidth = preCapturedScreenshot?.width ?? 1920;
-            const calibrationHeight = preCapturedScreenshot?.height ?? 1080;
+            // Use the ACTUAL source type from the screenshot, not hardcoded 'window'
+            // This fixes the pixel mapping bug where screen capture coordinates were
+            // incorrectly saved as window capture, causing misalignment at runtime
+            const sourceType = result.isWindowCapture ? 'window' : 'screen';
 
-            // Save calibration with screenshot dimensions for coordinate scaling
+            // Save calibration with actual screenshot dimensions and source type
             addMeetingCalibration({
               appName: calibrationAppName,
-              region,
+              region: result.region,
               displayId: 0,
-              calibrationWidth,
-              calibrationHeight,
+              calibrationWidth: result.calibrationWidth,
+              calibrationHeight: result.calibrationHeight,
+              sourceType,
             });
 
             // Hide UI and clear state
@@ -1626,10 +1725,10 @@ export default function App() {
             sendMeetingEvent({
               type: 'CALIBRATION_COMPLETED',
               appName,
-              region,
+              region: result.region,
               displayId: 0,
-              calibrationWidth,
-              calibrationHeight,
+              calibrationWidth: result.calibrationWidth,
+              calibrationHeight: result.calibrationHeight,
             });
 
             // Auto-restart detection if it was stopped
@@ -2144,6 +2243,7 @@ function MonitorView({
   blinkRate,
   wellnessScore,
   onToggleDetection,
+  onReset,
   meetingModeActive = false,
   meetingAppName = null,
   cameras = [],
@@ -2159,6 +2259,7 @@ function MonitorView({
   blinkRate: number;
   wellnessScore: number;
   onToggleDetection: () => void;
+  onReset: () => void;
   meetingModeActive?: boolean;
   meetingAppName?: string | null;
   cameras?: MediaDeviceInfo[];
@@ -2295,6 +2396,14 @@ function MonitorView({
             }`}
           >
             {isDetecting ? 'Stop Detection' : 'Start Detection'}
+          </button>
+
+          {/* Reset button - troubleshooting for video issues */}
+          <button
+            onClick={onReset}
+            className="w-full mt-2 py-2 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
+          >
+            Video not showing correctly? Click to reset
           </button>
 
           {/* EAR Waveform - Real-time eye signal visualization */}
@@ -3670,9 +3779,11 @@ function SettingsView({ user, onSignOut }: SettingsViewProps) {
 // Meeting Mode View Component
 interface MeetingModeViewProps {
   onStartCalibration: (appName: string) => void;
+  onRemoveCalibration: (appName: string) => void;
+  onReset: () => void;
 }
 
-function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
+function MeetingModeView({ onStartCalibration, onRemoveCalibration, onReset }: MeetingModeViewProps) {
   const {
     enabled: meetingModeEnabled,
     isActive: meetingModeActive,
@@ -3681,7 +3792,6 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
     autoDetect: meetingAutoDetect,
     setEnabled: setMeetingModeEnabled,
     setAutoDetect: setMeetingAutoDetect,
-    removeCalibration: removeMeetingCalibration,
   } = useMeetingModeStore();
 
   const [customAppName, setCustomAppName] = useState('');
@@ -3777,6 +3887,22 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
           </div>
         </div>
 
+        {/* Troubleshooting */}
+        <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-amber-900">Video not showing correctly?</p>
+              <p className="text-sm text-amber-700">Reset meeting mode to fix display issues</p>
+            </div>
+            <button
+              onClick={onReset}
+              className="px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-sm font-medium transition-colors"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
         {/* Calibrated Apps */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
@@ -3825,7 +3951,7 @@ function MeetingModeView({ onStartCalibration }: MeetingModeViewProps) {
                       Recalibrate
                     </button>
                     <button
-                      onClick={() => removeMeetingCalibration(cal.appName)}
+                      onClick={() => onRemoveCalibration(cal.appName)}
                       className="px-3 py-1.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                     >
                       Remove

@@ -9,13 +9,26 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { type CaptureRegion } from '@lumina/ui';
 import { autoDetectSelfView, type DetectedRegion } from '../utils/smartDetection';
 
+/**
+ * Calibration result passed back when calibration completes
+ */
+export interface CalibrationResult {
+  region: CaptureRegion;
+  /** Actual screenshot width used for calibration (for coordinate scaling) */
+  calibrationWidth: number;
+  /** Actual screenshot height used for calibration (for coordinate scaling) */
+  calibrationHeight: number;
+  /** Whether screenshot was from window capture (true) or screen capture (false) */
+  isWindowCapture: boolean;
+}
+
 interface MeetingModeCalibrationProps {
   /** Name of the meeting app being calibrated */
   appName: string;
   /** Display ID being captured */
   displayId: number;
-  /** Callback when calibration is complete */
-  onComplete: (region: CaptureRegion) => void;
+  /** Callback when calibration is complete - receives region AND screenshot info */
+  onComplete: (result: CalibrationResult) => void;
   /** Callback when calibration is cancelled */
   onCancel: () => void;
   /** Optional existing region to show as starting point */
@@ -106,19 +119,31 @@ export function MeetingModeCalibration({
     captureScreen();
   }, [preCapturedScreenshot]);
 
+  // isValidRegion helper (defined early for keyboard handler)
+  const isValidRegion = (region: CaptureRegion): boolean => {
+    return region.width >= 80 && region.height >= 80;
+  };
+
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onCancel();
-      } else if (e.key === 'Enter' && currentRegion && isValidRegion(currentRegion)) {
-        onComplete(currentRegion);
+      } else if (e.key === 'Enter' && currentRegion && isValidRegion(currentRegion) && screenshot) {
+        // Call onComplete with full calibration data (same as handleSave)
+        const isWindowCapture = screenshot.isWindowCapture ?? false;
+        onComplete({
+          region: currentRegion,
+          calibrationWidth: screenshot.width,
+          calibrationHeight: screenshot.height,
+          isWindowCapture,
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentRegion, onComplete, onCancel]);
+  }, [currentRegion, screenshot, onComplete, onCancel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left click
@@ -170,17 +195,21 @@ export function MeetingModeCalibration({
   }, []);
 
   const handleSave = useCallback(() => {
-    if (currentRegion && isValidRegion(currentRegion)) {
-      // Save coordinates as-is (window-relative)
-      // Meeting mode now uses window capture, so coordinates match
-      console.log('[Calibration] Saving region (window-relative):', currentRegion);
-      onComplete(currentRegion);
+    if (currentRegion && isValidRegion(currentRegion) && screenshot) {
+      // Pass back region with actual screenshot dimensions and source type
+      // This fixes the bug where sourceType was hardcoded to 'window'
+      const isWindowCapture = screenshot.isWindowCapture ?? false;
+      console.log('[Calibration] Saving region:', currentRegion,
+        'dimensions:', screenshot.width, 'x', screenshot.height,
+        'isWindowCapture:', isWindowCapture);
+      onComplete({
+        region: currentRegion,
+        calibrationWidth: screenshot.width,
+        calibrationHeight: screenshot.height,
+        isWindowCapture,
+      });
     }
-  }, [currentRegion, onComplete]);
-
-  const isValidRegion = (region: CaptureRegion): boolean => {
-    return region.width >= 80 && region.height >= 80;
-  };
+  }, [currentRegion, onComplete, screenshot]);
 
   // Auto-detect self-view using face detection + edge snapping
   const handleAutoDetect = useCallback(async () => {

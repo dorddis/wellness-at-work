@@ -49,7 +49,7 @@ export interface UseMeetingModeStateMachineOptions {
   /** Callback when calibration UI should be hidden */
   onHideCalibrationUI?: () => void;
   /** Callback to show notifications */
-  onShowNotification?: (title: string, message: string, actions?: Array<{ label: string; action: string }>) => void;
+  onShowNotification?: (title: string, message: string, actions?: Array<{ label: string; action: string }>, appName?: string) => void;
   /** Enable debug logging */
   debug?: boolean;
 }
@@ -178,8 +178,8 @@ export function useMeetingModeStateMachine(
           break;
 
         case 'SHOW_NOTIFICATION':
-          if (debug) console.log('[MeetingMode] Action: SHOW_NOTIFICATION', action.title);
-          onShowNotification?.(action.title, action.message, action.actions);
+          if (debug) console.log('[MeetingMode] Action: SHOW_NOTIFICATION', action.title, action.appName);
+          onShowNotification?.(action.title, action.message, action.actions, action.appName);
           break;
 
         case 'INIT_CANVAS':
@@ -215,12 +215,15 @@ export function useMeetingModeStateMachine(
           return;
         }
 
-        // Get source ID if not provided
+        // Get source ID if not provided, tracking source type
         let captureSourceId = sourceId;
+        let actualSourceType: 'window' | 'screen' = 'window';
         const meetingAPI = getMeetingModeAPI();
         if (!captureSourceId && meetingAPI) {
           captureSourceId = await meetingAPI.getWindowSourceId(appName) ?? undefined;
           if (!captureSourceId) {
+            // Fallback to screen capture
+            actualSourceType = 'screen';
             captureSourceId = await meetingAPI.getSourceId(
               displayId ?? calibration.displayId
             ) ?? undefined;
@@ -229,6 +232,19 @@ export function useMeetingModeStateMachine(
 
         if (!captureSourceId) {
           send({ type: 'CAPTURE_FAILED', error: 'Could not find capture source', recoverable: true });
+          return;
+        }
+
+        // Check for source type mismatch - calibration was done on window but now capturing screen
+        const expectedSourceType = calibration.sourceType ?? 'window';
+        if (actualSourceType !== expectedSourceType) {
+          if (debug) {
+            console.log(`[MeetingMode] Source type mismatch: expected ${expectedSourceType}, got ${actualSourceType}. Forcing recalibration.`);
+          }
+          send({
+            type: 'CALIBRATION_INVALIDATED',
+            reason: `Source changed from ${expectedSourceType} to ${actualSourceType}`
+          });
           return;
         }
 

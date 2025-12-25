@@ -23,6 +23,8 @@ export interface MeetingAppCalibration {
   /** Screenshot dimensions at calibration time - used for coordinate scaling */
   calibrationWidth?: number;
   calibrationHeight?: number;
+  /** Source type at calibration time - 'window' or 'screen'. Used to detect mismatch on rejoin. */
+  sourceType?: 'window' | 'screen';
 }
 
 /**
@@ -143,6 +145,7 @@ export const useMeetingModeStore = create<MeetingModeState>()(
                       displayId: cal.displayId,
                       calibrationWidth: cal.calibrationWidth,
                       calibrationHeight: cal.calibrationHeight,
+                      sourceType: cal.sourceType,
                       lastUsed: now,
                     }
                   : c

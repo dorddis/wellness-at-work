@@ -187,6 +187,7 @@ export class MeetingModeStateMachine {
         type: 'SHOW_NOTIFICATION',
         title: 'Meeting Detected',
         message: `${event.appName} detected. Set up eye tracking for this app?`,
+        appName: event.appName,
         actions: [
           { label: 'Set Up Now', action: 'CALIBRATION_STARTED' },
           { label: 'Dismiss', action: 'USER_DISMISSED_PROMPT' },

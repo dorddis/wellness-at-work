@@ -184,7 +184,9 @@ export interface RecalibrationDismissedEvent {
  */
 export interface CalibrationInvalidatedEvent {
   type: 'CALIBRATION_INVALIDATED';
-  appName: string;
+  appName?: string;
+  /** Optional reason for invalidation (e.g., source type mismatch) */
+  reason?: string;
 }
 
 /**
@@ -272,6 +274,8 @@ export interface ShowNotificationAction {
   type: 'SHOW_NOTIFICATION';
   title: string;
   message: string;
+  /** App name for context (e.g., for calibration prompts) */
+  appName?: string;
   actions?: Array<{
     label: string;
     action: string; // Action ID to dispatch
