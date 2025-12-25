@@ -22,6 +22,8 @@ export interface AlertData {
   severity: AlertSeverity;
   message: string;
   action?: string;
+  /** Button text for primary action (e.g., "Set Up Now") */
+  actionButtonText?: string;
 }
 
 /**

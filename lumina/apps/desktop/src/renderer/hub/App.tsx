@@ -251,18 +251,20 @@ export default function App() {
       setShowCalibrationUI(false);
     },
     onShowNotification: (title, message, actions, appName) => {
-      // Show in-app notification popup instead of jumping directly to calibration
-      // This gives user control and time for meeting app to initialize camera
+      // Show system-level alert that appears on top of everything
+      // The overlay window handles displaying the AlertToast component
       const detectedAppName = appName || meetingContext.detectedApp || 'Meeting';
-      console.log('[MeetingMode] Showing notification:', title, 'for app:', detectedAppName);
+      console.log('[MeetingMode] Showing system alert:', title, 'for app:', detectedAppName);
 
-      setMeetingNotificationData({
-        title,
-        message,
-        appName: detectedAppName,
-        actions: actions || [],
+      // Use AlertsService to show the alert in the overlay window (always on top)
+      AlertsService.show({
+        id: `meeting-detected-${Date.now()}`,
+        type: 'meeting_detected',
+        severity: 'info',
+        message: `${detectedAppName} detected. ${message}`,
+        action: 'Set up eye tracking for this meeting?',
+        actionButtonText: actions?.[0]?.label || 'Set Up Now',
       });
-      setShowMeetingNotification(true);
     },
     debug: false, // Set to true for transition logging
   });
