@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * StreakBadge Component
  * Displays streak count with flame animation and progress indicators
