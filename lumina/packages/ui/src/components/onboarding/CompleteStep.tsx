@@ -166,7 +166,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
       >
         <button
           onClick={onComplete}
-          className="w-full py-4 px-6 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 transition-colors text-lg"
+          className="w-full py-4 px-6 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors text-lg"
         >
           Open Dashboard
         </button>

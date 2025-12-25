@@ -201,7 +201,7 @@ export function ExercisesView() {
               </div>
               <button
                 onClick={() => handleStartExercise(exercise)}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
+                className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
               >
                 <Icons.Play />
                 Start Exercise
@@ -284,7 +284,7 @@ export function ExercisesView() {
                   </p>
                   <button
                     onClick={handleCloseModal}
-                    className="px-6 py-2 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90"
+                    className="px-6 py-2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300"
                   >
                     Done
                   </button>
@@ -302,7 +302,7 @@ export function ExercisesView() {
                   {/* Current step */}
                   <div className="bg-muted/50 rounded-lg p-4 mb-6">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="w-6 h-6 rounded-full bg-foreground text-background text-sm font-medium flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-medium flex items-center justify-center">
                         {currentStepIndex + 1}
                       </span>
                       <span className="text-sm text-muted-foreground">

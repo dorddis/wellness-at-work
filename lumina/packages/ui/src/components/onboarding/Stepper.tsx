@@ -51,7 +51,7 @@ export function Stepper({
                   className={`
                     relative flex items-center justify-center rounded-full
                     ${compact ? 'w-8 h-8' : 'w-10 h-10'}
-                    ${isCompleted || isCurrent ? 'bg-foreground text-background' : 'bg-secondary text-muted-foreground'}
+                    ${isCompleted || isCurrent ? 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900' : 'bg-secondary text-muted-foreground'}
                     ${isCurrent ? 'ring-4 ring-foreground/10' : ''}
                   `}
                 >

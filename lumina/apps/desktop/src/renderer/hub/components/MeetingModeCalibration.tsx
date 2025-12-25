@@ -323,7 +323,7 @@ export function MeetingModeCalibration({
           <button
             onClick={handleAutoDetect}
             disabled={isAutoDetecting}
-            className="px-3 py-1.5 bg-foreground text-white dark:text-background text-sm font-medium rounded-lg hover:bg-foreground/80 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
+            className="px-3 py-1.5 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 text-sm font-medium rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
           >
             {isAutoDetecting ? (
               <>
@@ -465,7 +465,7 @@ export function MeetingModeCalibration({
         <button
           onClick={handleSave}
           disabled={!currentRegion || !!regionTooSmall}
-          className="px-5 py-2.5 bg-foreground text-white dark:text-background rounded-lg font-medium shadow-lg hover:bg-foreground/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium shadow-lg hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save for {appName}
         </button>

@@ -126,7 +126,7 @@ export function Select({
                     text-left transition-colors duration-100
                     first:rounded-t-lg last:rounded-b-lg
                     ${isSelected
-                      ? 'bg-foreground text-white dark:text-background'
+                      ? 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900'
                       : 'text-foreground/80 hover:bg-secondary'
                     }
                   `}

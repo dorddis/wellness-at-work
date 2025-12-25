@@ -210,7 +210,7 @@ export function MeetingModeView({ onStartCalibration, onRemoveCalibration, onRes
                   }
                 }}
                 disabled={!customAppName.trim()}
-                className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Calibrate
               </button>

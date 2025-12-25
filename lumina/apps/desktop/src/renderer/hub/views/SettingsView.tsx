@@ -623,7 +623,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <button
                 onClick={handleClearLocalData}
                 disabled={isClearingData || clearDataConfirmText !== 'DELETE'}
-                className="px-4 py-2 bg-foreground text-background rounded-lg hover:bg-foreground/90 disabled:opacity-50"
+                className="px-4 py-2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:opacity-50"
               >
                 {isClearingData ? 'Clearing...' : 'Clear All Data'}
               </button>

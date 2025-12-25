@@ -449,7 +449,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 22, duration: 0.5, type: 'spring' }}
-                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-foreground text-white dark:text-background rounded-xl shadow-lg p-4 max-w-64"
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-xl shadow-lg p-4 max-w-64"
                   >
                     <p className="text-sm font-medium text-center">
                       Almost done! Keep looking naturally at the screen
@@ -579,7 +579,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+              className="flex-1 py-3 px-6 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
             >
               Start Calibration
             </button>
@@ -589,7 +589,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
         {state === 'complete' && (
           <button
             onClick={handleComplete}
-            className="w-full py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+            className="w-full py-3 px-6 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
           >
             Continue
           </button>
@@ -605,7 +605,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+              className="flex-1 py-3 px-6 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
             >
               Try Again
             </button>

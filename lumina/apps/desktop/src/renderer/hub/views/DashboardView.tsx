@@ -259,7 +259,7 @@ export function DashboardView({
               className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
                 isDetecting
                   ? 'bg-secondary text-foreground/80 hover:bg-muted'
-                  : 'bg-foreground text-background hover:bg-foreground/90'
+                  : 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-300'
               }`}
             >
               {isDetecting ? (
@@ -440,7 +440,7 @@ export function DashboardView({
             className={`flex-1 py-3 px-4 rounded-lg font-medium transition-colors ${
               isDetecting
                 ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-950'
-                : 'bg-foreground text-background hover:bg-foreground/90'
+                : 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-300'
             }`}
           >
             {isDetecting ? 'Stop Monitoring' : 'Start Monitoring'}

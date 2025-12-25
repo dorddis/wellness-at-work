@@ -169,7 +169,7 @@ export function MonitorView({
             className={`w-full mt-4 py-3 rounded-lg font-medium transition-colors ${
               isDetecting
                 ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-950'
-                : 'bg-foreground text-background hover:bg-foreground/90'
+                : 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-300'
             }`}
           >
             {isDetecting ? 'Stop Detection' : 'Start Detection'}

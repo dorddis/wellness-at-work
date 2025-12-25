@@ -131,7 +131,7 @@ export const EarWaveform = memo(function EarWaveform({
       </div>
 
       {/* Waveform chart */}
-      <div className="bg-foreground rounded-lg p-2 relative overflow-hidden">
+      <div className="bg-neutral-100 dark:bg-neutral-800 rounded-lg p-2 relative overflow-hidden">
         {/* Scanline effect overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-5">
           <div

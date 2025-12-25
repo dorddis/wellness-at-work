@@ -116,7 +116,7 @@ export function PreBreakToast({
       <div className="flex gap-2">
         <button
           onClick={onStartNow}
-          className="flex-1 py-2 px-3 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
+          className="flex-1 py-2 px-3 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
         >
           Start Now
         </button>

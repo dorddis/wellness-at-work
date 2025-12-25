@@ -217,7 +217,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-3 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Sending...' : 'Continue with Email'}
               </button>
@@ -277,7 +277,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
             <button
               type="submit"
               disabled={loading || otpCode.length < 6}
-              className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Verifying...' : 'Verify'}
             </button>
@@ -328,7 +328,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
             <button
               type="submit"
               disabled={loading || !inviteCode}
-              className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Joining...' : 'Join Organization'}
             </button>

@@ -1233,7 +1233,7 @@ export default function App() {
                 onClick={() => setCurrentView(item.id as View)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   currentView === item.id
-                    ? 'bg-foreground text-background'
+                    ? 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900'
                     : 'text-muted-foreground hover:bg-secondary'
                 }`}
               >
@@ -1301,7 +1301,7 @@ export default function App() {
               onClick={() => setCurrentView('settings')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                 currentView === 'settings'
-                  ? 'bg-foreground text-background'
+                  ? 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900'
                   : 'text-muted-foreground hover:bg-secondary'
               }`}
               data-tour="settings"

@@ -22,7 +22,7 @@ export interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButto
 
 const variantClasses = {
   // In dark mode: bg-foreground is light, so text needs to be dark (text-background)
-  primary: 'bg-foreground text-white dark:text-background hover:bg-foreground/90 disabled:bg-muted-foreground/50',
+  primary: 'bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-300 disabled:bg-muted-foreground/50',
   secondary: 'bg-secondary text-foreground hover:bg-muted disabled:bg-secondary disabled:text-muted-foreground/70',
   outline: 'border border-border text-foreground/80 hover:bg-muted/50 disabled:border-border disabled:text-muted-foreground/70',
   ghost: 'text-foreground/80 hover:bg-secondary disabled:text-muted-foreground/70',

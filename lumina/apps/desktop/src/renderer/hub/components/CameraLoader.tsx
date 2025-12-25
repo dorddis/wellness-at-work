@@ -118,7 +118,7 @@ export function CameraLoader({ status, error }: CameraLoaderProps) {
       {status === 'error' && (
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
+          className="mt-4 px-4 py-2 bg-neutral-900 dark:bg-neutral-200 text-white dark:text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-800 dark:hover:bg-neutral-300 transition-colors"
         >
           Retry
         </button>
