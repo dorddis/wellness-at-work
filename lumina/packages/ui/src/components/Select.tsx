@@ -70,7 +70,7 @@ export function Select({
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-foreground/80 mb-1.5">
           {label}
         </label>
       )}
@@ -82,10 +82,10 @@ export function Select({
           className={`
             w-full flex items-center justify-between gap-2
             ${sizeClasses[size]}
-            bg-white border border-gray-200 rounded-lg
-            font-medium text-gray-900
+            bg-card border border-border rounded-lg
+            font-medium text-foreground
             transition-all duration-200
-            hover:border-gray-300 hover:bg-gray-50
+            hover:border-border hover:bg-muted/50
             focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2
             ${isOpen ? 'ring-2 ring-black ring-offset-2' : ''}
           `}
@@ -95,7 +95,7 @@ export function Select({
             {selectedOption?.label || placeholder}
           </span>
           <ChevronDown
-            className={`w-4 h-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
+            className={`w-4 h-4 text-muted-foreground transition-transform duration-200 flex-shrink-0 ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
@@ -106,7 +106,7 @@ export function Select({
           <div
             className="
               absolute z-50 w-full mt-1
-              bg-white border border-gray-200 rounded-lg shadow-lg
+              bg-card border border-border rounded-lg shadow-lg
               max-h-64 overflow-auto
             "
           >
@@ -126,8 +126,8 @@ export function Select({
                     text-left transition-colors duration-100
                     first:rounded-t-lg last:rounded-b-lg
                     ${isSelected
-                      ? 'bg-gray-900 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-foreground text-white'
+                      : 'text-foreground/80 hover:bg-secondary'
                     }
                   `}
                 >

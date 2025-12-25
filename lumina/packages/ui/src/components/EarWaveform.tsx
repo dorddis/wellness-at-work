@@ -131,7 +131,7 @@ export const EarWaveform = memo(function EarWaveform({
       </div>
 
       {/* Waveform chart */}
-      <div className="bg-gray-900 rounded-lg p-2 relative overflow-hidden">
+      <div className="bg-foreground rounded-lg p-2 relative overflow-hidden">
         {/* Scanline effect overlay */}
         <div className="absolute inset-0 pointer-events-none opacity-5">
           <div
@@ -191,7 +191,7 @@ export const EarWaveform = memo(function EarWaveform({
           </ResponsiveContainer>
         ) : (
           <div
-            className="flex items-center justify-center text-gray-400 text-sm"
+            className="flex items-center justify-center text-muted-foreground/70 text-sm"
             style={{ height }}
           >
             <span className="animate-pulse">Waiting for data...</span>

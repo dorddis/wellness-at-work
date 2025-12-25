@@ -297,18 +297,18 @@ export function StreakBadge({
             <span className={cn(
               'font-bold leading-none',
               sizes.number,
-              isEmpty ? 'text-gray-400' : colorClasses.text
+              isEmpty ? 'text-muted-foreground/70' : colorClasses.text
             )}>
               {isEmpty ? '-' : count}
             </span>
-            <span className={cn('text-gray-400 font-medium', sizes.unit)}>
+            <span className={cn('text-muted-foreground/70 font-medium', sizes.unit)}>
               {config.unit}
             </span>
           </div>
 
           {/* Label - secondary */}
           {showDetails && (
-            <p className={cn('text-gray-500 font-medium mt-0.5', sizes.label)}>
+            <p className={cn('text-muted-foreground font-medium mt-0.5', sizes.label)}>
               {config.label}
             </p>
           )}
@@ -322,14 +322,14 @@ export function StreakBadge({
 
           {/* Best streak - always show if available and count > 0 */}
           {showDetails && bestStreak !== undefined && bestStreak > 0 && !isEmpty && (
-            <p className={cn('text-gray-400 mt-0.5', sizes.best)}>
+            <p className={cn('text-muted-foreground/70 mt-0.5', sizes.best)}>
               Best: {bestStreak}
             </p>
           )}
 
           {/* Goal progress for non-empty states */}
           {showDetails && !isEmpty && !isComplete && targetGoal > 0 && (
-            <p className={cn('text-gray-400 mt-0.5', sizes.best)}>
+            <p className={cn('text-muted-foreground/70 mt-0.5', sizes.best)}>
               {Math.round(progress * 100)}% to goal
             </p>
           )}

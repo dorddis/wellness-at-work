@@ -30,7 +30,7 @@ export function Spinner({ size = 'md', className, label = 'Loading' }: SpinnerPr
       aria-label={label}
       className={cn(
         'animate-spin rounded-full',
-        'border-gray-200 border-t-gray-900',
+        'border-border border-t-gray-900',
         sizeConfig[size],
         className
       )}

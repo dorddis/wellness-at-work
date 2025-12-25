@@ -267,9 +267,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-              className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
+              className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6"
             >
-              <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -283,7 +283,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="text-2xl font-bold text-gray-900 mb-2"
+              className="text-2xl font-bold text-foreground mb-2"
             >
               Quick Calibration
             </motion.h2>
@@ -292,7 +292,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-gray-600 mb-8 max-w-md"
+              className="text-muted-foreground mb-8 max-w-md"
             >
               Sit comfortably and look at your screen naturally for {CALIBRATION_DURATION_SECONDS} seconds.
               This helps us learn your baseline blink rate.
@@ -302,24 +302,24 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.5 }}
-              className="bg-gray-50 rounded-xl p-6 max-w-sm w-full mb-6"
+              className="bg-muted/50 rounded-xl p-6 max-w-sm w-full mb-6"
             >
-              <h3 className="font-medium text-gray-900 mb-4">Tips for best results:</h3>
-              <ul className="space-y-2 text-left text-sm text-gray-600">
+              <h3 className="font-medium text-foreground mb-4">Tips for best results:</h3>
+              <ul className="space-y-2 text-left text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-muted-foreground/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Face the camera directly
                 </li>
                 <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-muted-foreground/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Good lighting on your face
                 </li>
                 <li className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-muted-foreground/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   Keep glasses on if you wear them
@@ -335,7 +335,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="relative w-64 h-48 rounded-2xl overflow-hidden bg-gray-900 mb-6 shadow-lg"
+              className="relative w-64 h-48 rounded-2xl overflow-hidden bg-foreground mb-6 shadow-lg"
             >
               {/* Single video element - always present so stream can attach */}
               <video
@@ -347,7 +347,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               />
               {/* Loading spinner overlay during init */}
               {state === 'initializing' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                <div className="absolute inset-0 flex items-center justify-center bg-foreground/80">
                   <svg className="w-10 h-10 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
@@ -387,8 +387,8 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
 
             {state === 'initializing' && (
               <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Initializing...</h2>
-                <p className="text-gray-600 mb-4">Setting up face detection</p>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Initializing...</h2>
+                <p className="text-muted-foreground mb-4">Setting up face detection</p>
               </>
             )}
 
@@ -401,9 +401,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 2, duration: 0.5, type: 'spring' }}
-                    className="absolute top-28 left-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                    className="absolute top-28 left-6 bg-card rounded-xl shadow-lg border border-border p-4 max-w-52"
                   >
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-foreground">
                       Your eyes naturally blink 15-20 times per minute
                     </p>
                   </motion.div>
@@ -413,9 +413,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 7, duration: 0.5, type: 'spring' }}
-                    className="absolute top-28 right-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                    className="absolute top-28 right-6 bg-card rounded-xl shadow-lg border border-border p-4 max-w-52"
                   >
-                    <p className="text-sm font-medium text-gray-800 text-right">
+                    <p className="text-sm font-medium text-foreground text-right">
                       Screen time can reduce this to just 3-4 blinks
                     </p>
                   </motion.div>
@@ -425,9 +425,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 12, duration: 0.5, type: 'spring' }}
-                    className="absolute bottom-32 left-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                    className="absolute bottom-32 left-6 bg-card rounded-xl shadow-lg border border-border p-4 max-w-52"
                   >
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-foreground">
                       This causes dry eyes, strain, and fatigue
                     </p>
                   </motion.div>
@@ -437,9 +437,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 17, duration: 0.5, type: 'spring' }}
-                    className="absolute bottom-32 right-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                    className="absolute bottom-32 right-6 bg-card rounded-xl shadow-lg border border-border p-4 max-w-52"
                   >
-                    <p className="text-sm font-medium text-gray-800 text-right">
+                    <p className="text-sm font-medium text-foreground text-right">
                       Lumina helps you maintain healthy blink patterns
                     </p>
                   </motion.div>
@@ -449,7 +449,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 22, duration: 0.5, type: 'spring' }}
-                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white rounded-xl shadow-lg p-4 max-w-64"
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-foreground text-white rounded-xl shadow-lg p-4 max-w-64"
                   >
                     <p className="text-sm font-medium text-center">
                       Almost done! Keep looking naturally at the screen
@@ -459,16 +459,16 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
 
                 {/* Blink counter and skip button - centered below camera */}
                 <div className="flex flex-col items-center gap-3 mt-4">
-                  <div className="bg-gray-50 rounded-lg px-6 py-3">
-                    <span className="text-sm text-gray-500">Blinks detected: </span>
-                    <span className="font-medium text-gray-900">{blinkCount}</span>
+                  <div className="bg-muted/50 rounded-lg px-6 py-3">
+                    <span className="text-sm text-muted-foreground">Blinks detected: </span>
+                    <span className="font-medium text-foreground">{blinkCount}</span>
                   </div>
                   <button
                     onClick={() => {
                       cleanup();
                       onSkip();
                     }}
-                    className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors pointer-events-auto"
+                    className="text-sm text-muted-foreground hover:text-foreground/80 underline transition-colors pointer-events-auto"
                   >
                     Skip calibration
                   </button>
@@ -484,7 +484,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-              className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-6"
+              className="w-20 h-20 bg-foreground rounded-full flex items-center justify-center mb-6"
             >
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -495,7 +495,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="text-2xl font-bold text-gray-900 mb-2"
+              className="text-2xl font-bold text-foreground mb-2"
             >
               Calibration Complete!
             </motion.h2>
@@ -504,34 +504,34 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="text-gray-600 mb-8 max-w-md"
+              className="text-muted-foreground mb-8 max-w-md"
             >
               We detected {blinkCount} blinks in 30 seconds. That's about{' '}
-              <span className="font-medium text-gray-900">{blinksPerMinute} blinks per minute</span>.
+              <span className="font-medium text-foreground">{blinksPerMinute} blinks per minute</span>.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.5 }}
-              className="bg-gray-50 rounded-xl p-6 max-w-sm w-full"
+              className="bg-muted/50 rounded-xl p-6 max-w-sm w-full"
             >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Your rate</span>
-                <span className="font-bold text-gray-900">{blinksPerMinute}/min</span>
+                <span className="text-muted-foreground">Your rate</span>
+                <span className="font-bold text-foreground">{blinksPerMinute}/min</span>
               </div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Healthy range</span>
-                <span className="text-gray-500">15-20/min</span>
+                <span className="text-muted-foreground">Healthy range</span>
+                <span className="text-muted-foreground">15-20/min</span>
               </div>
               {calibrationResult && (
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">EAR threshold</span>
-                  <span className="text-gray-500">{calibrationResult.threshold.toFixed(3)}</span>
+                  <span className="text-muted-foreground">EAR threshold</span>
+                  <span className="text-muted-foreground">{calibrationResult.threshold.toFixed(3)}</span>
                 </div>
               )}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-sm text-muted-foreground">
                   {blinksPerMinute >= 15 ? (
                     <>Great! Your blink rate is healthy.</>
                   ) : (
@@ -548,9 +548,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
+              className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6"
             >
-              <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -560,9 +560,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               </svg>
             </motion.div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Calibration Failed</h2>
-            <p className="text-gray-600 mb-4">{errorMessage}</p>
-            <p className="text-sm text-gray-500">You can try again or skip calibration for now.</p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Calibration Failed</h2>
+            <p className="text-muted-foreground mb-4">{errorMessage}</p>
+            <p className="text-sm text-muted-foreground">You can try again or skip calibration for now.</p>
           </>
         )}
       </div>
@@ -573,13 +573,13 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
           <>
             <button
               onClick={handleBack}
-              className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3 px-6 bg-secondary text-foreground/80 rounded-lg font-medium hover:bg-muted transition-colors"
             >
               Back
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              className="flex-1 py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
             >
               Start Calibration
             </button>
@@ -589,7 +589,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
         {state === 'complete' && (
           <button
             onClick={handleComplete}
-            className="w-full py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+            className="w-full py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
           >
             Continue
           </button>
@@ -599,13 +599,13 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
           <>
             <button
               onClick={handleSkip}
-              className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+              className="flex-1 py-3 px-6 bg-secondary text-foreground/80 rounded-lg font-medium hover:bg-muted transition-colors"
             >
               Skip
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              className="flex-1 py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
             >
               Try Again
             </button>

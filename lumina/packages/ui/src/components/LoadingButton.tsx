@@ -21,10 +21,10 @@ export interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButto
 }
 
 const variantClasses = {
-  primary: 'bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-400',
-  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:border-gray-200 disabled:text-gray-400',
-  ghost: 'text-gray-700 hover:bg-gray-100 disabled:text-gray-400',
+  primary: 'bg-foreground text-white hover:bg-foreground disabled:bg-muted-foreground/50',
+  secondary: 'bg-secondary text-foreground hover:bg-muted disabled:bg-secondary disabled:text-muted-foreground/70',
+  outline: 'border border-border text-foreground/80 hover:bg-muted/50 disabled:border-border disabled:text-muted-foreground/70',
+  ghost: 'text-foreground/80 hover:bg-secondary disabled:text-muted-foreground/70',
   danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
 };
 

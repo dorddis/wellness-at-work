@@ -125,7 +125,7 @@ export function MonitorView({
 
             {/* Overlay indicators */}
             <div className="absolute top-4 left-4 flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${isDetecting ? (faceDetected ? 'bg-green-500' : 'bg-yellow-500') : 'bg-gray-500'}`} />
+              <div className={`w-3 h-3 rounded-full ${isDetecting ? (faceDetected ? 'bg-green-500' : 'bg-yellow-500') : 'bg-muted-foreground'}`} />
               <span className="text-white text-sm bg-black/50 px-2 py-1 rounded">
                 {isDetecting ? (faceDetected ? 'Detecting' : 'No face') : 'Paused'}
               </span>
@@ -134,7 +134,7 @@ export function MonitorView({
             {/* Meeting mode indicator */}
             {meetingModeActive && (
               <div className="absolute top-4 right-4 flex items-center gap-2 bg-purple-600/90 px-3 py-1.5 rounded-lg">
-                <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-card animate-pulse" />
                 <span className="text-white text-sm font-medium">
                   Meeting Mode: {meetingAppName || 'Active'}
                 </span>

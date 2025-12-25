@@ -195,7 +195,7 @@ export function AchievementBadge({
 
   // Color mapping for unlocked state
   const colorClasses: Record<string, string> = {
-    gray: 'bg-gray-100 text-gray-600',
+    gray: 'bg-secondary text-muted-foreground',
     yellow: 'bg-yellow-100 text-yellow-600',
     blue: 'bg-blue-100 text-blue-600',
     green: 'bg-green-100 text-green-600',
@@ -226,7 +226,7 @@ export function AchievementBadge({
           sizes.container,
           isUnlocked
             ? colorClasses[achievement.color]
-            : 'bg-gray-100 text-gray-300'
+            : 'bg-secondary text-muted-foreground/50'
         )}
       >
         <IconComponent className={cn(sizes.icon, 'w-1/2 h-1/2')} />
@@ -236,16 +236,16 @@ export function AchievementBadge({
       <span className={cn(
         'font-medium text-center',
         sizes.name,
-        isUnlocked ? 'text-gray-900' : 'text-gray-400'
+        isUnlocked ? 'text-foreground' : 'text-muted-foreground/70'
       )}>
         {achievement.name}
       </span>
 
       {/* Progress bar for locked achievements */}
       {showProgress && !isUnlocked && progress > 0 && (
-        <div className="w-full h-1 bg-gray-200 rounded-full overflow-hidden">
+        <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
           <div
-            className="h-full bg-gray-400 rounded-full transition-all"
+            className="h-full bg-muted-foreground/50 rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -253,7 +253,7 @@ export function AchievementBadge({
 
       {/* Unlock date */}
       {isUnlocked && unlockedAt && size === 'lg' && (
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted-foreground">
           {unlockedAt.toLocaleDateString()}
         </span>
       )}

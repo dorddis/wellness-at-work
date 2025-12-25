@@ -130,7 +130,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className="relative w-full max-w-md aspect-video bg-gray-900 rounded-xl overflow-hidden mb-4"
+          className="relative w-full max-w-md aspect-video bg-foreground rounded-xl overflow-hidden mb-4"
         >
           {isLoading ? (
             <div className="absolute inset-0 flex items-center justify-center">
@@ -144,7 +144,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
               <p className="text-white text-sm">{error}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-3 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+                className="mt-3 px-4 py-2 bg-card/10 hover:bg-card/20 rounded-lg text-white text-sm transition-colors"
               >
                 Try Again
               </button>

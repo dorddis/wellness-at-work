@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
       return (
         <div className="flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-12 h-12 mb-4 text-gray-400">
+          <div className="w-12 h-12 mb-4 text-muted-foreground/70">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -53,15 +53,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-foreground mb-2">
             Something went wrong
           </h3>
-          <p className="text-sm text-gray-500 mb-4 max-w-sm">
+          <p className="text-sm text-muted-foreground mb-4 max-w-sm">
             {this.state.error?.message || 'An unexpected error occurred'}
           </p>
           <button
             onClick={this.handleRetry}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 bg-foreground text-white rounded-lg hover:bg-foreground/80 transition-colors"
           >
             Try Again
           </button>

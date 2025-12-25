@@ -275,7 +275,7 @@ export function MeetingModeCalibration({
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white text-lg">Preparing calibration...</p>
-          <p className="text-gray-400 text-sm mt-2">
+          <p className="text-muted-foreground/70 text-sm mt-2">
             Minimizing window to capture your screen.
             <br />
             Make sure {appName} is visible.
@@ -298,7 +298,7 @@ export function MeetingModeCalibration({
           <p className="text-white text-lg mb-2">{error}</p>
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-white text-black rounded-lg font-medium mt-4"
+            className="px-4 py-2 bg-card text-black rounded-lg font-medium mt-4"
           >
             Close
           </button>
@@ -310,11 +310,11 @@ export function MeetingModeCalibration({
   return (
     <div className="fixed inset-0 z-50 bg-black">
       {/* Instructions header */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl p-4 max-w-lg z-10">
-        <h3 className="font-semibold text-lg text-gray-900">
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-card rounded-xl shadow-xl p-4 max-w-lg z-10">
+        <h3 className="font-semibold text-lg text-foreground">
           Calibrate Self-View for {appName}
         </h3>
-        <p className="text-gray-600 text-sm mt-2">
+        <p className="text-muted-foreground text-sm mt-2">
           {autoDetectResult
             ? `Auto-detected with ${Math.round(autoDetectResult.confidence * 100)}% confidence. Adjust if needed.`
             : 'Click "Auto-detect" or draw a box around your self-view preview.'}
@@ -323,7 +323,7 @@ export function MeetingModeCalibration({
           <button
             onClick={handleAutoDetect}
             disabled={isAutoDetecting}
-            className="px-3 py-1.5 bg-gray-800 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
+            className="px-3 py-1.5 bg-foreground text-white text-sm font-medium rounded-lg hover:bg-foreground/80 transition-colors disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
           >
             {isAutoDetecting ? (
               <>
@@ -339,20 +339,20 @@ export function MeetingModeCalibration({
               </>
             )}
           </button>
-          <span className="text-xs text-gray-400">or draw manually</span>
+          <span className="text-xs text-muted-foreground/70">or draw manually</span>
           {autoDetectResult?.debugImageUrl && (
             <button
               onClick={() => setShowDebug(!showDebug)}
-              className={`px-2 py-1 text-xs rounded ${showDebug ? 'bg-yellow-500 text-black' : 'bg-gray-600 text-white'}`}
+              className={`px-2 py-1 text-xs rounded ${showDebug ? 'bg-yellow-500 text-black' : 'bg-muted-foreground text-white'}`}
             >
               {showDebug ? 'Hide Debug' : 'Show Debug'}
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
-          <span className="px-2 py-0.5 bg-gray-100 rounded">Esc</span>
+        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+          <span className="px-2 py-0.5 bg-secondary rounded">Esc</span>
           <span>to cancel</span>
-          <span className="px-2 py-0.5 bg-gray-100 rounded ml-2">Enter</span>
+          <span className="px-2 py-0.5 bg-secondary rounded ml-2">Enter</span>
           <span>to save</span>
         </div>
         {/* Non-blocking auto-detect failure message */}
@@ -420,10 +420,10 @@ export function MeetingModeCalibration({
                 }}
               >
                 {/* Corner handles */}
-                <div className={`absolute -top-1 -left-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
-                <div className={`absolute -top-1 -right-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
-                <div className={`absolute -bottom-1 -left-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
-                <div className={`absolute -bottom-1 -right-1 w-3 h-3 bg-white border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -top-1 -left-1 w-3 h-3 bg-card border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -top-1 -right-1 w-3 h-3 bg-card border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -bottom-1 -left-1 w-3 h-3 bg-card border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
+                <div className={`absolute -bottom-1 -right-1 w-3 h-3 bg-card border-2 rounded-sm ${autoDetectResult ? 'border-green-500' : 'border-blue-500'}`} />
 
                 {/* Auto-detect badge */}
                 {autoDetectResult && (
@@ -458,14 +458,14 @@ export function MeetingModeCalibration({
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-10">
         <button
           onClick={onCancel}
-          className="px-5 py-2.5 bg-white text-gray-700 rounded-lg font-medium shadow-lg hover:bg-gray-50 transition-colors"
+          className="px-5 py-2.5 bg-card text-foreground/80 rounded-lg font-medium shadow-lg hover:bg-muted/50 transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={!currentRegion || !!regionTooSmall}
-          className="px-5 py-2.5 bg-gray-800 text-white rounded-lg font-medium shadow-lg hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-5 py-2.5 bg-foreground text-white rounded-lg font-medium shadow-lg hover:bg-foreground/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Save for {appName}
         </button>

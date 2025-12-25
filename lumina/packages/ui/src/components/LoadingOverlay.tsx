@@ -26,9 +26,9 @@ export interface LoadingOverlayProps {
 }
 
 const overlayVariants = {
-  light: 'bg-white/80',
-  dark: 'bg-gray-900/10',
-  blur: 'bg-white/60 backdrop-blur-sm',
+  light: 'bg-card/80',
+  dark: 'bg-foreground/10',
+  blur: 'bg-card/60 backdrop-blur-sm',
 };
 
 export function LoadingOverlay({
@@ -58,7 +58,7 @@ export function LoadingOverlay({
         >
           <Spinner size={spinnerSize} />
           {message && (
-            <p className="mt-2 text-sm text-gray-600">{message}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{message}</p>
           )}
         </div>
       )}
@@ -96,7 +96,7 @@ export function FullScreenLoader({
     <div
       className={cn(
         'fixed inset-0 z-50 flex flex-col items-center justify-center',
-        'bg-white',
+        'bg-card',
         className
       )}
     >
@@ -104,7 +104,7 @@ export function FullScreenLoader({
       <div className="mb-6">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
           <svg
-            className="w-8 h-8 text-gray-600"
+            className="w-8 h-8 text-muted-foreground"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -126,14 +126,14 @@ export function FullScreenLoader({
       </div>
 
       {/* Brand name */}
-      <h1 className="text-xl font-semibold text-gray-900 mb-4">{brandName}</h1>
+      <h1 className="text-xl font-semibold text-foreground mb-4">{brandName}</h1>
 
       {/* Spinner */}
       <Spinner size="lg" />
 
       {/* Message */}
       {message && (
-        <p className="mt-4 text-sm text-gray-500">{message}</p>
+        <p className="mt-4 text-sm text-muted-foreground">{message}</p>
       )}
     </div>
   );

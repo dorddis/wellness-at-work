@@ -36,7 +36,7 @@ export function PrivacyIndicator({
           className={cn(
             'transition-colors duration-300',
             isCompact ? 'w-4 h-4' : 'w-5 h-5',
-            isActive ? 'text-green-600' : 'text-gray-400'
+            isActive ? 'text-green-600' : 'text-muted-foreground/70'
           )}
           fill="none"
           stroke="currentColor"
@@ -77,7 +77,7 @@ export function PrivacyIndicator({
       {!isCompact && (
         <span className={cn(
           'font-medium transition-colors',
-          isActive ? 'text-green-700' : 'text-gray-500'
+          isActive ? 'text-green-700' : 'text-muted-foreground'
         )}>
           {isActive ? '100% Private' : 'Camera Off'}
         </span>

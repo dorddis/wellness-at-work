@@ -179,13 +179,13 @@ export function OnboardingFlow({
   const showStepper = currentStep !== 'welcome' && currentStep !== 'complete';
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col">
+    <div className="fixed inset-0 bg-card z-50 flex flex-col">
       {/* Header with stepper */}
       <div className="shrink-0">
         {/* Progress bar (thin line at very top) */}
-        <div className="h-1 bg-gray-100">
+        <div className="h-1 bg-secondary">
           <motion.div
-            className="h-full bg-gray-800"
+            className="h-full bg-foreground"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}
@@ -197,7 +197,7 @@ export function OnboardingFlow({
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="py-6 border-b border-gray-100"
+            className="py-6 border-b border-border/50"
           >
             <Stepper
               steps={STEP_CONFIG}

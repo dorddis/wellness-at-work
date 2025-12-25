@@ -44,8 +44,8 @@ const statusConfig: Record<PostureStatus, {
     message: 'Sit up straight',
   },
   unknown: {
-    color: 'text-gray-400',
-    bgColor: 'bg-gray-100',
+    color: 'text-muted-foreground/70',
+    bgColor: 'bg-secondary',
     label: 'Unknown',
     message: 'Enable posture monitoring',
   },

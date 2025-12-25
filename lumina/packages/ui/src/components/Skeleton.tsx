@@ -27,7 +27,7 @@ export function Skeleton({ className, style }: SkeletonProps) {
     <div
       aria-hidden="true"
       className={cn(
-        'skeleton rounded bg-gray-200',
+        'skeleton rounded bg-muted',
         className
       )}
       style={style}
@@ -89,12 +89,12 @@ export function SkeletonCard({ hasHeader = true, className }: SkeletonCardProps)
   return (
     <div
       className={cn(
-        'rounded-lg border border-gray-200 bg-white overflow-hidden',
+        'rounded-lg border border-border bg-card overflow-hidden',
         className
       )}
     >
       {hasHeader && (
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3 border-b border-border/50">
           <Skeleton className="h-4 w-1/3" />
         </div>
       )}
@@ -132,13 +132,13 @@ export function SkeletonChart({
   return (
     <div
       className={cn(
-        'rounded-lg border border-gray-200 bg-white overflow-hidden',
+        'rounded-lg border border-border bg-card overflow-hidden',
         className
       )}
       style={{ height }}
     >
       {/* Chart header */}
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-16" />
       </div>
@@ -201,10 +201,10 @@ export function SkeletonTable({
   const colWidths = ['w-1/4', 'w-1/3', 'w-1/2', 'w-2/3', 'w-3/4', 'w-full'];
 
   return (
-    <div className={cn('rounded-lg border border-gray-200 overflow-hidden', className)}>
+    <div className={cn('rounded-lg border border-border overflow-hidden', className)}>
       <table className="w-full">
         {hasHeader && (
-          <thead className="bg-gray-50">
+          <thead className="bg-muted/50">
             <tr>
               {Array.from({ length: cols }).map((_, i) => (
                 <th key={i} className="px-4 py-3 text-left">
@@ -214,7 +214,7 @@ export function SkeletonTable({
             </tr>
           </thead>
         )}
-        <tbody className="bg-white divide-y divide-gray-100">
+        <tbody className="bg-card divide-y divide-border/50">
           {Array.from({ length: rows }).map((_, rowIdx) => (
             <tr key={rowIdx}>
               {Array.from({ length: cols }).map((_, colIdx) => (
@@ -289,7 +289,7 @@ export function SkeletonStats({ count = 4, className }: SkeletonStatsProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="rounded-lg border border-gray-200 bg-white p-4"
+          className="rounded-lg border border-border bg-card p-4"
         >
           <Skeleton className="h-3 w-20 mb-2" />
           <Skeleton className="h-8 w-16" />

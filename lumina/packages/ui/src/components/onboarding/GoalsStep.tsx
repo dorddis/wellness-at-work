@@ -106,9 +106,9 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-          className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
+          className="w-16 h-16 bg-secondary rounded-full flex items-center justify-center mb-4"
         >
-          <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -122,7 +122,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-xl font-bold text-gray-900 mb-1"
+          className="text-xl font-bold text-foreground mb-1"
         >
           Set Your Goals
         </motion.h2>
@@ -131,7 +131,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="text-gray-600 text-sm"
+          className="text-muted-foreground text-sm"
         >
           What would you like to focus on?
         </motion.p>
@@ -149,24 +149,24 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
               onClick={() => toggleGoal(goal.id)}
               className={`w-full flex items-start gap-4 text-left p-4 rounded-xl border-2 transition-all ${
                 selectedGoals[goal.id]
-                  ? 'border-gray-800 bg-gray-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-foreground bg-muted/50'
+                  : 'border-border bg-card hover:border-border'
               }`}
             >
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  selectedGoals[goal.id] ? 'bg-gray-800' : 'bg-gray-100'
+                  selectedGoals[goal.id] ? 'bg-foreground' : 'bg-secondary'
                 }`}
               >
                 <GoalIcon type={goal.icon} selected={selectedGoals[goal.id]} />
               </div>
               <div className="flex-1">
-                <h3 className="font-medium text-gray-900">{goal.title}</h3>
-                <p className="text-sm text-gray-600">{goal.description}</p>
+                <h3 className="font-medium text-foreground">{goal.title}</h3>
+                <p className="text-sm text-muted-foreground">{goal.description}</p>
               </div>
               <div
                 className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                  selectedGoals[goal.id] ? 'border-gray-800 bg-gray-800' : 'border-gray-300'
+                  selectedGoals[goal.id] ? 'border-foreground bg-foreground' : 'border-border'
                 }`}
               >
                 {selectedGoals[goal.id] && (
@@ -187,7 +187,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="mb-3 text-sm text-gray-500 text-center"
+            className="mb-3 text-sm text-muted-foreground text-center"
           >
             Select at least one goal to continue
           </motion.p>
@@ -197,7 +197,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
         <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          className="flex-1 py-3 px-6 bg-secondary text-foreground/80 rounded-lg font-medium hover:bg-muted transition-colors"
         >
           Back
         </button>
@@ -206,8 +206,8 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           disabled={!hasAnyGoal}
           className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors ${
             hasAnyGoal
-              ? 'bg-gray-800 text-white hover:bg-gray-700'
-              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              ? 'bg-foreground text-white hover:bg-foreground/80'
+              : 'bg-muted text-muted-foreground/70 cursor-not-allowed'
           }`}
         >
           Continue
@@ -219,7 +219,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
 }
 
 function GoalIcon({ type, selected }: { type: string; selected: boolean }) {
-  const className = `w-5 h-5 ${selected ? 'text-white' : 'text-gray-600'}`;
+  const className = `w-5 h-5 ${selected ? 'text-white' : 'text-muted-foreground'}`;
 
   switch (type) {
     case 'eye':
