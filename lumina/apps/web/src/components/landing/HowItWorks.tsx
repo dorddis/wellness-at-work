@@ -58,28 +58,26 @@ export function HowItWorks() {
         </div>
 
         {/* Video Demo Section */}
-        {YOUTUBE_VIDEO_ID !== 'YOUR_VIDEO_ID' && (
-          <div className="mt-16 max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 text-primary font-medium mb-2">
-                <Play className="w-5 h-5" />
-                Watch the full demo
-              </div>
-              <p className="text-muted-foreground">
-                See Lumina in action - a complete walkthrough of all features
-              </p>
+        <div className="mt-16 max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 text-primary font-medium mb-2">
+              <Play className="w-5 h-5" />
+              Watch the full demo
             </div>
-            <div className="relative aspect-video rounded-xl overflow-hidden shadow-2xl border border-border">
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1`}
-                title="Lumina Demo Video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 w-full h-full"
-              />
-            </div>
+            <p className="text-muted-foreground">
+              See Lumina in action - a complete walkthrough of all features
+            </p>
           </div>
-        )}
+          <div className="relative aspect-video rounded-xl overflow-hidden shadow-2xl border border-border">
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1`}
+              title="Lumina Demo Video"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
