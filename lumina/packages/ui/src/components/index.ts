@@ -44,26 +44,9 @@ export { AchievementBadge, ACHIEVEMENTS, type AchievementBadgeProps, type Achiev
 // Notifications
 export { PreBreakToast, type PreBreakToastProps } from './PreBreakToast';
 
-// Onboarding
-export {
-  OnboardingFlow,
-  WelcomeStep,
-  PrivacyStep,
-  CameraStep,
-  CalibrationStep,
-  GoalsStep,
-  CompleteStep,
-  Stepper,
-  type OnboardingFlowProps,
-  type WelcomeStepProps,
-  type PrivacyStepProps,
-  type CameraStepProps,
-  type CalibrationStepProps,
-  type GoalsStepProps,
-  type CompleteStepProps,
-  type StepperProps,
-  type Step,
-} from './onboarding';
+// Onboarding - DESKTOP ONLY
+// These components use @mediapipe/tasks-vision which breaks web builds.
+// Desktop app imports directly: import { OnboardingFlow } from '@lumina/ui/components/onboarding';
 
 // Product Tour
 export { ProductTour, type ProductTourProps } from './ProductTour';

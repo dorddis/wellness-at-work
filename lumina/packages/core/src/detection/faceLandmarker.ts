@@ -15,7 +15,7 @@ import {
   FilesetResolver,
   FaceLandmarkerResult,
 } from '@mediapipe/tasks-vision';
-import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE, EAR_CALIBRATION } from './constants';
+import { MIN_DETECTION_CONFIDENCE, MIN_TRACKING_CONFIDENCE, EAR_CALIBRATION, CALIBRATION_FLAGS } from './constants';
 import { BlinkDetectionResult, Point2D } from './blink';
 import { RobustBlinkDetector, RobustBlinkResult } from './robust-blink-detector';
 import { BlinkPhase } from './blink-state-machine';
@@ -116,7 +116,11 @@ export class FaceLandmarkerManager {
       // Load existing calibration if provided
       if (existingCalibration) {
         this.earCalibrator.loadCalibration(existingCalibration);
-        // Note: RobustBlinkDetector uses bilateral baseline instead of manual threshold
+
+        // Also load into RobustBlinkDetector if enabled
+        if (CALIBRATION_FLAGS.USE_ONBOARDING_CALIBRATION) {
+          this.robustBlinkDetector.loadCalibration(existingCalibration);
+        }
       }
     }
 

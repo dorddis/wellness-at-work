@@ -21,6 +21,7 @@ import { HeadMotionTracker, HeadMotionResult } from './head-motion';
 import { BilateralVerifier, BilateralResult } from './bilateral';
 import { BlinkStateMachine, BlinkPhase, BlinkEvent, StateMachineResult } from './blink-state-machine';
 import { GazeTracker, GazeResult } from './gaze-tracker';
+import type { EARCalibration } from './ear-calibrator';
 
 export interface RobustBlinkResult {
   /** True if a valid blink was detected this frame */
@@ -206,6 +207,18 @@ export class RobustBlinkDetector {
    */
   isCalibrated(): boolean {
     return this.bilateral.isCalibrated();
+  }
+
+  /**
+   * Load calibration from onboarding.
+   * Sets the initial baseline and skips the 30-frame init period.
+   *
+   * @param calibration EAR calibration data from onboarding
+   */
+  loadCalibration(calibration: EARCalibration | null): void {
+    if (calibration?.threshold) {
+      this.bilateral.setInitialBaseline(calibration.threshold);
+    }
   }
 
   /**

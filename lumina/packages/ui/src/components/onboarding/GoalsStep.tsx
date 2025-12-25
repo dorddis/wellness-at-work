@@ -13,20 +13,26 @@ export interface GoalsStepProps {
     reduceEyeStrain: boolean;
     improvePosture: boolean;
     takeRegularBreaks: boolean;
+    preventDryEyes: boolean;
+    reduceHeadaches: boolean;
+    stayFocused: boolean;
   }) => void;
   onBack: () => void;
   initialGoals?: {
     reduceEyeStrain: boolean;
     improvePosture: boolean;
     takeRegularBreaks: boolean;
+    preventDryEyes: boolean;
+    reduceHeadaches: boolean;
+    stayFocused: boolean;
   };
 }
 
 interface Goal {
-  id: 'reduceEyeStrain' | 'improvePosture' | 'takeRegularBreaks';
+  id: 'reduceEyeStrain' | 'improvePosture' | 'takeRegularBreaks' | 'preventDryEyes' | 'reduceHeadaches' | 'stayFocused';
   title: string;
   description: string;
-  icon: 'eye' | 'posture' | 'clock';
+  icon: 'eye' | 'posture' | 'clock' | 'droplet' | 'brain' | 'focus';
 }
 
 const GOALS: Goal[] = [
@@ -35,6 +41,18 @@ const GOALS: Goal[] = [
     title: 'Reduce Eye Strain',
     description: 'Get reminders when your blink rate drops too low',
     icon: 'eye',
+  },
+  {
+    id: 'preventDryEyes',
+    title: 'Prevent Dry Eyes',
+    description: 'Smart blink tracking keeps your eyes naturally lubricated',
+    icon: 'droplet',
+  },
+  {
+    id: 'reduceHeadaches',
+    title: 'Prevent Migraines',
+    description: 'Break reminders and posture alerts reduce screen-related headaches',
+    icon: 'brain',
   },
   {
     id: 'improvePosture',
@@ -48,6 +66,12 @@ const GOALS: Goal[] = [
     description: 'Follow the 20-20-20 rule for healthier screen time',
     icon: 'clock',
   },
+  {
+    id: 'stayFocused',
+    title: 'Stay Focused',
+    description: 'Flow detection protects your deep work from interruptions',
+    icon: 'focus',
+  },
 ];
 
 export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
@@ -56,6 +80,9 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
     reduceEyeStrain: initialGoals?.reduceEyeStrain ?? false,
     improvePosture: initialGoals?.improvePosture ?? false,
     takeRegularBreaks: initialGoals?.takeRegularBreaks ?? false,
+    preventDryEyes: initialGoals?.preventDryEyes ?? false,
+    reduceHeadaches: initialGoals?.reduceHeadaches ?? false,
+    stayFocused: initialGoals?.stayFocused ?? false,
   });
 
   const toggleGoal = (goalId: Goal['id']) => {
@@ -73,14 +100,15 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
 
   return (
     <div className="h-full flex flex-col px-8 py-6">
-      <div className="flex-1 flex flex-col items-center justify-center text-center">
+      {/* Header - fixed */}
+      <div className="flex-shrink-0 flex flex-col items-center text-center mb-4">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-          className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
+          className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"
         >
-          <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -94,7 +122,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-2xl font-bold text-gray-900 mb-2"
+          className="text-xl font-bold text-gray-900 mb-1"
         >
           Set Your Goals
         </motion.h2>
@@ -103,13 +131,15 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="text-gray-600 mb-8 max-w-md"
+          className="text-gray-600 text-sm"
         >
-          What would you like to focus on? You can change these anytime in settings.
+          What would you like to focus on?
         </motion.p>
+      </div>
 
-        {/* Goals list */}
-        <div className="space-y-3 max-w-md w-full">
+      {/* Scrollable goals list */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="space-y-3 max-w-md w-full mx-auto pb-4">
           {GOALS.map((goal, index) => (
             <motion.button
               key={goal.id}
@@ -148,21 +178,23 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
             </motion.button>
           ))}
         </div>
+      </div>
 
+      {/* Footer - fixed */}
+      <div className="flex-shrink-0 pt-4">
         {!hasAnyGoal && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="mt-4 text-sm text-gray-500"
+            className="mb-3 text-sm text-gray-500 text-center"
           >
             Select at least one goal to continue
           </motion.p>
         )}
-      </div>
 
-      {/* Navigation */}
-      <div className="flex gap-3 mt-6">
+        {/* Navigation */}
+        <div className="flex gap-3">
         <button
           onClick={onBack}
           className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
@@ -180,6 +212,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
         >
           Continue
         </button>
+        </div>
       </div>
     </div>
   );
@@ -201,6 +234,28 @@ function GoalIcon({ type, selected }: { type: string; selected: boolean }) {
           />
         </svg>
       );
+    case 'droplet':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 21c-4.418 0-8-3.134-8-7 0-4.418 8-12 8-12s8 7.582 8 12c0 3.866-3.582 7-8 7z"
+          />
+        </svg>
+      );
+    case 'brain':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+          />
+        </svg>
+      );
     case 'posture':
       return (
         <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -218,6 +273,17 @@ function GoalIcon({ type, selected }: { type: string; selected: boolean }) {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      );
+    case 'focus':
+      return (
+        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
           />
         </svg>
       );

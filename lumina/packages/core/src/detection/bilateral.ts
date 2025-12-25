@@ -171,6 +171,21 @@ export class BilateralVerifier {
   }
 
   /**
+   * Set initial baseline from onboarding calibration.
+   * Skips the 30-frame init period and uses the calibrated threshold.
+   *
+   * @param baseline Calibrated EAR threshold from onboarding
+   */
+  setInitialBaseline(baseline: number): void {
+    if (baseline > 0 && baseline < 1) {
+      this.leftBaseline = baseline;
+      this.rightBaseline = baseline;
+      this.calibrating = false;
+      this.frameCount = BILATERAL.BASELINE_INIT_FRAMES + 1;
+    }
+  }
+
+  /**
    * Reset all state.
    */
   reset(): void {

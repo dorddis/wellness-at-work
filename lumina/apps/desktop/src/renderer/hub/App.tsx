@@ -13,7 +13,6 @@ import {
   AchievementBadge,
   PreBreakToast,
   EarWaveform,
-  OnboardingFlow,
   ProductTour,
   Select,
   ACHIEVEMENTS,
@@ -21,6 +20,9 @@ import {
   type CaptureRegion,
   type SelectOption,
 } from '@lumina/ui';
+// Desktop-only component - imports @lumina/core which has @mediapipe/tasks-vision
+// Must import directly to avoid breaking web builds
+import { OnboardingFlow } from '@lumina/ui/components/onboarding';
 // Desktop-only hook - imports @lumina/core which has @mediapipe/tasks-vision
 // Must import directly to avoid breaking web builds
 import { useMeetingModeStateMachine } from '@lumina/ui/hooks/useMeetingModeStateMachine';

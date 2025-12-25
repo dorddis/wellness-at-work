@@ -464,15 +464,14 @@ export const CALIBRATION_FLAGS = {
   /**
    * When true, pass onboarding calibration baseline to RobustBlinkDetector.
    *
-   * Currently false because:
-   * - BilateralVerifier uses its own EMA-based baseline
-   * - Need to wire calibration data through FaceLandmarkerManager
-   * - Requires testing to ensure no regression
+   * Wiring complete:
+   * - FaceLandmarkerManager passes calibration to RobustBlinkDetector
+   * - BilateralVerifier accepts initial baseline via setInitialBaseline()
+   * - App.tsx loads calibration from settingsStore on init
    *
-   * Enable after Phase 2 implementation is complete.
    * @see docs/08-TESTING/CALIBRATION_ISSUES.md
    */
-  USE_ONBOARDING_CALIBRATION: false,
+  USE_ONBOARDING_CALIBRATION: true,
 
   /**
    * When true, use 60-second calibration duration (matches EAR_CALIBRATION).

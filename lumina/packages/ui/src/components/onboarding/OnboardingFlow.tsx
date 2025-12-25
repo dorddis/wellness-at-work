@@ -46,6 +46,9 @@ export interface OnboardingFlowProps {
     reduceEyeStrain: boolean;
     improvePosture: boolean;
     takeRegularBreaks: boolean;
+    preventDryEyes: boolean;
+    reduceHeadaches: boolean;
+    stayFocused: boolean;
   }) => void;
   /** Optional logo image source for welcome screen */
   logoSrc?: string;
@@ -84,9 +87,12 @@ export function OnboardingFlow({
   const [cameraGranted, setCameraGranted] = useState(hasCameraPermission);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const [goals, setGoals] = useState({
-    reduceEyeStrain: true,
-    improvePosture: true,
-    takeRegularBreaks: true,
+    reduceEyeStrain: false,
+    improvePosture: false,
+    takeRegularBreaks: false,
+    preventDryEyes: false,
+    reduceHeadaches: false,
+    stayFocused: false,
   });
 
   const currentStepIndex = STEP_ORDER.indexOf(currentStep);

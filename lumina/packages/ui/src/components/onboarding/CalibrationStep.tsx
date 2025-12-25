@@ -53,6 +53,12 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const stateRef = useRef<CalibrationState>(state); // Track state in ref for detection loop
+
+  // Keep stateRef in sync with state
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -83,6 +89,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
   // Start calibration process
   const startCalibration = useCallback(async () => {
     setState('initializing');
+    stateRef.current = 'initializing';
     setProgress(0);
     setBlinkCount(0);
     setSampleCount(0);
@@ -121,8 +128,9 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
         await videoRef.current.play();
       }
 
-      // Start calibration
+      // Start calibration - update both state and ref
       setState('calibrating');
+      stateRef.current = 'calibrating'; // Update ref immediately for detection loop
       startTimeRef.current = performance.now();
 
       // Start detection loop
@@ -141,7 +149,12 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
   // Detection loop using requestAnimationFrame
   const runDetectionLoop = useCallback(() => {
     const detect = () => {
-      if (!faceLandmarkerRef.current || !videoRef.current || state !== 'calibrating') {
+      // Use stateRef to avoid stale closure issues
+      if (!faceLandmarkerRef.current || !videoRef.current || stateRef.current !== 'calibrating') {
+        // If not calibrating but refs exist, keep checking (wait for state transition)
+        if (stateRef.current === 'initializing' && faceLandmarkerRef.current) {
+          animationFrameRef.current = requestAnimationFrame(detect);
+        }
         return;
       }
 
@@ -187,7 +200,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
     };
 
     animationFrameRef.current = requestAnimationFrame(detect);
-  }, [state]);
+  }, []); // No dependencies - uses refs
 
   // Finish calibration and compute threshold
   const finishCalibration = useCallback(() => {
@@ -315,78 +328,152 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
           </>
         )}
 
-        {state === 'initializing' && (
+        {/* Camera preview - render during initializing AND calibrating so stream can attach */}
+        {(state === 'initializing' || state === 'calibrating') && (
           <>
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
+              className="relative w-64 h-48 rounded-2xl overflow-hidden bg-gray-900 mb-6 shadow-lg"
             >
-              <svg className="w-10 h-10 text-gray-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
+              {/* Single video element - always present so stream can attach */}
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                style={{ transform: 'scaleX(-1)' }}
+                playsInline
+                muted
+              />
+              {/* Loading spinner overlay during init */}
+              {state === 'initializing' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                  <svg className="w-10 h-10 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                </div>
+              )}
+              {/* Progress ring overlay during calibrating */}
+              {state === 'calibrating' && (
+                <div className="absolute bottom-3 right-3 w-12 h-12">
+                  <svg className="w-12 h-12 transform -rotate-90">
+                    <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.3)" strokeWidth="3" fill="none" />
+                    <motion.circle
+                      cx="24"
+                      cy="24"
+                      r="20"
+                      stroke="#fff"
+                      strokeWidth="3"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeDasharray={126}
+                      initial={{ strokeDashoffset: 126 }}
+                      animate={{ strokeDashoffset: 126 - (progress / 100) * 126 }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold text-white">
+                      {Math.round(CALIBRATION_DURATION_SECONDS - (progress / 100) * CALIBRATION_DURATION_SECONDS)}s
+                    </span>
+                  </div>
+                </div>
+              )}
             </motion.div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Initializing...</h2>
-            <p className="text-gray-600">Setting up face detection</p>
-          </>
-        )}
+            {state === 'initializing' && (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Initializing...</h2>
+                <p className="text-gray-600 mb-4">Setting up face detection</p>
+              </>
+            )}
 
-        {state === 'calibrating' && (
-          <>
-            {/* Hidden video element for camera feed */}
-            <video
-              ref={videoRef}
-              className="hidden"
-              playsInline
-              muted
-            />
+            {state === 'calibrating' && (
+              <>
+                {/* Reading text cards - pop up with emphasis to encourage natural eye movement */}
+                <div className="fixed inset-0 pointer-events-none z-10 p-6">
+                  {/* Top left - below stepper */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 2, duration: 0.5, type: 'spring' }}
+                    className="absolute top-28 left-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                  >
+                    <p className="text-sm font-medium text-gray-800">
+                      Your eyes naturally blink 15-20 times per minute
+                    </p>
+                  </motion.div>
 
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="relative w-32 h-32 mb-8"
-            >
-              {/* Progress circle */}
-              <svg className="w-32 h-32 transform -rotate-90">
-                <circle cx="64" cy="64" r="56" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                <motion.circle
-                  cx="64"
-                  cy="64"
-                  r="56"
-                  stroke="#000"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeDasharray={352}
-                  initial={{ strokeDashoffset: 352 }}
-                  animate={{ strokeDashoffset: 352 - (progress / 100) * 352 }}
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold text-gray-900">{Math.round(30 - (progress / 100) * 30)}s</span>
-              </div>
-            </motion.div>
+                  {/* Top right - below stepper */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 7, duration: 0.5, type: 'spring' }}
+                    className="absolute top-28 right-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                  >
+                    <p className="text-sm font-medium text-gray-800 text-right">
+                      Screen time can reduce this to just 3-4 blinks
+                    </p>
+                  </motion.div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Calibrating...</h2>
+                  {/* Bottom left */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 12, duration: 0.5, type: 'spring' }}
+                    className="absolute bottom-32 left-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                  >
+                    <p className="text-sm font-medium text-gray-800">
+                      This causes dry eyes, strain, and fatigue
+                    </p>
+                  </motion.div>
 
-            <p className="text-gray-600 mb-4">Just work naturally. We're learning your blink patterns.</p>
+                  {/* Bottom right */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 17, duration: 0.5, type: 'spring' }}
+                    className="absolute bottom-32 right-6 bg-white rounded-xl shadow-lg border border-gray-200 p-4 max-w-52"
+                  >
+                    <p className="text-sm font-medium text-gray-800 text-right">
+                      Lumina helps you maintain healthy blink patterns
+                    </p>
+                  </motion.div>
 
-            <div className="flex gap-4">
-              <div className="bg-gray-50 rounded-lg px-6 py-3">
-                <span className="text-sm text-gray-500">Blinks detected: </span>
-                <span className="font-medium text-gray-900">{blinkCount}</span>
-              </div>
-              <div className="bg-gray-50 rounded-lg px-6 py-3">
-                <span className="text-sm text-gray-500">Samples: </span>
-                <span className="font-medium text-gray-900">{sampleCount}</span>
-              </div>
-            </div>
+                  {/* Center bottom - final message */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ delay: 22, duration: 0.5, type: 'spring' }}
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800 text-white rounded-xl shadow-lg p-4 max-w-64"
+                  >
+                    <p className="text-sm font-medium text-center">
+                      Almost done! Keep looking naturally at the screen
+                    </p>
+                  </motion.div>
+                </div>
+
+                {/* Blink counter and skip button - centered below camera */}
+                <div className="flex flex-col items-center gap-3 mt-4">
+                  <div className="bg-gray-50 rounded-lg px-6 py-3">
+                    <span className="text-sm text-gray-500">Blinks detected: </span>
+                    <span className="font-medium text-gray-900">{blinkCount}</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      cleanup();
+                      onSkip();
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors pointer-events-auto"
+                  >
+                    Skip calibration
+                  </button>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -496,15 +583,6 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               Start Calibration
             </button>
           </>
-        )}
-
-        {(state === 'calibrating' || state === 'initializing') && (
-          <button
-            onClick={handleSkip}
-            className="w-full py-3 px-6 text-gray-500 hover:text-gray-700 transition-colors text-sm"
-          >
-            Skip calibration
-          </button>
         )}
 
         {state === 'complete' && (
