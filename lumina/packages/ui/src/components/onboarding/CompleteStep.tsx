@@ -76,10 +76,10 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 1.0, bounce: 0.3, delay: 0.3 }}
-          className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6"
+          className="w-24 h-24 bg-foreground rounded-full flex items-center justify-center mb-6"
         >
           <motion.svg
-            className="w-12 h-12 text-white"
+            className="w-12 h-12 text-background"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -103,7 +103,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
-          className="text-3xl font-bold text-gray-900 mb-2"
+          className="text-3xl font-bold text-foreground mb-2"
         >
           You're All Set!
         </motion.h2>
@@ -112,7 +112,7 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.5 }}
-          className="text-gray-600 mb-8 max-w-md"
+          className="text-muted-foreground mb-8 max-w-md"
         >
           Lumina is now monitoring your wellness. We'll help you maintain healthy
           habits while you work.
@@ -123,9 +123,9 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.0, duration: 0.5 }}
-          className="bg-gray-50 rounded-xl p-6 max-w-sm w-full mb-6"
+          className="bg-muted/50 rounded-xl p-6 max-w-sm w-full mb-6"
         >
-          <h3 className="font-medium text-gray-900 mb-4">Quick Tips</h3>
+          <h3 className="font-medium text-foreground mb-4">Quick Tips</h3>
           <div className="space-y-3 text-left">
             <TipItem icon="tray" text="Find Lumina in your system tray" />
             <TipItem icon="eye" text="Blink reminders when you're focused" />
@@ -141,18 +141,18 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
           className="flex gap-4 text-center"
         >
           <div className="px-4 py-2">
-            <div className="text-2xl font-bold text-gray-900">0</div>
-            <div className="text-xs text-gray-500">Blinks Today</div>
+            <div className="text-2xl font-bold text-foreground">0</div>
+            <div className="text-xs text-muted-foreground">Blinks Today</div>
           </div>
-          <div className="w-px bg-gray-200" />
+          <div className="w-px bg-border" />
           <div className="px-4 py-2">
-            <div className="text-2xl font-bold text-gray-900">0</div>
-            <div className="text-xs text-gray-500">Breaks Taken</div>
+            <div className="text-2xl font-bold text-foreground">0</div>
+            <div className="text-xs text-muted-foreground">Breaks Taken</div>
           </div>
-          <div className="w-px bg-gray-200" />
+          <div className="w-px bg-border" />
           <div className="px-4 py-2">
-            <div className="text-2xl font-bold text-gray-900">1</div>
-            <div className="text-xs text-gray-500">Day Streak</div>
+            <div className="text-2xl font-bold text-foreground">1</div>
+            <div className="text-xs text-muted-foreground">Day Streak</div>
           </div>
         </motion.div>
       </div>
@@ -166,11 +166,11 @@ export function CompleteStep({ onComplete }: CompleteStepProps) {
       >
         <button
           onClick={onComplete}
-          className="w-full py-4 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors text-lg"
+          className="w-full py-4 px-6 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 transition-colors text-lg"
         >
           Open Dashboard
         </button>
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           Lumina will continue running in your system tray
         </p>
       </motion.div>
@@ -215,10 +215,10 @@ function TipItem({ icon, text }: { icon: string; text: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center text-gray-600">
+      <div className="w-8 h-8 bg-background rounded-full flex items-center justify-center text-muted-foreground">
         {icons[icon]}
       </div>
-      <span className="text-sm text-gray-700">{text}</span>
+      <span className="text-sm text-foreground/80">{text}</span>
     </div>
   );
 }

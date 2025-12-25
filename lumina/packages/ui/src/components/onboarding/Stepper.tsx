@@ -46,18 +46,13 @@ export function Stepper({
                   initial={false}
                   animate={{
                     scale: isCurrent ? 1.1 : 1,
-                    backgroundColor: isCompleted
-                      ? '#000000'
-                      : isCurrent
-                        ? '#000000'
-                        : '#f3f4f6',
                   }}
                   transition={{ duration: 0.2 }}
                   className={`
                     relative flex items-center justify-center rounded-full
                     ${compact ? 'w-8 h-8' : 'w-10 h-10'}
-                    ${isCompleted || isCurrent ? 'text-white' : 'text-gray-400'}
-                    ${isCurrent ? 'ring-4 ring-black/10' : ''}
+                    ${isCompleted || isCurrent ? 'bg-foreground text-background' : 'bg-secondary text-muted-foreground'}
+                    ${isCurrent ? 'ring-4 ring-foreground/10' : ''}
                   `}
                 >
                   {isCompleted ? (
@@ -96,13 +91,13 @@ export function Stepper({
                       className={`
                         font-medium
                         ${compact ? 'text-xs' : 'text-sm'}
-                        ${isCurrent ? 'text-gray-900' : 'text-gray-500'}
+                        ${isCurrent ? 'text-foreground' : 'text-muted-foreground'}
                       `}
                     >
                       {step.label}
                     </p>
                     {step.description && !compact && (
-                      <p className="text-xs text-gray-400 mt-0.5 max-w-[100px]">
+                      <p className="text-xs text-muted-foreground/70 mt-0.5 max-w-[100px]">
                         {step.description}
                       </p>
                     )}
@@ -113,14 +108,14 @@ export function Stepper({
               {/* Connector line */}
               {index < steps.length - 1 && (
                 <div className="flex-1 mx-2">
-                  <div className="relative h-0.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="relative h-0.5 bg-border rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
                         width: isCompleted ? '100%' : '0%',
                       }}
                       transition={{ duration: 0.3, ease: 'easeInOut' }}
-                      className="absolute inset-y-0 left-0 bg-gray-800 rounded-full"
+                      className="absolute inset-y-0 left-0 bg-foreground rounded-full"
                     />
                   </div>
                 </div>

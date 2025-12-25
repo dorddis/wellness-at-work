@@ -45,7 +45,7 @@ export function StatusIndicator({
     return (
       <div
         className={cn(
-          'flex items-center gap-2 px-3 py-1.5 bg-white/95 rounded-full shadow-lg backdrop-blur-sm',
+          'flex items-center gap-2 px-3 py-1.5 bg-card/95 rounded-full shadow-lg backdrop-blur-sm',
           'border border-border/50',
           className
         )}
@@ -65,7 +65,7 @@ export function StatusIndicator({
   return (
     <div
       className={cn(
-        'p-4 bg-white rounded-lg border border-border shadow-sm',
+        'p-4 bg-card rounded-lg border border-border shadow-sm',
         className
       )}
     >

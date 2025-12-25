@@ -59,19 +59,19 @@ export function PostureStatusCard({
   if (!isEnabled) {
     return (
       <div className={cn(
-        'bg-white rounded-xl border border-gray-200 p-4',
+        'bg-card rounded-xl border border-border p-4',
         className
       )}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Posture</h3>
+          <h3 className="font-semibold text-foreground">Posture</h3>
           <PostureIndicator status="unknown" size="sm" showLabel={false} />
         </div>
-        <p className="text-sm text-gray-500 mb-3">
+        <p className="text-sm text-muted-foreground mb-3">
           Enable posture monitoring to track your sitting habits
         </p>
         <button
           onClick={onEnable}
-          className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+          className="w-full py-2 px-4 bg-secondary hover:bg-muted rounded-lg text-sm font-medium text-foreground/80 transition-colors"
         >
           Enable Posture Monitoring
         </button>
@@ -81,12 +81,12 @@ export function PostureStatusCard({
 
   return (
     <div className={cn(
-      'bg-white rounded-xl border border-gray-200 p-4',
+      'bg-card rounded-xl border border-border p-4',
       className
     )}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Posture</h3>
+        <h3 className="font-semibold text-foreground">Posture</h3>
         <PostureIndicator status={status} size="sm" />
       </div>
 
@@ -96,10 +96,10 @@ export function PostureStatusCard({
           <span className={cn('text-3xl font-bold', getScoreColor(percentage))}>
             {percentage}%
           </span>
-          <span className="text-gray-400 text-sm">good posture</span>
+          <span className="text-muted-foreground/70 text-sm">good posture</span>
         </div>
         {/* Progress bar */}
-        <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
           <div
             className={cn(
               'h-full rounded-full transition-all duration-500',
@@ -115,14 +115,14 @@ export function PostureStatusCard({
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
-          <p className="text-gray-500">Good posture time</p>
-          <p className="font-semibold text-gray-900">
+          <p className="text-muted-foreground">Good posture time</p>
+          <p className="font-semibold text-foreground">
             {formatMinutes(goodPostureMinutes)}
           </p>
         </div>
         <div>
-          <p className="text-gray-500">Best streak</p>
-          <p className="font-semibold text-gray-900">
+          <p className="text-muted-foreground">Best streak</p>
+          <p className="font-semibold text-foreground">
             {formatMinutes(longestStreak)}
           </p>
         </div>
@@ -132,7 +132,7 @@ export function PostureStatusCard({
       {status !== 'good' && status !== 'unknown' && (
         <div className={cn(
           'mt-3 p-2 rounded-lg text-xs',
-          status === 'fair' ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
+          status === 'fair' ? 'bg-yellow-50 dark:bg-yellow-950/50 text-yellow-700 dark:text-yellow-300' : 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300'
         )}>
           {status === 'fair'
             ? 'Slight slouch detected - adjust your position'

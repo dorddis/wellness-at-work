@@ -26,8 +26,8 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
         {logoSrc ? (
           <img src={logoSrc} alt="Lumina" className="w-24 h-24 rounded-2xl" />
         ) : (
-          <div className="w-24 h-24 bg-gray-800 rounded-2xl flex items-center justify-center">
-            <svg className="w-14 h-14 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <div className="w-24 h-24 bg-foreground rounded-2xl flex items-center justify-center">
+            <svg className="w-14 h-14 text-background" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
             </svg>
           </div>
@@ -38,7 +38,7 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.6 }}
-        className="text-3xl font-bold text-gray-900 mb-4"
+        className="text-3xl font-bold text-foreground mb-4"
       >
         Welcome to Lumina
       </motion.h1>
@@ -47,7 +47,7 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6, duration: 0.6 }}
-        className="text-lg text-gray-600 mb-8 max-w-md"
+        className="text-lg text-muted-foreground mb-8 max-w-md"
       >
         Your AI-powered eye wellness companion. We'll help you maintain healthy
         blink rates, take regular breaks, and improve your posture.
@@ -73,14 +73,14 @@ export function WelcomeStep({ onNext, onSkip, logoSrc }: WelcomeStepProps) {
       >
         <button
           onClick={onNext}
-          className="w-full py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+          className="w-full py-3 px-6 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 transition-colors"
         >
           Get Started
         </button>
         {onSkip && (
           <button
             onClick={onSkip}
-            className="w-full py-3 px-6 text-gray-500 hover:text-gray-700 transition-colors text-sm"
+            className="w-full py-3 px-6 text-muted-foreground hover:text-foreground transition-colors text-sm"
           >
             Skip for now
           </button>
@@ -115,10 +115,10 @@ function Feature({ icon, label }: { icon: string; label: string }) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-gray-600">
+      <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center text-muted-foreground">
         {icons[icon]}
       </div>
-      <span className="text-sm text-gray-600">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
     </div>
   );
 }

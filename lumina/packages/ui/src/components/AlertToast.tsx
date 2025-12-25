@@ -20,9 +20,9 @@ export interface AlertToastProps {
 }
 
 const severityStyles: Record<AlertSeverity, string> = {
-  info: 'bg-blue-50 border-blue-200 text-blue-900',
-  warning: 'bg-amber-50 border-amber-200 text-amber-900',
-  critical: 'bg-red-50 border-red-200 text-red-900',
+  info: 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-100',
+  warning: 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-900 text-amber-900 dark:text-amber-100',
+  critical: 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-900 text-red-900 dark:text-red-100',
 };
 
 const severityIcons: Record<AlertSeverity, string> = {
@@ -76,7 +76,7 @@ export function AlertToast({
       <div className="flex gap-2 mt-3 pt-3 border-t border-current/10">
         <button
           onClick={() => onDismiss(id)}
-          className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-white/50 hover:bg-white/80 transition-colors"
+          className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-background/50 hover:bg-background/80 transition-colors"
         >
           Dismiss
         </button>

@@ -143,18 +143,18 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
   };
 
   return (
-    <div className="h-full flex items-center justify-center bg-gray-50">
+    <div className="h-full flex items-center justify-center bg-background">
       <div className="w-full max-w-md p-8">
         {/* Logo */}
         <div className="text-center mb-8">
           <img src={luminaLogo} alt="Lumina" className="h-16 w-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Welcome to Lumina</h1>
-          <p className="text-gray-500 mt-2">AI-powered wellness for your team</p>
+          <h1 className="text-2xl font-bold">Welcome to Lumina</h1>
+          <p className="text-muted-foreground mt-2">AI-powered wellness for your team</p>
         </div>
 
         {/* Error message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg text-red-700 dark:text-red-300 text-sm">
             {error}
           </div>
         )}
@@ -167,7 +167,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-3 bg-white border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
+              className="w-full py-3 bg-card border border-border rounded-lg font-medium hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-3"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -192,16 +192,16 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">or</span>
+                <span className="px-2 bg-background text-muted-foreground">or</span>
               </div>
             </div>
 
             <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="email" className="block text-sm font-medium mb-1">
                   Work Email
                 </label>
                 <input
@@ -211,17 +211,17 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@company.com"
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none"
+                  className="w-full px-4 py-3 border border-border bg-background rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 outline-none"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading || !email}
-                className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Sending...' : 'Continue with Email'}
               </button>
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-muted-foreground">
                 We'll send you a verification code
               </p>
             </form>
@@ -231,8 +231,8 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
         {/* Google auth waiting state */}
         {step === 'google-waiting' && (
           <div className="text-center space-y-4">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-black rounded-full animate-spin mx-auto"></div>
-            <p className="text-gray-600">
+            <div className="w-12 h-12 border-4 border-border border-t-foreground rounded-full animate-spin mx-auto"></div>
+            <p className="text-muted-foreground">
               Complete sign in with Google in your browser...
             </p>
             <button
@@ -241,7 +241,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
                 setStep('email');
                 setError(null);
               }}
-              className="text-gray-500 hover:text-gray-700 text-sm"
+              className="text-muted-foreground hover:text-foreground text-sm"
             >
               Cancel
             </button>
@@ -252,12 +252,12 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
         {step === 'verify' && (
           <form onSubmit={handleVerifySubmit} className="space-y-4">
             <div className="text-center mb-4">
-              <p className="text-sm text-gray-600">
-                We sent a code to <span className="font-medium">{email}</span>
+              <p className="text-sm text-muted-foreground">
+                We sent a code to <span className="font-medium text-foreground">{email}</span>
               </p>
             </div>
             <div>
-              <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="otp" className="block text-sm font-medium mb-1">
                 Verification Code
               </label>
               <input
@@ -271,13 +271,13 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
                 placeholder="12345678"
                 required
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none text-center text-xl tracking-widest font-mono"
+                className="w-full px-4 py-3 border border-border bg-background rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 outline-none text-center text-xl tracking-widest font-mono"
               />
             </div>
             <button
               type="submit"
               disabled={loading || otpCode.length < 6}
-              className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Verifying...' : 'Verify'}
             </button>
@@ -288,7 +288,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
                 setOtpCode('');
                 setError(null);
               }}
-              className="w-full py-2 text-gray-600 hover:text-gray-900 text-sm"
+              className="w-full py-2 text-muted-foreground hover:text-foreground text-sm"
             >
               Use a different email
             </button>
@@ -299,17 +299,17 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
         {step === 'join-org' && (
           <form onSubmit={handleJoinOrg} className="space-y-4">
             <div className="text-center mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Account verified! Now join your organization.
               </p>
             </div>
             <div>
-              <label htmlFor="invite" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="invite" className="block text-sm font-medium mb-1">
                 Organization Invite Code
               </label>
               <input
@@ -319,16 +319,16 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
                 onChange={(e) => setInviteCode(e.target.value.toLowerCase().trim())}
                 placeholder="acme-corp"
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-black outline-none"
+                className="w-full px-4 py-3 border border-border bg-background rounded-lg focus:ring-2 focus:ring-foreground/20 focus:border-foreground/50 outline-none"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Ask your admin for the invite code
               </p>
             </div>
             <button
               type="submit"
               disabled={loading || !inviteCode}
-              className="w-full py-3 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full py-3 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Joining...' : 'Join Organization'}
             </button>
@@ -336,7 +336,7 @@ export default function AuthScreen({ onAuthComplete }: AuthScreenProps) {
         )}
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-gray-400">
+        <div className="mt-8 text-center text-xs text-muted-foreground">
           <p>By continuing, you agree to our Terms of Service</p>
         </div>
       </div>

@@ -44,7 +44,7 @@ export function WeeklyTrendCard({
 
   // Get bar color based on score
   const getBarColor = (score: number | null) => {
-    if (score === null) return 'bg-gray-200';
+    if (score === null) return 'bg-muted';
     if (score >= 80) return 'bg-green-500';
     if (score >= 60) return 'bg-yellow-500';
     if (score >= 40) return 'bg-orange-500';
@@ -59,12 +59,12 @@ export function WeeklyTrendCard({
 
   return (
     <div className={cn(
-      'bg-white rounded-xl border border-gray-200 p-4',
+      'bg-card rounded-xl border border-border p-4',
       className
     )}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">This Week</h3>
+        <h3 className="font-semibold text-foreground">This Week</h3>
         {trend !== null && (
           <div className={cn(
             'flex items-center gap-1 text-sm font-medium',
@@ -88,13 +88,13 @@ export function WeeklyTrendCard({
       {thisWeekAverage !== null && (
         <div className="mb-4">
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-gray-900">
+            <span className="text-2xl font-bold text-foreground">
               {thisWeekAverage}
             </span>
-            <span className="text-gray-400 text-sm">avg score</span>
+            <span className="text-muted-foreground/70 text-sm">avg score</span>
           </div>
           {lastWeekAverage !== undefined && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               Last week: {lastWeekAverage}
             </p>
           )}
@@ -111,20 +111,20 @@ export function WeeklyTrendCard({
                 className={cn(
                   'w-full max-w-8 rounded-t transition-all duration-300',
                   getBarColor(day.score),
-                  day.isToday && 'ring-2 ring-black ring-offset-1'
+                  day.isToday && 'ring-2 ring-foreground ring-offset-1'
                 )}
                 style={{ height: `${getBarHeight(day.score)}%` }}
                 title={day.score !== null ? `${day.score}/100` : 'No data'}
               />
             </div>
             {/* Score label */}
-            <p className="text-xs font-medium text-gray-600 mt-1">
+            <p className="text-xs font-medium text-muted-foreground mt-1">
               {day.score !== null ? day.score : '-'}
             </p>
             {/* Day label */}
             <p className={cn(
               'text-xs mt-0.5',
-              day.isToday ? 'text-black font-semibold' : 'text-gray-400'
+              day.isToday ? 'text-foreground font-semibold' : 'text-muted-foreground/70'
             )}>
               {day.label}
             </p>
@@ -134,7 +134,7 @@ export function WeeklyTrendCard({
 
       {/* No data message */}
       {daysWithData.length === 0 && (
-        <p className="text-center text-sm text-gray-500 mt-2">
+        <p className="text-center text-sm text-muted-foreground mt-2">
           Start monitoring to see your weekly trend
         </p>
       )}

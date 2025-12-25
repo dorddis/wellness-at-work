@@ -38,9 +38,9 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
-          className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6"
+          className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-6"
         >
-          <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-10 h-10 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -54,7 +54,7 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
-          className="text-2xl font-bold text-gray-900 mb-2"
+          className="text-2xl font-bold text-foreground mb-2"
         >
           Your Privacy is Protected
         </motion.h2>
@@ -63,7 +63,7 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="text-gray-600 mb-8 max-w-md"
+          className="text-muted-foreground mb-8 max-w-md"
         >
           We take your privacy seriously. Here's how we keep your data safe:
         </motion.p>
@@ -76,14 +76,14 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 + index * 0.15, duration: 0.4 }}
-              className="flex items-start gap-4 text-left bg-gray-50 rounded-lg p-4"
+              className="flex items-start gap-4 text-left bg-muted/50 rounded-lg p-4"
             >
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 bg-background rounded-full flex items-center justify-center flex-shrink-0">
                 <PrivacyIcon type={point.icon} />
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">{point.title}</h3>
-                <p className="text-sm text-gray-600">{point.description}</p>
+                <h3 className="font-medium text-foreground">{point.title}</h3>
+                <p className="text-sm text-muted-foreground">{point.description}</p>
               </div>
             </motion.div>
           ))}
@@ -94,13 +94,13 @@ export function PrivacyStep({ onNext, onBack }: PrivacyStepProps) {
       <div className="flex gap-3 mt-6">
         <button
           onClick={onBack}
-          className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          className="flex-1 py-3 px-6 bg-secondary text-foreground/80 rounded-lg font-medium hover:bg-muted transition-colors"
         >
           Back
         </button>
         <button
           onClick={onNext}
-          className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
+          className="flex-1 py-3 px-6 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 transition-colors"
         >
           I Understand
         </button>
@@ -113,19 +113,19 @@ function PrivacyIcon({ type }: { type: string }) {
   switch (type) {
     case 'device':
       return (
-        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
       );
     case 'no-camera':
       return (
-        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
         </svg>
       );
     case 'shield':
       return (
-        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
       );

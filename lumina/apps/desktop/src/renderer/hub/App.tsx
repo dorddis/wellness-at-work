@@ -122,7 +122,7 @@ export default function App() {
   const alerts = useAlertStore((s) => s.alerts);
   const { addAlert, dismissAlert } = useAlertStore.getState();
 
-  // Onboarding state + cloud sync control
+  // Onboarding state + cloud sync control + theme
   const {
     hasCompletedOnboarding,
     setOnboardingComplete,
@@ -134,6 +134,7 @@ export default function App() {
     hasCompletedProductTour,
     setProductTourComplete,
     cloudSyncEnabled: appCloudSyncEnabled, // Used for auto-sync control after auth
+    theme, // For dark mode
   } = useSettingsStore();
 
   // Camera state
@@ -321,6 +322,22 @@ export default function App() {
     }
     checkMaximized();
   }, []);
+
+  // Apply theme (dark mode)
+  useEffect(() => {
+    const applyTheme = () => {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+      document.documentElement.classList.toggle('dark', isDark);
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes (for 'system' option)
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.addEventListener('change', applyTheme);
+    return () => mediaQuery.removeEventListener('change', applyTheme);
+  }, [theme]);
 
   // Window control handlers
   const handleMinimize = () => window.lumina?.window.minimize();

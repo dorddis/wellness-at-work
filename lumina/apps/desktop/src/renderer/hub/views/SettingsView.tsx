@@ -148,16 +148,16 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
     <div className="p-6">
       <div className="space-y-6">
         {/* Detection Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Detection Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Detection Sensitivity</p>
-                <p className="text-sm text-gray-500">Blink detection uses adaptive multi-stage algorithm with auto-calibration</p>
+                <p className="text-sm text-muted-foreground">Blink detection uses adaptive multi-stage algorithm with auto-calibration</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="bg-gray-100 px-3 py-1 rounded text-sm">
+                <span className="bg-secondary px-3 py-1 rounded text-sm">
                   Auto
                 </span>
               </div>
@@ -165,7 +165,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Alert Cooldown</p>
-                <p className="text-sm text-gray-500">Minutes between repeated alerts</p>
+                <p className="text-sm text-muted-foreground">Minutes between repeated alerts</p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -177,7 +177,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   onChange={(e) => setAlertCooldownMinutes(parseInt(e.target.value))}
                   className="w-24"
                 />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                <span className="bg-secondary px-3 py-1 rounded font-mono w-16 text-center">
                   {alertCooldownMinutes}m
                 </span>
               </div>
@@ -186,22 +186,22 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Notifications */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Notifications</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Desktop Notifications</p>
-                <p className="text-sm text-gray-500">Show alerts and reminders</p>
+                <p className="text-sm text-muted-foreground">Show alerts and reminders</p>
               </div>
               <button
                 onClick={() => setNotifications(!notifications)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  notifications ? 'bg-gray-800' : 'bg-gray-300'
+                  notifications ? 'bg-foreground' : 'bg-muted'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  className={`w-5 h-5 bg-background rounded-full shadow transition-transform ${
                     notifications ? 'translate-x-6' : 'translate-x-0.5'
                   }`}
                 />
@@ -210,16 +210,16 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Floating Status</p>
-                <p className="text-sm text-gray-500">Show small status window</p>
+                <p className="text-sm text-muted-foreground">Show small status window</p>
               </div>
               <button
                 onClick={() => setShowFloatingStatus(!showFloatingStatus)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  showFloatingStatus ? 'bg-gray-800' : 'bg-gray-300'
+                  showFloatingStatus ? 'bg-foreground' : 'bg-muted'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  className={`w-5 h-5 bg-background rounded-full shadow transition-transform ${
                     showFloatingStatus ? 'translate-x-6' : 'translate-x-0.5'
                   }`}
                 />
@@ -229,13 +229,13 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Sound Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Sound Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Notification Sound</p>
-                <p className="text-sm text-gray-500">Sound played for break reminders</p>
+                <p className="text-sm text-muted-foreground">Sound played for break reminders</p>
               </div>
               <select
                 value={soundPreference}
@@ -252,7 +252,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Sound Volume</p>
-                <p className="text-sm text-gray-500">Volume level for notifications</p>
+                <p className="text-sm text-muted-foreground">Volume level for notifications</p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -264,7 +264,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   onChange={(e) => setSoundVolume(parseInt(e.target.value))}
                   className="w-24"
                 />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                <span className="bg-secondary px-3 py-1 rounded font-mono w-16 text-center">
                   {soundVolume}%
                 </span>
               </div>
@@ -273,13 +273,13 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Break Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Break Settings</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Break Interval</p>
-                <p className="text-sm text-gray-500">Time between breaks (minutes)</p>
+                <p className="text-sm text-muted-foreground">Time between breaks (minutes)</p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -291,7 +291,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   onChange={(e) => setBreakSettings({ breakIntervalMinutes: parseInt(e.target.value) })}
                   className="w-24"
                 />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                <span className="bg-secondary px-3 py-1 rounded font-mono w-16 text-center">
                   {breakIntervalMinutes}m
                 </span>
               </div>
@@ -299,7 +299,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Break Duration</p>
-                <p className="text-sm text-gray-500">How long each break lasts (seconds)</p>
+                <p className="text-sm text-muted-foreground">How long each break lasts (seconds)</p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -311,7 +311,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   onChange={(e) => setBreakSettings({ breakDurationSeconds: parseInt(e.target.value) })}
                   className="w-24"
                 />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                <span className="bg-secondary px-3 py-1 rounded font-mono w-16 text-center">
                   {breakDurationSeconds}s
                 </span>
               </div>
@@ -319,7 +319,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Max Postpones</p>
-                <p className="text-sm text-gray-500">How many times you can delay a break</p>
+                <p className="text-sm text-muted-foreground">How many times you can delay a break</p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -331,7 +331,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   onChange={(e) => setBreakSettings({ maxPostpones: parseInt(e.target.value) })}
                   className="w-24"
                 />
-                <span className="bg-gray-100 px-3 py-1 rounded font-mono w-16 text-center">
+                <span className="bg-secondary px-3 py-1 rounded font-mono w-16 text-center">
                   {maxPostpones}x
                 </span>
               </div>
@@ -340,22 +340,22 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Posture Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Posture Monitoring</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Enable Posture Monitoring</p>
-                <p className="text-sm text-gray-500">Track your sitting posture</p>
+                <p className="text-sm text-muted-foreground">Track your sitting posture</p>
               </div>
               <button
                 onClick={() => setPostureMonitoringEnabled(!postureMonitoringEnabled)}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  postureMonitoringEnabled ? 'bg-gray-800' : 'bg-gray-300'
+                  postureMonitoringEnabled ? 'bg-foreground' : 'bg-muted'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  className={`w-5 h-5 bg-background rounded-full shadow transition-transform ${
                     postureMonitoringEnabled ? 'translate-x-6' : 'translate-x-0.5'
                   }`}
                 />
@@ -365,7 +365,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Posture Sensitivity</p>
-                  <p className="text-sm text-gray-500">How strict the posture detection is</p>
+                  <p className="text-sm text-muted-foreground">How strict the posture detection is</p>
                 </div>
                 <select
                   value={postureSensitivity}
@@ -382,13 +382,13 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Appearance */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Appearance</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Theme</p>
-                <p className="text-sm text-gray-500">Color scheme for the app</p>
+                <p className="text-sm text-muted-foreground">Color scheme for the app</p>
               </div>
               <select
                 value={theme}
@@ -404,14 +404,14 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Privacy & Sync Settings */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Privacy & Cloud Sync</h3>
           <div className="space-y-4">
             {/* Cloud Sync Toggle - GDPR Local-Only Mode */}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Cloud Sync</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {cloudSyncEnabled
                     ? 'Sync wellness data to cloud for dashboard access'
                     : 'Local-only mode: data stays on this device'}
@@ -429,11 +429,11 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   }
                 }}
                 className={`w-12 h-6 rounded-full transition-colors ${
-                  cloudSyncEnabled ? 'bg-gray-800' : 'bg-gray-300'
+                  cloudSyncEnabled ? 'bg-foreground' : 'bg-muted'
                 }`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  className={`w-5 h-5 bg-background rounded-full shadow transition-transform ${
                     cloudSyncEnabled ? 'translate-x-6' : 'translate-x-0.5'
                   }`}
                 />
@@ -442,8 +442,8 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
 
             {/* Privacy notice when disabled */}
             {!cloudSyncEnabled && (
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                <p className="text-sm text-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   <strong>Local-Only Mode Active</strong><br />
                   Your wellness data is stored only on this device. No data is sent to our servers.
                   You can re-enable sync anytime to access your data on the web dashboard.
@@ -457,22 +457,22 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Sync Status</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       {syncStatus?.isConfigured ? 'Connected to cloud' : 'Not configured'}
                     </p>
                   </div>
-                  <div className={`w-3 h-3 rounded-full ${syncStatus?.isConfigured ? 'bg-green-500' : 'bg-gray-400'}`} />
+                  <div className={`w-3 h-3 rounded-full ${syncStatus?.isConfigured ? 'bg-green-500' : 'bg-muted-foreground/50'}`} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">Pending Records</p>
-                    <p className="text-sm text-gray-500">Data waiting to sync</p>
+                    <p className="text-sm text-muted-foreground">Data waiting to sync</p>
                   </div>
-                  <span className="bg-gray-100 px-3 py-1 rounded">{syncStatus?.pendingCount ?? 0}</span>
+                  <span className="bg-secondary px-3 py-1 rounded">{syncStatus?.pendingCount ?? 0}</span>
                 </div>
                 <button
                   onClick={handleManualSync}
-                  className="w-full py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                  className="w-full py-2 bg-secondary text-foreground/80 rounded-lg hover:bg-muted"
                 >
                   Sync Now
                 </button>
@@ -482,24 +482,24 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Account */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Account</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">{user.email}</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {user.organization?.name ?? 'No organization'}
                   {user.organization?.role && ` - ${user.organization.role}`}
                 </p>
               </div>
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium">
+              <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-medium">
                 {user.email[0].toUpperCase()}
               </div>
             </div>
             <button
               onClick={onSignOut}
-              className="w-full py-2 border border-red-200 text-red-600 rounded-lg hover:bg-red-50"
+              className="w-full py-2 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
             >
               Sign Out
             </button>
@@ -507,9 +507,9 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* About */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">About Lumina</h3>
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <p>Version: 0.1.0</p>
             <p>Built with Electron + MediaPipe</p>
             <p>All blink detection happens locally on your device.</p>
@@ -517,18 +517,18 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Data Management */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-card rounded-xl border border-border p-6">
           <h3 className="font-semibold mb-4">Data Management</h3>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Export My Data</p>
-                <p className="text-sm text-gray-500">Download all your wellness data as JSON</p>
+                <p className="text-sm text-muted-foreground">Download all your wellness data as JSON</p>
               </div>
               <button
                 onClick={handleExportData}
                 disabled={isExporting}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                className="px-4 py-2 bg-secondary text-foreground/80 rounded-lg hover:bg-muted disabled:opacity-50"
               >
                 {isExporting ? 'Exporting...' : 'Export'}
               </button>
@@ -536,11 +536,11 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Clear Local Data</p>
-                <p className="text-sm text-gray-500">Reset all local storage (database, settings, streaks)</p>
+                <p className="text-sm text-muted-foreground">Reset all local storage (database, settings, streaks)</p>
               </div>
               <button
                 onClick={() => setShowClearDataModal(true)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="px-4 py-2 bg-secondary text-foreground/80 rounded-lg hover:bg-muted"
               >
                 Clear Data
               </button>
@@ -549,12 +549,12 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
         </div>
 
         {/* Danger Zone */}
-        <div className="bg-white rounded-xl border-2 border-red-200 p-6">
-          <h3 className="font-semibold mb-4 text-red-800">Danger Zone</h3>
+        <div className="bg-card rounded-xl border-2 border-red-200 dark:border-red-900 p-6">
+          <h3 className="font-semibold mb-4 text-red-800 dark:text-red-400">Danger Zone</h3>
           {deletionScheduled && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="font-medium text-amber-800">Account Deletion Scheduled</p>
-              <p className="text-sm text-amber-700 mt-1">
+            <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg">
+              <p className="font-medium text-amber-800 dark:text-amber-200">Account Deletion Scheduled</p>
+              <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 Your account is scheduled for deletion on{' '}
                 {new Date(deletionScheduled).toLocaleDateString('en-US', {
                   weekday: 'long',
@@ -568,8 +568,8 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
           )}
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-red-800">Delete Account</p>
-              <p className="text-sm text-gray-500">Permanently delete your account (30-day grace period)</p>
+              <p className="font-medium text-red-800 dark:text-red-400">Delete Account</p>
+              <p className="text-sm text-muted-foreground">Permanently delete your account (30-day grace period)</p>
             </div>
             <button
               onClick={() => setShowDeleteAccountModal(true)}
@@ -585,21 +585,21 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
       {/* Clear Data Confirmation Modal */}
       {showClearDataModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+          <div className="bg-card rounded-xl p-6 max-w-md w-full mx-4 shadow-xl border border-border">
             <h3 className="text-lg font-semibold mb-4">Clear All Local Data?</h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               This will permanently delete:
             </p>
-            <ul className="list-disc list-inside text-sm text-gray-600 mb-4 space-y-1">
+            <ul className="list-disc list-inside text-sm text-muted-foreground mb-4 space-y-1">
               <li>All wellness data stored on this device</li>
               <li>Streak progress and achievements</li>
               <li>Local settings and preferences</li>
             </ul>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Cloud-synced data will not be affected.
             </p>
             <div className="mb-4">
-              <label className="text-sm font-medium text-gray-700 block mb-1">
+              <label className="text-sm font-medium block mb-1">
                 Type <span className="font-mono font-bold">DELETE</span> to confirm
               </label>
               <input
@@ -607,7 +607,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                 value={clearDataConfirmText}
                 onChange={(e) => setClearDataConfirmText(e.target.value)}
                 placeholder="Type DELETE"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full px-3 py-2 border border-border bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-foreground/20"
               />
             </div>
             <div className="flex gap-3 justify-end">
@@ -616,14 +616,14 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   setShowClearDataModal(false);
                   setClearDataConfirmText('');
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-border rounded-lg hover:bg-muted"
               >
                 Cancel
               </button>
               <button
                 onClick={handleClearLocalData}
                 disabled={isClearingData || clearDataConfirmText !== 'DELETE'}
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                className="px-4 py-2 bg-foreground text-background rounded-lg hover:bg-foreground/90 disabled:opacity-50"
               >
                 {isClearingData ? 'Clearing...' : 'Clear All Data'}
               </button>
@@ -635,26 +635,26 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
       {/* Delete Account Confirmation Modal */}
       {showDeleteAccountModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
+          <div className="bg-card rounded-xl p-6 max-w-md w-full mx-4 shadow-xl border border-border">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-full">
-                <Icons.AlertTriangle className="text-red-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-950/50 rounded-full">
+                <Icons.AlertTriangle className="text-red-600 dark:text-red-400" />
               </div>
               <h3 className="text-lg font-semibold">Delete Account?</h3>
             </div>
-            <p className="text-gray-600 mb-4">
+            <p className="text-muted-foreground mb-4">
               Are you sure you want to delete your account? This will:
             </p>
-            <ul className="list-disc list-inside text-sm text-gray-600 mb-4 space-y-1">
+            <ul className="list-disc list-inside text-sm text-muted-foreground mb-4 space-y-1">
               <li>Remove all your wellness data</li>
               <li>Cancel your organization membership</li>
               <li>Delete your account after 30 days</li>
             </ul>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               You can cancel this request within 30 days by contacting support.
             </p>
             <div className="mb-4">
-              <label className="text-sm font-medium text-gray-700 block mb-1">
+              <label className="text-sm font-medium block mb-1">
                 Type <span className="font-mono font-bold">{orgName || 'DELETE'}</span> to confirm
               </label>
               <input
@@ -662,12 +662,12 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 placeholder={`Type ${orgName || 'DELETE'}`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-border bg-background rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500/50"
               />
             </div>
             {deleteError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{deleteError}</p>
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-lg">
+                <p className="text-sm text-red-700 dark:text-red-300">{deleteError}</p>
               </div>
             )}
             <div className="flex gap-3 justify-end">
@@ -678,7 +678,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   setDeleteError(null);
                 }}
                 disabled={isDeleting}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-border rounded-lg hover:bg-muted"
               >
                 Cancel
               </button>

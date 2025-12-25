@@ -2,6 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { AlertToast, type AlertSeverity } from '@lumina/ui';
 import { AnimatePresence } from 'motion/react';
 
+// Read theme from localStorage (synced with settingsStore in hub)
+function getThemeFromStorage(): 'light' | 'dark' | 'system' {
+  try {
+    const stored = localStorage.getItem('lumina-settings');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.state?.theme || 'system';
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return 'system';
+}
+
+// Apply theme to document
+function applyTheme(theme: 'light' | 'dark' | 'system') {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+  document.documentElement.classList.toggle('dark', isDark);
+}
+
 interface AlertData {
   id: string;
   type?:
@@ -21,6 +42,31 @@ interface AlertData {
 
 export default function OverlayApp() {
   const [alert, setAlert] = useState<AlertData | null>(null);
+
+  // Apply theme on mount and when storage changes
+  useEffect(() => {
+    // Initial theme application
+    applyTheme(getThemeFromStorage());
+
+    // Listen for storage changes (when theme is changed in hub)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'lumina-settings') {
+        applyTheme(getThemeFromStorage());
+      }
+    };
+
+    // Listen for system preference changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => applyTheme(getThemeFromStorage());
+
+    window.addEventListener('storage', handleStorageChange);
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
+  }, []);
 
   // Listen for alerts from main process
   useEffect(() => {

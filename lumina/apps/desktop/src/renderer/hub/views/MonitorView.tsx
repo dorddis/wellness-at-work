@@ -168,8 +168,8 @@ export function MonitorView({
             onClick={onToggleDetection}
             className={`w-full mt-4 py-3 rounded-lg font-medium transition-colors ${
               isDetecting
-                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                : 'bg-gray-800 text-white hover:bg-gray-700'
+                ? 'bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-950'
+                : 'bg-foreground text-background hover:bg-foreground/90'
             }`}
           >
             {isDetecting ? 'Stop Detection' : 'Start Detection'}
@@ -178,17 +178,17 @@ export function MonitorView({
           {/* Reset button - troubleshooting for video issues */}
           <button
             onClick={onReset}
-            className="w-full mt-2 py-2 rounded-lg text-sm font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors"
+            className="w-full mt-2 py-2 rounded-lg text-sm font-medium bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-950 transition-colors"
           >
             Video not showing correctly? Click to reset
           </button>
 
           {/* EAR Waveform - Real-time eye signal visualization */}
           {/* Data now persists in Zustand store across navigation */}
-          <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+          <div className="mt-4 bg-card rounded-xl border border-border p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-700">Eye Signal (EAR)</h3>
-              <span className="text-xs text-gray-400">Eye Aspect Ratio over time</span>
+              <h3 className="text-sm font-medium text-foreground/80">Eye Signal (EAR)</h3>
+              <span className="text-xs text-muted-foreground">Eye Aspect Ratio over time</span>
             </div>
             <EarWaveform
               windowSize={150}
@@ -200,10 +200,10 @@ export function MonitorView({
           </div>
 
           {/* Slope Waveform - Rate of change visualization */}
-          <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+          <div className="mt-4 bg-card rounded-xl border border-border p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-700">Eye Movement (Slope)</h3>
-              <span className="text-xs text-gray-400">Rate of change - dips show blinks</span>
+              <h3 className="text-sm font-medium text-foreground/80">Eye Movement (Slope)</h3>
+              <span className="text-xs text-muted-foreground">Rate of change - dips show blinks</span>
             </div>
             <EarWaveform
               windowSize={150}
@@ -218,35 +218,35 @@ export function MonitorView({
 
         {/* Stats panel */}
         <div className="space-y-4">
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm text-gray-500 mb-1">Wellness Score</p>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground mb-1">Wellness Score</p>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold">{wellnessScore}</span>
-              <span className="text-gray-400">/100</span>
+              <span className="text-muted-foreground">/100</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm text-gray-500 mb-1">Blink Rate</p>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground mb-1">Blink Rate</p>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold">{blinkRate.toFixed(1)}</span>
-              <span className="text-gray-400">/min</span>
+              <span className="text-muted-foreground">/min</span>
             </div>
             <p className={`text-sm mt-1 ${blinkRate >= 15 ? 'text-green-600' : 'text-yellow-600'}`}>
               {blinkRate >= 15 ? 'Great job!' : 'Eyes working hard'}
             </p>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm text-gray-500 mb-1">Status</p>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground mb-1">Status</p>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${faceDetected ? 'bg-green-500' : 'bg-yellow-500'}`} />
               <span className="font-medium">{faceDetected ? 'Face Detected' : 'No Face'}</span>
             </div>
           </div>
 
-          <div className="bg-gray-100 rounded-xl p-4 text-sm text-gray-600">
-            <p className="font-medium mb-2">Detection Info</p>
+          <div className="bg-secondary rounded-xl p-4 text-sm text-muted-foreground">
+            <p className="font-medium mb-2 text-foreground">Detection Info</p>
             <p>Algorithm: Multi-stage adaptive</p>
             <p>Frame Rate: 30 FPS</p>
             <p>Processing: GPU</p>

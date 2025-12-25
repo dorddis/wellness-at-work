@@ -214,7 +214,7 @@ export function TourTooltip() {
           animate={{ opacity: 1, scale: 1, x, y }}
           exit={{ opacity: 0, scale: 0.95, x, y }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="w-80 bg-white rounded-xl border border-gray-200 shadow-xl pointer-events-auto"
+          className="w-80 bg-card rounded-xl border border-border shadow-xl pointer-events-auto"
           role="dialog"
           aria-labelledby="tour-title"
           aria-describedby="tour-description"
@@ -223,29 +223,29 @@ export function TourTooltip() {
           <FloatingArrow
             ref={arrowRef}
             context={context}
-            className="fill-white [&>path:first-of-type]:stroke-gray-200"
+            className="fill-card [&>path:first-of-type]:stroke-border"
             width={16}
             height={8}
           />
 
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              <span className="text-xs font-medium text-muted-foreground/70 uppercase tracking-wide">
                 Step {stepNumber} of {totalSteps}
               </span>
               <button
                 onClick={tour.skip}
-                className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
               >
                 Skip tour
               </button>
             </div>
 
-            <h3 id="tour-title" className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 id="tour-title" className="text-lg font-semibold text-foreground mb-2">
               {currentStep.title}
             </h3>
 
-            <p id="tour-description" className="text-sm text-gray-500 mb-5">
+            <p id="tour-description" className="text-sm text-muted-foreground mb-5">
               {currentStep.description}
             </p>
 
@@ -254,7 +254,7 @@ export function TourTooltip() {
                 <div
                   key={i}
                   className={`w-2 h-2 rounded-full transition-colors ${
-                    i === state.currentStepIndex ? 'bg-gray-900' : 'bg-gray-200'
+                    i === state.currentStepIndex ? 'bg-foreground' : 'bg-border'
                   }`}
                 />
               ))}
@@ -264,14 +264,14 @@ export function TourTooltip() {
               {!isFirstStep && (
                 <button
                   onClick={tour.prev}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-muted-foreground bg-secondary hover:bg-muted rounded-lg transition-colors"
                 >
                   Back
                 </button>
               )}
               <button
                 onClick={tour.next}
-                className={`${isFirstStep ? 'flex-1' : 'flex-[2]'} px-4 py-2.5 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg transition-colors`}
+                className={`${isFirstStep ? 'flex-1' : 'flex-[2]'} px-4 py-2.5 text-sm font-medium text-background bg-foreground hover:bg-foreground/90 rounded-lg transition-colors`}
               >
                 {isLastStep ? 'Done' : 'Next'}
               </button>

@@ -110,7 +110,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-2xl font-bold text-gray-900 mb-2"
+          className="text-2xl font-bold text-foreground mb-2"
         >
           Select Your Camera
         </motion.h2>
@@ -119,7 +119,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="text-gray-600 mb-6 text-center max-w-md"
+          className="text-muted-foreground mb-6 text-center max-w-md"
         >
           Choose the camera you want to use for wellness tracking.
           All processing happens locally on your device.
@@ -175,13 +175,13 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
             transition={{ delay: 0.3 }}
             className="w-full max-w-md mb-4"
           >
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground/80 mb-2">
               Camera
             </label>
             <select
               value={selectedCameraId}
               onChange={(e) => setSelectedCameraId(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-100 border-0 rounded-lg text-gray-900 focus:ring-2 focus:ring-black focus:outline-none"
+              className="w-full px-4 py-3 bg-secondary border-0 rounded-lg text-foreground focus:ring-2 focus:ring-foreground focus:outline-none"
             >
               {cameras.map((camera) => (
                 <option key={camera.deviceId} value={camera.deviceId}>
@@ -198,7 +198,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-sm text-gray-500 mb-4"
+            className="text-sm text-muted-foreground mb-4"
           >
             Using: {cameras[0].label}
           </motion.p>
@@ -209,7 +209,7 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="flex gap-6 text-sm text-gray-500"
+          className="flex gap-6 text-sm text-muted-foreground"
         >
           <span className="flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,14 +237,14 @@ export function CameraStep({ onNext, onBack, hasPermission }: CameraStepProps) {
       <div className="flex gap-3 mt-6">
         <button
           onClick={onBack}
-          className="flex-1 py-3 px-6 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          className="flex-1 py-3 px-6 bg-secondary text-foreground/80 rounded-lg font-medium hover:bg-muted transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
           disabled={!permissionGranted || cameras.length === 0}
-          className="flex-1 py-3 px-6 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-3 px-6 bg-foreground text-background rounded-lg font-medium hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue
         </button>

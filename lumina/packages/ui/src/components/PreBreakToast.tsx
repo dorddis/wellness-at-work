@@ -65,7 +65,7 @@ export function PreBreakToast({
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       className={cn(
         'fixed top-4 right-4 z-50',
-        'bg-white rounded-xl shadow-lg border border-gray-200',
+        'bg-card rounded-xl shadow-lg border border-border',
         'p-4 min-w-[280px]',
         className
       )}
@@ -93,17 +93,17 @@ export function PreBreakToast({
         </div>
 
         <div>
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-foreground">
             {breakLabel} in {countdown} seconds
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Time to rest your eyes
           </p>
         </div>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-gray-100 rounded-full overflow-hidden mb-3">
+      <div className="h-1 bg-secondary rounded-full overflow-hidden mb-3">
         <motion.div
           className="h-full bg-blue-500 rounded-full"
           initial={{ width: '100%' }}
@@ -116,7 +116,7 @@ export function PreBreakToast({
       <div className="flex gap-2">
         <button
           onClick={onStartNow}
-          className="flex-1 py-2 px-3 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+          className="flex-1 py-2 px-3 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-foreground/90 transition-colors"
         >
           Start Now
         </button>
@@ -126,8 +126,8 @@ export function PreBreakToast({
           className={cn(
             'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors',
             postponesRemaining > 0
-              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+              ? 'bg-secondary text-foreground/80 hover:bg-muted'
+              : 'bg-muted/50 text-muted-foreground cursor-not-allowed'
           )}
         >
           Postpone {postponesRemaining > 0 && `(${postponesRemaining})`}
@@ -136,7 +136,7 @@ export function PreBreakToast({
 
       {/* Postpone limit warning */}
       {postponesRemaining === 0 && (
-        <p className="text-xs text-gray-500 mt-2 text-center">
+        <p className="text-xs text-muted-foreground mt-2 text-center">
           Maximum postpones reached for this break
         </p>
       )}

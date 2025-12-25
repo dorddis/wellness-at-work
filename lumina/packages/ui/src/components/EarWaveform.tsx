@@ -115,7 +115,7 @@ export const EarWaveform = memo(function EarWaveform({
                     : 'bg-yellow-500'
               )}
             />
-            <span className="text-xs text-gray-500 uppercase tracking-wide">
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">
               {currentPhase || 'waiting'}
             </span>
           </div>
@@ -124,7 +124,7 @@ export const EarWaveform = memo(function EarWaveform({
           </span>
         </div>
         {showBlinkMarkers && blinkPositions.length > 0 && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-muted-foreground/70">
             Last blink: {Math.round((Date.now() - blinkPositions[blinkPositions.length - 1]) / 1000)}s ago
           </span>
         )}
@@ -191,7 +191,7 @@ export const EarWaveform = memo(function EarWaveform({
           </ResponsiveContainer>
         ) : (
           <div
-            className="flex items-center justify-center text-gray-500 text-sm"
+            className="flex items-center justify-center text-gray-400 text-sm"
             style={{ height }}
           >
             <span className="animate-pulse">Waiting for data...</span>
@@ -205,7 +205,7 @@ export const EarWaveform = memo(function EarWaveform({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-400">
+      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-muted-foreground/70">
         <span className="flex items-center gap-1">
           <span className="w-3 h-0.5 bg-green-500 rounded" /> EAR Signal
         </span>
