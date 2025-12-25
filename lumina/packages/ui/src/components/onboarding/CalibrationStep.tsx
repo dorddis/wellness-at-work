@@ -9,8 +9,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
+// Desktop-only - uses @mediapipe/tasks-vision
+import { FaceLandmarkerManager } from '@lumina/core/detection/faceLandmarker';
 import {
-  FaceLandmarkerManager,
   EARCalibrator,
   EAR_CALIBRATION,
   CALIBRATION_FLAGS,

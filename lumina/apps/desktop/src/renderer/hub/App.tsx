@@ -26,15 +26,15 @@ import { OnboardingFlow } from '@lumina/ui/components/onboarding';
 // Desktop-only hook - imports @lumina/core which has @mediapipe/tasks-vision
 // Must import directly to avoid breaking web builds
 import { useMeetingModeStateMachine } from '@lumina/ui/hooks/useMeetingModeStateMachine';
+// Desktop-only - uses @mediapipe/tasks-vision
+import { FaceLandmarkerManager, type FrameResult } from '@lumina/core/detection/faceLandmarker';
 import {
-  FaceLandmarkerManager,
   AlertEngine,
   BaselineCalibrator,
   calculateCropRegion,
   MeetingModePhase,
   type WellnessMetrics,
   type Baseline,
-  type FrameResult,
   type PostureResult,
   type YawnResult,
   type DrowsinessResult,

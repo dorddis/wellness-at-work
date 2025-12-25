@@ -6,7 +6,8 @@
 // Detection
 export * from './detection/constants';
 export * from './detection/blink';
-export * from './detection/faceLandmarker';
+// faceLandmarker - DESKTOP ONLY (uses @mediapipe/tasks-vision)
+// Desktop app imports directly: import { FaceLandmarkerManager } from '@lumina/core/detection/faceLandmarker';
 export * from './detection/kalman';
 export * from './detection/spike-detector';
 export * from './detection/eye-quality';
