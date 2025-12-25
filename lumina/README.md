@@ -132,3 +132,4 @@ EAR = (|p2 - p6| + |p3 - p5|) / (2 * |p1 - p4|)
 ## License
 
 Proprietary - All rights reserved.
+
