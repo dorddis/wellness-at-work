@@ -20,10 +20,10 @@ import {
   type DayData,
   type CaptureRegion,
   type SelectOption,
-  // Desktop-only hooks (depend on @mediapipe/tasks-vision)
-  // Re-exported from hooks file for desktop use only
-  useMeetingModeStateMachine,
 } from '@lumina/ui';
+// Desktop-only hook - imports @lumina/core which has @mediapipe/tasks-vision
+// Must import directly to avoid breaking web builds
+import { useMeetingModeStateMachine } from '@lumina/ui/hooks/useMeetingModeStateMachine';
 import {
   FaceLandmarkerManager,
   AlertEngine,

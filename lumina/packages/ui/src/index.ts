@@ -15,10 +15,9 @@ export * from './stores';
 // Hooks (web-safe only)
 export * from './hooks';
 
-// Desktop-only hooks - ONLY import these in Electron apps!
-// These depend on @mediapipe/tasks-vision which is not available in web builds.
-// The web build will fail if any code path tries to use these.
-export * from './hooks/useMeetingModeStateMachine';
+// NOTE: useMeetingModeStateMachine is NOT exported here!
+// It depends on @mediapipe/tasks-vision which breaks web builds.
+// Desktop app imports directly: import { useMeetingModeStateMachine } from '@lumina/ui/hooks/useMeetingModeStateMachine';
 
 // Constants
 export * from './constants/privacy';
