@@ -38,7 +38,7 @@ import {
 } from '@lumina/core';
 import luminaLogo from './assets/lumina-logo.png';
 import AuthScreen from './AuthScreen';
-import { AppLoader, CameraLoader, HistorySkeleton, Icons, StatCard, type CameraStatus } from './components';
+import { AppLoader, CameraLoader, HistorySkeleton, Icons, StatCard, MeetingModeNotification, type CameraStatus } from './components';
 import { MeetingModeCalibration, MeetingModeStatus, type CalibrationResult } from './components/MeetingModeCalibration';
 import { useAuth, useBreakReminder } from './hooks';
 import {
@@ -213,6 +213,15 @@ export default function App() {
     scaleFactor: number;
   } | null>(null);
 
+  // Meeting mode notification state (shown before calibration)
+  const [showMeetingNotification, setShowMeetingNotification] = useState(false);
+  const [meetingNotificationData, setMeetingNotificationData] = useState<{
+    title: string;
+    message: string;
+    appName: string;
+    actions: Array<{ label: string; action: string }>;
+  } | null>(null);
+
   // ==========================================================================
   // MEETING MODE STATE MACHINE (NEW)
   // This hook manages all meeting mode transitions. Currently running alongside
@@ -224,6 +233,7 @@ export default function App() {
     send: sendMeetingEvent,
     isCapturing: isMeetingCapturing,
     isWaitingForCalibration,
+    isStarting: isMeetingStarting,
     isStale: isMeetingStale,
     stateDescription: meetingStateDescription,
     reset: resetMeetingStateMachine,
@@ -241,27 +251,49 @@ export default function App() {
       setShowCalibrationUI(false);
     },
     onShowNotification: (title, message, actions, appName) => {
-      // When state machine wants to show a notification about meeting detection,
-      // automatically trigger calibration UI if the action is CALIBRATION_STARTED
-      const calibrationAction = actions?.find(a => a.action === 'CALIBRATION_STARTED');
-      const detectedAppName = appName || meetingContext.detectedApp;
-      if (calibrationAction && detectedAppName) {
-        // Directly show calibration UI instead of showing a notification
-        setCalibrationAppName(detectedAppName);
-        setShowCalibrationUI(true);
-        setMeetingModeEnabled(true);
-        sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: detectedAppName });
-      } else {
-        // Fallback: show OS notification when conditions not met
-        NotificationService.show({
-          title,
-          body: message,
-          silent: false,
-        });
-      }
+      // Show in-app notification popup instead of jumping directly to calibration
+      // This gives user control and time for meeting app to initialize camera
+      const detectedAppName = appName || meetingContext.detectedApp || 'Meeting';
+      console.log('[MeetingMode] Showing notification:', title, 'for app:', detectedAppName);
+
+      setMeetingNotificationData({
+        title,
+        message,
+        appName: detectedAppName,
+        actions: actions || [],
+      });
+      setShowMeetingNotification(true);
     },
     debug: false, // Set to true for transition logging
   });
+
+  // Handle meeting mode notification actions
+  const handleMeetingNotificationAction = useCallback((action: string) => {
+    console.log('[MeetingMode] Notification action:', action);
+    setShowMeetingNotification(false);
+
+    if (action === 'CALIBRATION_STARTED' && meetingNotificationData?.appName) {
+      // User wants to set up meeting mode - show calibration UI
+      setCalibrationAppName(meetingNotificationData.appName);
+      setShowCalibrationUI(true);
+      setMeetingModeEnabled(true);
+      sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: meetingNotificationData.appName });
+    } else if (action === 'USER_DISMISSED_PROMPT') {
+      // User dismissed - send event to state machine
+      sendMeetingEvent({ type: 'USER_DISMISSED_PROMPT' });
+    }
+
+    setMeetingNotificationData(null);
+  }, [meetingNotificationData, sendMeetingEvent, setMeetingModeEnabled]);
+
+  // Handle meeting mode notification dismiss
+  const handleMeetingNotificationDismiss = useCallback(() => {
+    console.log('[MeetingMode] Notification dismissed');
+    setShowMeetingNotification(false);
+    setMeetingNotificationData(null);
+    // Send dismiss event to state machine
+    sendMeetingEvent({ type: 'USER_DISMISSED_PROMPT' });
+  }, [sendMeetingEvent]);
 
   // Check window maximize state on mount
   useEffect(() => {
@@ -364,7 +396,8 @@ export default function App() {
     // - Detection is not running
     // - Meeting mode is actively capturing screen
     // - Waiting for user to calibrate (meeting detected, no calibration)
-    if (!isDetecting || isMeetingCapturing || isWaitingForCalibration) {
+    // - Meeting mode is starting capture (async operation in progress)
+    if (!isDetecting || isMeetingCapturing || isWaitingForCalibration || isMeetingStarting) {
       // Stop camera when detection stops OR when meeting mode is active OR waiting for calibration
       if (currentStreamRef.current) {
         console.log('[Camera] Stopping camera...');
@@ -493,7 +526,7 @@ export default function App() {
     return () => {
       mounted = false;
     };
-  }, [isDetecting, isMeetingCapturing, isWaitingForCalibration, selectedCameraId]);
+  }, [isDetecting, isMeetingCapturing, isWaitingForCalibration, isMeetingStarting, selectedCameraId]);
 
   // Camera change handler - updates local state and persists to settings
   const handleCameraChange = (newCameraId: string) => {
@@ -622,7 +655,10 @@ export default function App() {
             );
             if (calibration) {
               const canvas = meetingCanvasRef.current;
+              if (!canvas) return;
+
               // Use cached context (avoid getContext() call every frame - 1800 calls/min saved)
+              // Re-acquire if null (was cleared during reset) or if canvas changed
               if (!meetingCanvasCtxRef.current) {
                 meetingCanvasCtxRef.current = canvas.getContext('2d');
               }
@@ -967,9 +1003,13 @@ export default function App() {
     setPreCapturedScreenshot(null);
     setShowCalibrationUI(false);
     setCalibrationAppName('');
+    setShowMeetingNotification(false);
+    setMeetingNotificationData(null);
     resetMeetingStateMachine();
     useMeetingModeStore.getState().setActive(false);
     useMeetingModeStore.getState().setError(null);
+    // Clear cached canvas context to avoid stale state
+    meetingCanvasCtxRef.current = null;
     // Stop any active meeting stream
     if (meetingStreamRef.current) {
       meetingStreamRef.current.getTracks().forEach(t => t.stop());
@@ -1356,9 +1396,13 @@ export default function App() {
               setPreCapturedScreenshot(null);
               setShowCalibrationUI(false);
               setCalibrationAppName('');
+              setShowMeetingNotification(false);
+              setMeetingNotificationData(null);
               resetMeetingStateMachine();
               useMeetingModeStore.getState().setActive(false);
               useMeetingModeStore.getState().setError(null);
+              // Clear cached canvas context to avoid stale state
+              meetingCanvasCtxRef.current = null;
               if (meetingStreamRef.current) {
                 meetingStreamRef.current.getTracks().forEach(t => t.stop());
                 meetingStreamRef.current = null;
@@ -1368,7 +1412,7 @@ export default function App() {
               }
             }}
             meetingModeActive={meetingModeActive}
-            meetingAppName={useMeetingModeStore.getState().detectedApp}
+            meetingAppName={meetingContext.detectedApp}
             cameras={cameras}
             selectedCameraId={selectedCameraId}
             onCameraChange={handleCameraChange}
@@ -1397,6 +1441,8 @@ export default function App() {
               resetMeetingStateMachine();
               useMeetingModeStore.getState().setActive(false);
               useMeetingModeStore.getState().setError(null);
+              // Clear cached canvas context to avoid stale state
+              meetingCanvasCtxRef.current = null;
               // Stop any active meeting stream
               if (meetingStreamRef.current) {
                 meetingStreamRef.current.getTracks().forEach(t => t.stop());
@@ -1478,6 +1524,18 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Meeting mode notification popup - shown before calibration */}
+      <MeetingModeNotification
+        isVisible={showMeetingNotification}
+        title={meetingNotificationData?.title || 'Meeting Detected'}
+        message={meetingNotificationData?.message || 'Enable eye tracking for this meeting?'}
+        appName={meetingNotificationData?.appName}
+        actions={meetingNotificationData?.actions}
+        onAction={handleMeetingNotificationAction}
+        onDismiss={handleMeetingNotificationDismiss}
+        autoDismissSeconds={30}
+      />
       </div>
     </>
   );

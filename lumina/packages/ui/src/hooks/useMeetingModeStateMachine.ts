@@ -202,27 +202,48 @@ export function useMeetingModeStateMachine(
     [debug, onShowCalibrationUI, onHideCalibrationUI, onShowNotification]
   );
 
+  // Ref for send function - allows async callbacks to use latest send without stale closures
+  // This MUST be defined before startScreenCapture which uses it
+  // Initial value is null, will be set after send is defined
+  const sendRef = useRef<((event: MeetingModeEvent) => TransitionResult) | null>(null);
+
   /**
    * Start screen capture for meeting mode.
+   * IMPORTANT: Uses sendRef.current instead of send to avoid stale closure issues
    */
   const startScreenCapture = useCallback(
     async (appName: string, sourceId?: string, displayId?: number): Promise<void> => {
+      console.log('[MeetingMode] startScreenCapture called for:', appName);
+
+      // Helper to send events using ref (avoids stale closure)
+      const sendEvent = (event: MeetingModeEvent) => {
+        if (sendRef.current) {
+          return sendRef.current(event);
+        }
+        console.error('[MeetingMode] sendRef.current is not set!');
+        return null;
+      };
+
       try {
         // Get calibration for coordinate scaling
         const calibration = getCalibration(appName);
         if (!calibration) {
-          send({ type: 'CAPTURE_FAILED', error: 'Calibration not found', recoverable: true });
+          console.error('[MeetingMode] Calibration not found for:', appName);
+          sendEvent({ type: 'CAPTURE_FAILED', error: 'Calibration not found', recoverable: true });
           return;
         }
+        console.log('[MeetingMode] Found calibration:', calibration.region);
 
         // Get source ID if not provided, tracking source type
         let captureSourceId = sourceId;
         let actualSourceType: 'window' | 'screen' = 'window';
         const meetingAPI = getMeetingModeAPI();
         if (!captureSourceId && meetingAPI) {
+          console.log('[MeetingMode] Getting window source ID...');
           captureSourceId = await meetingAPI.getWindowSourceId(appName) ?? undefined;
           if (!captureSourceId) {
             // Fallback to screen capture
+            console.log('[MeetingMode] Window not found, falling back to screen capture');
             actualSourceType = 'screen';
             captureSourceId = await meetingAPI.getSourceId(
               displayId ?? calibration.displayId
@@ -231,24 +252,22 @@ export function useMeetingModeStateMachine(
         }
 
         if (!captureSourceId) {
-          send({ type: 'CAPTURE_FAILED', error: 'Could not find capture source', recoverable: true });
+          console.error('[MeetingMode] Could not find capture source');
+          sendEvent({ type: 'CAPTURE_FAILED', error: 'Could not find capture source', recoverable: true });
           return;
         }
+        console.log('[MeetingMode] Got source ID:', captureSourceId, 'type:', actualSourceType);
 
-        // Check for source type mismatch - calibration was done on window but now capturing screen
-        const expectedSourceType = calibration.sourceType ?? 'window';
+        // Log source type info (previously this forced recalibration, but that caused infinite loops)
+        // The coordinates might be slightly off but it's better than failing completely
+        const expectedSourceType = calibration.sourceType ?? 'screen';
         if (actualSourceType !== expectedSourceType) {
-          if (debug) {
-            console.log(`[MeetingMode] Source type mismatch: expected ${expectedSourceType}, got ${actualSourceType}. Forcing recalibration.`);
-          }
-          send({
-            type: 'CALIBRATION_INVALIDATED',
-            reason: `Source changed from ${expectedSourceType} to ${actualSourceType}`
-          });
-          return;
+          console.warn(`[MeetingMode] Source type differs: calibrated on ${expectedSourceType}, capturing from ${actualSourceType}. Proceeding anyway.`);
+          // Don't force recalibration - let the user manually recalibrate if needed
         }
 
         // Request screen capture
+        console.log('[MeetingMode] Requesting screen capture...');
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
@@ -262,6 +281,7 @@ export function useMeetingModeStateMachine(
             },
           } as MediaTrackConstraints,
         });
+        console.log('[MeetingMode] Got screen capture stream');
 
         // Store stream
         meetingStreamRef.current = stream;
@@ -270,7 +290,8 @@ export function useMeetingModeStateMachine(
         const video = meetingVideoRef.current;
         if (!video) {
           stream.getTracks().forEach((t) => t.stop());
-          send({ type: 'CAPTURE_FAILED', error: 'Video element not available', recoverable: true });
+          console.error('[MeetingMode] Video element not available');
+          sendEvent({ type: 'CAPTURE_FAILED', error: 'Video element not available', recoverable: true });
           return;
         }
 
@@ -281,12 +302,14 @@ export function useMeetingModeStateMachine(
         if (videoTrack) {
           videoTrack.onended = () => {
             if (isMountedRef.current) {
-              send({ type: 'CAPTURE_FAILED', error: 'Screen capture ended', recoverable: false });
+              console.log('[MeetingMode] Screen capture track ended');
+              sendEvent({ type: 'CAPTURE_FAILED', error: 'Screen capture ended', recoverable: false });
             }
           };
         }
 
         // Wait for video to be ready
+        console.log('[MeetingMode] Waiting for video to be ready...');
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error('Video ready timeout'));
@@ -308,6 +331,7 @@ export function useMeetingModeStateMachine(
         });
 
         await video.play();
+        console.log('[MeetingMode] Video playing:', video.videoWidth, 'x', video.videoHeight);
 
         // Check video dimensions
         if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -329,14 +353,16 @@ export function useMeetingModeStateMachine(
         });
 
         // Signal capture is ready
-        send({
+        console.log('[MeetingMode] Sending CAPTURE_READY event');
+        sendEvent({
           type: 'CAPTURE_READY',
           videoWidth: video.videoWidth,
           videoHeight: video.videoHeight,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        send({ type: 'CAPTURE_FAILED', error: message, recoverable: true });
+        console.error('[MeetingMode] startScreenCapture error:', message);
+        sendEvent({ type: 'CAPTURE_FAILED', error: message, recoverable: true });
       }
     },
     [meetingVideoRef, meetingStreamRef, getCalibration, touchCalibration]
@@ -344,11 +370,24 @@ export function useMeetingModeStateMachine(
 
   /**
    * Stop screen capture and clean up.
+   * IMPORTANT: Uses sendRef.current instead of send to avoid stale closure issues
    */
   const stopScreenCapture = useCallback(async (): Promise<void> => {
+    console.log('[MeetingMode] stopScreenCapture called');
+
+    // Helper to send events using ref (avoids stale closure)
+    const sendEvent = (event: MeetingModeEvent) => {
+      if (sendRef.current) {
+        return sendRef.current(event);
+      }
+      console.error('[MeetingMode] sendRef.current is not set!');
+      return null;
+    };
+
     try {
       // Stop all tracks
       if (meetingStreamRef.current) {
+        console.log('[MeetingMode] Stopping stream tracks');
         meetingStreamRef.current.getTracks().forEach((track) => {
           track.onended = null;
           track.stop();
@@ -363,10 +402,12 @@ export function useMeetingModeStateMachine(
       }
 
       // Signal capture stopped
-      send({ type: 'CAPTURE_STOPPED' });
+      console.log('[MeetingMode] Sending CAPTURE_STOPPED event');
+      sendEvent({ type: 'CAPTURE_STOPPED' });
     } catch (error) {
+      console.error('[MeetingMode] stopScreenCapture error:', error);
       // Even if cleanup fails, signal stopped
-      send({ type: 'CAPTURE_STOPPED' });
+      sendEvent({ type: 'CAPTURE_STOPPED' });
     }
   }, [meetingVideoRef, meetingStreamRef]);
 
@@ -463,8 +504,7 @@ export function useMeetingModeStateMachine(
   // MEETING DETECTION POLLING
   // ==========================================================================
 
-  // Use refs to avoid effect restarts when these functions change
-  const sendRef = useRef(send);
+  // Update sendRef to latest send function (ref is defined before startScreenCapture)
   sendRef.current = send;
 
   useEffect(() => {
@@ -513,14 +553,18 @@ export function useMeetingModeStateMachine(
           const hasCalib = useMeetingModeStore.getState().hasCalibration(appName);
 
           // Send meeting detected event via ref (avoids effect restart)
-          sendRef.current({
-            type: 'MEETING_DETECTED',
-            appName,
-            hasCalibration: hasCalib,
-          });
+          if (sendRef.current) {
+            sendRef.current({
+              type: 'MEETING_DETECTED',
+              appName,
+              hasCalibration: hasCalib,
+            });
+          }
         } else if (currentPhase === MeetingModePhase.CAPTURE_ACTIVE) {
           // Meeting ended while we were capturing
-          sendRef.current({ type: 'MEETING_ENDED' });
+          if (sendRef.current) {
+            sendRef.current({ type: 'MEETING_ENDED' });
+          }
         }
       } catch (error) {
         console.error('[MeetingMode] Detection error:', error);
@@ -552,7 +596,7 @@ export function useMeetingModeStateMachine(
     const machine = machineRef.current;
 
     // If in CAPTURE_STALE, auto-recover to CAPTURE_ACTIVE
-    if (machine.getPhase() === MeetingModePhase.CAPTURE_STALE) {
+    if (machine.getPhase() === MeetingModePhase.CAPTURE_STALE && sendRef.current) {
       sendRef.current({ type: 'FACE_DETECTED' });
     }
   }, []);
@@ -578,10 +622,12 @@ export function useMeetingModeStateMachine(
         if (debug) {
           console.log('[MeetingMode] Face detection timeout:', elapsed, 'ms');
         }
-        sendRef.current({
-          type: 'FACE_DETECTION_TIMEOUT',
-          duration: elapsed,
-        });
+        if (sendRef.current) {
+          sendRef.current({
+            type: 'FACE_DETECTION_TIMEOUT',
+            duration: elapsed,
+          });
+        }
       }
     };
 
@@ -619,10 +665,12 @@ export function useMeetingModeStateMachine(
       if (debug) {
         console.log('[MeetingMode] Calibration invalidated for:', activeAppName);
       }
-      sendRef.current({
-        type: 'CALIBRATION_INVALIDATED',
-        appName: activeAppName,
-      });
+      if (sendRef.current) {
+        sendRef.current({
+          type: 'CALIBRATION_INVALIDATED',
+          appName: activeAppName,
+        });
+      }
     }
   }, [calibrations, phase, debug]); // Re-run when calibrations change
 
