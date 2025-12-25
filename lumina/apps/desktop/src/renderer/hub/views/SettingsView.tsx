@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '@lumina/ui';
 import { Icons } from '../components';
 import type { AuthUser } from '../types';
+import { DatabaseService, SyncService } from '../services';
 
 export interface SettingsViewProps {
   user: AuthUser;
@@ -59,7 +60,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
 
   useEffect(() => {
     async function loadSyncStatus() {
-      const status = await window.lumina?.sync.getStatus();
+      const status = await SyncService.getStatus();
       if (status) {
         setSyncStatus(status);
       }
@@ -70,14 +71,14 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
   }, []);
 
   const handleManualSync = async () => {
-    const result = await window.lumina?.sync.trigger();
+    const result = await SyncService.trigger();
     console.log('Manual sync result:', result);
   };
 
   const handleExportData = async () => {
     setIsExporting(true);
     try {
-      const result = await window.lumina?.database.exportData();
+      const result = await DatabaseService.exportData();
       if (result?.success && result.data) {
         const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -109,7 +110,7 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
       keysToRemove.forEach((key) => localStorage.removeItem(key));
 
       // Clear SQLite database via IPC
-      await window.lumina?.database.clearAllData();
+      await DatabaseService.clearAllData();
 
       setShowClearDataModal(false);
       setClearDataConfirmText('');
@@ -422,9 +423,9 @@ export function SettingsView({ user, onSignOut }: SettingsViewProps) {
                   setCloudSyncEnabled(newValue);
                   // Control auto-sync based on toggle
                   if (newValue) {
-                    await window.lumina?.sync.startAuto();
+                    await SyncService.startAuto();
                   } else {
-                    await window.lumina?.sync.stopAuto();
+                    await SyncService.stopAuto();
                   }
                 }}
                 className={`w-12 h-6 rounded-full transition-colors ${

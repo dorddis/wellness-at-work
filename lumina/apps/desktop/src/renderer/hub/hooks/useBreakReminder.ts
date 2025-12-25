@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { AlertsService } from '../services';
 
 const BREAK_REMINDER_INTERVAL = 20 * 60 * 1000; // 20 minutes
 const BREAK_DURATION = 20; // 20 seconds
@@ -59,7 +60,7 @@ export function useBreakReminder({
       const timeSinceLastBreak = Date.now() - lastBreakTime;
       if (timeSinceLastBreak >= BREAK_REMINDER_INTERVAL) {
         // Show break reminder notification
-        window.lumina?.alerts.show({
+        AlertsService.show({
           id: `break-${Date.now()}`,
           type: 'break_reminder',
           severity: 'info',
@@ -84,7 +85,7 @@ export function useBreakReminder({
       setLastBreakTime(Date.now());
       onBreakComplete();
       // Show completion notification
-      window.lumina?.alerts.show({
+      AlertsService.show({
         id: `break-complete-${Date.now()}`,
         type: 'break_complete',
         severity: 'info',

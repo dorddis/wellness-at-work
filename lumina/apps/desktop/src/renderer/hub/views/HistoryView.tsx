@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HistorySkeleton, Icons } from '../components';
 import type { DailyData } from '../types';
+import { DatabaseService } from '../services';
 
 /**
  * History View - displays blink tracking history and stats
@@ -22,7 +23,7 @@ export function HistoryView() {
       today.setHours(0, 0, 0, 0);
 
       // Load today's stats
-      const result = await window.lumina?.database.getSessionStats(today.getTime());
+      const result = await DatabaseService.getSessionStats(today.getTime());
       if (result) {
         setStats(result);
       }
@@ -35,7 +36,7 @@ export function HistoryView() {
         const dayEnd = new Date(dayStart);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const rollups = await window.lumina?.database.getRollups(
+        const rollups = await DatabaseService.getRollups(
           dayStart.getTime(),
           dayEnd.getTime()
         );
@@ -74,7 +75,7 @@ export function HistoryView() {
       const thirtyDaysAgo = new Date(today);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const rollups = await window.lumina?.database.getRollups(
+      const rollups = await DatabaseService.getRollups(
         thirtyDaysAgo.getTime(),
         today.getTime()
       );

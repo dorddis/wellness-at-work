@@ -12,6 +12,7 @@ import {
 } from '@lumina/ui';
 import type { Baseline, PostureResult, YawnResult, DrowsinessResult } from '@lumina/core';
 import { Icons } from '../components';
+import { DatabaseService } from '../services';
 
 export interface DashboardViewProps {
   wellnessScore: number;
@@ -93,7 +94,7 @@ export function DashboardView({
         const dayEnd = new Date(dayStart);
         dayEnd.setHours(23, 59, 59, 999);
 
-        const rollups = await window.lumina?.database.getRollups(
+        const rollups = await DatabaseService.getRollups(
           dayStart.getTime(),
           dayEnd.getTime()
         );

@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { AuthUser } from '../types';
+import { SyncService } from '../services';
 
 // Dev mode auth bypass
 const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true';
@@ -55,7 +56,7 @@ export function useAuth(): UseAuthReturn {
         if (result.user && result.user.organization) {
           setAuthUser(result.user);
           // Set sync credentials
-          await window.lumina.sync.setCredentials(
+          await SyncService.setCredentials(
             result.user.organization.id,
             result.user.id
           );
@@ -73,7 +74,7 @@ export function useAuth(): UseAuthReturn {
   const handleAuthComplete = useCallback(async (user: AuthUser) => {
     setAuthUser(user);
     if (user.organization) {
-      await window.lumina.sync.setCredentials(user.organization.id, user.id);
+      await SyncService.setCredentials(user.organization.id, user.id);
     }
   }, []);
 

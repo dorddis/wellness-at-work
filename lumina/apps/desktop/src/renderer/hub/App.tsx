@@ -41,6 +41,15 @@ import AuthScreen from './AuthScreen';
 import { AppLoader, CameraLoader, HistorySkeleton, Icons, StatCard, type CameraStatus } from './components';
 import { MeetingModeCalibration, MeetingModeStatus, type CalibrationResult } from './components/MeetingModeCalibration';
 import { useAuth, useBreakReminder } from './hooks';
+import {
+  AlertsService,
+  DatabaseService,
+  DetectionService,
+  MeetingModeService,
+  MeetingModeEvents,
+  NotificationService,
+  SyncService,
+} from './services';
 import type { AuthUser, View, WellnessEventType, DatabaseWrite } from './types';
 import { DashboardView, ExercisesView, HistoryView, MeetingModeView, MonitorView, SettingsView } from './views';
 
@@ -244,7 +253,7 @@ export default function App() {
         sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: detectedAppName });
       } else {
         // Fallback: show OS notification when conditions not met
-        window.lumina?.notification?.show({
+        NotificationService.show({
           title,
           body: message,
           silent: false,
@@ -278,10 +287,10 @@ export default function App() {
 
     if (appCloudSyncEnabled) {
       console.log('[Sync] Starting auto-sync (cloudSyncEnabled=true)');
-      window.lumina?.sync.startAuto();
+      SyncService.startAuto();
     } else {
       console.log('[Sync] Auto-sync disabled (local-only mode)');
-      window.lumina?.sync.stopAuto();
+      SyncService.stopAuto();
     }
   }, [authUser, appCloudSyncEnabled]);
 
@@ -291,7 +300,7 @@ export default function App() {
 
     async function loadBaseline() {
       try {
-        const existingBaseline = await window.lumina?.database.getBaseline();
+        const existingBaseline = await DatabaseService.getBaseline();
         if (existingBaseline && existingBaseline.blink_p50 !== null) {
           const baseline: Baseline = {
             blinkP25: existingBaseline.blink_p25 ?? 0,
@@ -458,7 +467,7 @@ export default function App() {
           if (!isWaitingForCalibration && !isMeetingCapturing) {
             // Camera failed - check if we can fall back to meeting mode
             try {
-              const meetingResult = await window.lumina.meetingMode.detectApp();
+              const meetingResult = await MeetingModeService.detectApp();
               if (meetingResult.isDetected && meetingResult.appName) {
                 const calibrations = useMeetingModeStore.getState().calibrations;
                 const hasCalibration = calibrations.some(
@@ -512,9 +521,9 @@ export default function App() {
       }
     };
 
-    window.lumina?.onMeetingModeNavigate?.(handleMeetingModeNavigate);
+    MeetingModeEvents.onNavigate(handleMeetingModeNavigate);
     return () => {
-      window.lumina?.offMeetingModeNavigate?.(handleMeetingModeNavigate);
+      MeetingModeEvents.offNavigate(handleMeetingModeNavigate);
     };
   }, [isWaitingForCalibration, meetingContext.detectedApp, sendMeetingEvent, setMeetingModeEnabled]);
 
@@ -540,7 +549,7 @@ export default function App() {
       // Fallback: detect which meeting app is running (may fail if window focused)
       try {
         console.log('[MeetingMode] No detected app in context, attempting detection...');
-        const result = await window.lumina.meetingMode.detectApp();
+        const result = await MeetingModeService.detectApp();
         if (result.isDetected && result.appName) {
           console.log('[MeetingMode] Detected app:', result.appName);
           setCalibrationAppName(result.appName);
@@ -549,7 +558,7 @@ export default function App() {
           sendMeetingEvent({ type: 'CALIBRATION_STARTED', appName: result.appName });
         } else {
           console.warn('[MeetingMode] Detection failed, no app found');
-          window.lumina.notification.show({
+          NotificationService.show({
             title: 'Calibration Error',
             body: 'Could not detect meeting app. Please make sure your meeting is visible and try again.',
             silent: false,
@@ -558,7 +567,7 @@ export default function App() {
         }
       } catch (err) {
         console.error('[MeetingMode] Failed to detect app for calibration:', err);
-        window.lumina.notification.show({
+        NotificationService.show({
           title: 'Calibration Error',
           body: 'Failed to detect meeting app. Please try again.',
           silent: false,
@@ -567,7 +576,7 @@ export default function App() {
       }
     };
 
-    const cleanup = window.lumina?.onMeetingModeStartCalibration?.(handleStartCalibration);
+    const cleanup = MeetingModeEvents.onStartCalibration(handleStartCalibration);
     return () => {
       cleanup?.();
     };
@@ -719,7 +728,7 @@ export default function App() {
               detected: true,
             });
             // IPC is fast, keep synchronous
-            window.lumina?.detection.sendBlink({ ear: result.blink.avgEAR, timestamp: now });
+            DetectionService.sendBlink({ ear: result.blink.avgEAR, timestamp: now });
 
             // Track for minute rollups
             minuteBlinkCountRef.current++;
@@ -812,13 +821,13 @@ export default function App() {
       for (const write of queue) {
         switch (write.type) {
           case 'blink':
-            window.lumina?.database.insertBlink(write.timestamp, write.ear, write.detected);
+            DatabaseService.insertBlink(write.timestamp, write.ear, write.detected);
             break;
           case 'wellness':
-            window.lumina?.database.insertWellnessEvent(write.timestamp, write.eventType, write.payload);
+            DatabaseService.insertWellnessEvent(write.timestamp, write.eventType, write.payload);
             break;
           case 'rollup':
-            window.lumina?.database.insertRollup(write.timestamp, write.blinkCount, write.avgEar);
+            DatabaseService.insertRollup(write.timestamp, write.blinkCount, write.avgEar);
             break;
         }
       }
@@ -871,7 +880,7 @@ export default function App() {
 
       updateWellnessScore(score);
 
-      window.lumina?.detection.sendUpdate({
+      DetectionService.sendUpdate({
         blinkRate,
         wellnessScore: score,
         isDetecting: true,
@@ -890,14 +899,14 @@ export default function App() {
             setUserBaseline(newBaseline);
             setIsCalibrating(false);
             // Save to database
-            window.lumina?.database.updateBaseline(
+            DatabaseService.updateBaseline(
               newBaseline.blinkP25,
               newBaseline.blinkP50,
               newBaseline.blinkP75,
               newBaseline.samplesCount
             );
             // Notify user
-            window.lumina?.alerts.show({
+            AlertsService.show({
               id: `calibration-complete-${Date.now()}`,
               type: 'calibration_complete',
               severity: 'info',
@@ -934,7 +943,7 @@ export default function App() {
         });
 
         // Show alert notification
-        window.lumina?.alerts.show({
+        AlertsService.show({
           id: alert.id,
           type: alert.type,
           severity: alert.severity,
@@ -943,7 +952,7 @@ export default function App() {
         });
 
         // Sync to cloud
-        window.lumina?.alerts.sync(alert.type, alert.severity, alert.message);
+        AlertsService.sync(alert.type, alert.severity, alert.message);
       }
     };
 
