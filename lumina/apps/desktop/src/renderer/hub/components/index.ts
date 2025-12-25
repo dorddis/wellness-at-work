@@ -6,3 +6,5 @@
 export { AppLoader } from './AppLoader';
 export { CameraLoader, type CameraStatus } from './CameraLoader';
 export { HistorySkeleton } from './HistorySkeleton';
+export { Icons } from './Icons';
+export { StatCard, type StatCardProps } from './StatCard';
