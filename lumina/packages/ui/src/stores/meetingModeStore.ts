@@ -133,11 +133,18 @@ export const useMeetingModeStore = create<MeetingModeState>()(
           );
 
           if (existing) {
-            // Update existing calibration (keep original stored name)
+            // Update existing calibration (keep original stored name, update dimensions)
             return {
               calibrations: state.calibrations.map((c) =>
                 c.appName.toLowerCase() === normalizedName
-                  ? { ...c, region: cal.region, displayId: cal.displayId, lastUsed: now }
+                  ? {
+                      ...c,
+                      region: cal.region,
+                      displayId: cal.displayId,
+                      calibrationWidth: cal.calibrationWidth,
+                      calibrationHeight: cal.calibrationHeight,
+                      lastUsed: now,
+                    }
                   : c
               ),
             };

@@ -244,6 +244,8 @@ export default function App() {
   const currentDrowsinessRef = useRef<DrowsinessResult | null>(null);
   const userBaselineRef = useRef<Baseline | null>(null);
   const isCalibratingRef = useRef<boolean>(false);
+  // Ref for meeting mode face detection callback (avoids effect restarts)
+  const onMeetingFaceDetectedRef = useRef<(() => void) | null>(null);
 
   // Auth state
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -369,6 +371,7 @@ export default function App() {
     isStale: isMeetingStale,
     stateDescription: meetingStateDescription,
     reset: resetMeetingStateMachine,
+    onFaceDetected: onMeetingFaceDetected,
   } = useMeetingModeStateMachine({
     meetingVideoRef,
     meetingCanvasRef,
@@ -889,6 +892,12 @@ export default function App() {
             blinkEar: result.blink.isBlink ? result.blink.avgEAR : undefined,
           });
 
+          // Notify meeting mode state machine of face detection (for CAPTURE_STALE recovery)
+          // Uses ref to avoid effect restarts (same pattern as sendRef in the hook)
+          if (faceFound && onMeetingFaceDetectedRef.current) {
+            onMeetingFaceDetectedRef.current();
+          }
+
           // Handle blink-specific side effects (queued database, IPC)
           if (result.blink.isBlink) {
             // Queue database write instead of synchronous call
@@ -1025,7 +1034,9 @@ export default function App() {
     currentDrowsinessRef.current = currentDrowsiness;
     userBaselineRef.current = userBaseline;
     isCalibratingRef.current = isCalibrating;
-  }, [blinkCount, faceDetected, currentPosture, currentYawn, currentDrowsiness, userBaseline, isCalibrating]);
+    // Sync meeting mode face detection callback ref
+    onMeetingFaceDetectedRef.current = onMeetingFaceDetected;
+  }, [blinkCount, faceDetected, currentPosture, currentYawn, currentDrowsiness, userBaseline, isCalibrating, onMeetingFaceDetected]);
 
   // Update blink rate periodically and evaluate alerts
   // Uses refs for frequently-changing values to avoid interval restart on every blink

@@ -425,8 +425,10 @@ export function useMeetingModeStateMachine(
         setContext(result.context);
       }
 
-      // Sync to Zustand store
-      const isNowCapturing = result.phase === MeetingModePhase.CAPTURE_ACTIVE;
+      // Sync to Zustand store (include CAPTURE_STALE since capture is still running)
+      const isNowCapturing =
+        result.phase === MeetingModePhase.CAPTURE_ACTIVE ||
+        result.phase === MeetingModePhase.CAPTURE_STALE;
       setStoreActive(isNowCapturing, result.context.detectedApp);
 
       // Execute actions (async, fire and forget)

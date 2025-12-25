@@ -164,7 +164,6 @@ describe('Meeting Mode Integration Scenarios', () => {
 
       const result = machine.transition({
         type: 'USER_DISMISSED_PROMPT',
-        appName: 'Google Meet',
       });
 
       expect(result.phase).toBe(MeetingModePhase.WEBCAM_ACTIVE);
