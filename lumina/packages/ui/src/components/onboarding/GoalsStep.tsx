@@ -206,7 +206,7 @@ export function GoalsStep({ onNext, onBack, initialGoals }: GoalsStepProps) {
           disabled={!hasAnyGoal}
           className={`flex-1 py-3 px-6 rounded-lg font-medium transition-colors ${
             hasAnyGoal
-              ? 'bg-foreground text-white hover:bg-foreground/80'
+              ? 'bg-foreground text-white dark:text-background hover:bg-foreground/80'
               : 'bg-muted text-muted-foreground/70 cursor-not-allowed'
           }`}
         >

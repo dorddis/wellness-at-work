@@ -194,16 +194,17 @@ export function AchievementBadge({
   const IconComponent = icons[achievement.icon] || icons.star;
 
   // Color mapping for unlocked state
+  // Dark mode: use muted dark versions (950/900) instead of light pastels (100)
   const colorClasses: Record<string, string> = {
     gray: 'bg-secondary text-muted-foreground',
-    yellow: 'bg-yellow-100 text-yellow-600',
-    blue: 'bg-blue-100 text-blue-600',
-    green: 'bg-green-100 text-green-600',
-    purple: 'bg-purple-100 text-purple-600',
-    orange: 'bg-orange-100 text-orange-600',
-    amber: 'bg-amber-100 text-amber-600',
-    indigo: 'bg-indigo-100 text-indigo-600',
-    teal: 'bg-teal-100 text-teal-600',
+    yellow: 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-600 dark:text-yellow-400',
+    blue: 'bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400',
+    green: 'bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400',
+    purple: 'bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400',
+    orange: 'bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400',
+    amber: 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400',
+    indigo: 'bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400',
+    teal: 'bg-teal-100 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400',
   };
 
   return (

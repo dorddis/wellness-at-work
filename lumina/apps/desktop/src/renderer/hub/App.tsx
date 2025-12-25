@@ -1094,10 +1094,10 @@ export default function App() {
 
   // Get wellness status
   const getWellnessStatus = (score: number) => {
-    if (score >= 80) return { label: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' };
-    if (score >= 60) return { label: 'Good', color: 'text-yellow-600', bg: 'bg-yellow-100' };
-    if (score >= 40) return { label: 'Fair', color: 'text-orange-600', bg: 'bg-orange-100' };
-    return { label: 'Poor', color: 'text-red-600', bg: 'bg-red-100' };
+    if (score >= 80) return { label: 'Excellent', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-950/50' };
+    if (score >= 60) return { label: 'Good', color: 'text-yellow-600 dark:text-yellow-400', bg: 'bg-yellow-100 dark:bg-yellow-950/50' };
+    if (score >= 40) return { label: 'Fair', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-950/50' };
+    return { label: 'Poor', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-950/50' };
   };
 
   const status = getWellnessStatus(wellnessScore);
@@ -1331,16 +1331,16 @@ export default function App() {
 
         {/* Camera error banner - dismissable, non-blocking */}
         {error && (
-          <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center justify-between">
+          <div className="mx-6 mt-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-lg p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-8 h-8 bg-red-100 dark:bg-red-900/50 rounded-full flex items-center justify-center">
+                <svg className="w-4 h-4 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-medium text-red-800">Camera unavailable</p>
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">Camera unavailable</p>
+                <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -1353,13 +1353,13 @@ export default function App() {
                     setTimeout(() => handleToggleDetection(), 100);
                   }
                 }}
-                className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium"
+                className="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-800/50 text-red-700 dark:text-red-300 rounded text-xs font-medium"
               >
                 Retry
               </button>
               <button
                 onClick={() => setError(null)}
-                className="p-1 hover:bg-red-100 rounded text-red-400 hover:text-red-600"
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-900/50 rounded text-red-400 hover:text-red-600 dark:hover:text-red-300"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

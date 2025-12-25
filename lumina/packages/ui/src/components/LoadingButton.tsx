@@ -21,11 +21,12 @@ export interface LoadingButtonProps extends React.ButtonHTMLAttributes<HTMLButto
 }
 
 const variantClasses = {
-  primary: 'bg-foreground text-white hover:bg-foreground disabled:bg-muted-foreground/50',
+  // In dark mode: bg-foreground is light, so text needs to be dark (text-background)
+  primary: 'bg-foreground text-white dark:text-background hover:bg-foreground/90 disabled:bg-muted-foreground/50',
   secondary: 'bg-secondary text-foreground hover:bg-muted disabled:bg-secondary disabled:text-muted-foreground/70',
   outline: 'border border-border text-foreground/80 hover:bg-muted/50 disabled:border-border disabled:text-muted-foreground/70',
   ghost: 'text-foreground/80 hover:bg-secondary disabled:text-muted-foreground/70',
-  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
+  danger: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 disabled:bg-red-400 dark:disabled:bg-red-900',
 };
 
 const sizeClasses = {
@@ -60,7 +61,7 @@ export function LoadingButton({
       className={cn(
         'inline-flex items-center justify-center gap-2 rounded-lg font-medium',
         'transition-colors duration-200',
-        'focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2',
+        'focus:outline-none focus:ring-2 focus:ring-border focus:ring-offset-2 dark:focus:ring-offset-background',
         'disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],

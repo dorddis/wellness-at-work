@@ -348,7 +348,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               {/* Loading spinner overlay during init */}
               {state === 'initializing' && (
                 <div className="absolute inset-0 flex items-center justify-center bg-foreground/80">
-                  <svg className="w-10 h-10 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-10 h-10 text-white dark:text-background animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -449,7 +449,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ delay: 22, duration: 0.5, type: 'spring' }}
-                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-foreground text-white rounded-xl shadow-lg p-4 max-w-64"
+                    className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-foreground text-white dark:text-background rounded-xl shadow-lg p-4 max-w-64"
                   >
                     <p className="text-sm font-medium text-center">
                       Almost done! Keep looking naturally at the screen
@@ -486,7 +486,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
               transition={{ type: 'spring', duration: 0.8, bounce: 0.3 }}
               className="w-20 h-20 bg-foreground rounded-full flex items-center justify-center mb-6"
             >
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-10 h-10 text-white dark:text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </motion.div>
@@ -579,7 +579,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+              className="flex-1 py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
             >
               Start Calibration
             </button>
@@ -589,7 +589,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
         {state === 'complete' && (
           <button
             onClick={handleComplete}
-            className="w-full py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+            className="w-full py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
           >
             Continue
           </button>
@@ -605,7 +605,7 @@ export function CalibrationStep({ onNext, onBack, onSkip, selectedCameraId }: Ca
             </button>
             <button
               onClick={startCalibration}
-              className="flex-1 py-3 px-6 bg-foreground text-white rounded-lg font-medium hover:bg-foreground/80 transition-colors"
+              className="flex-1 py-3 px-6 bg-foreground text-white dark:text-background rounded-lg font-medium hover:bg-foreground/80 transition-colors"
             >
               Try Again
             </button>

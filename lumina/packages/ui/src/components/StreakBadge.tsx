@@ -4,7 +4,7 @@
  * "Streaks create psychological investment - users don't want to break the chain"
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '../lib/utils';
 
 export type StreakType = 'daily_use' | 'healthy_blink' | 'break_compliance' | 'good_posture';
@@ -196,38 +196,61 @@ export function StreakBadge({
   const targetGoal = goal ?? config.defaultGoal;
 
   // Get color classes based on type
+  // Dark mode: use muted/desaturated colors per Material Design guidelines
+  // Light pastels (50-100) in light mode, dark muted (900-950) in dark mode
   const colorMap = {
     orange: {
-      bg: 'bg-gradient-to-br from-orange-50 to-orange-100',
-      text: 'text-orange-600',
-      icon: 'text-orange-500',
+      bg: 'bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/50 dark:to-orange-900/30',
+      text: 'text-orange-600 dark:text-orange-400',
+      icon: 'text-orange-500 dark:text-orange-400',
       ring: '#f97316',
       ringBg: '#fed7aa',
+      ringDark: '#c2410c',
+      ringBgDark: '#431407',
     },
     green: {
-      bg: 'bg-gradient-to-br from-green-50 to-green-100',
-      text: 'text-green-600',
-      icon: 'text-green-500',
+      bg: 'bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30',
+      text: 'text-green-600 dark:text-green-400',
+      icon: 'text-green-500 dark:text-green-400',
       ring: '#22c55e',
       ringBg: '#bbf7d0',
+      ringDark: '#16a34a',
+      ringBgDark: '#14532d',
     },
     blue: {
-      bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
-      text: 'text-blue-600',
-      icon: 'text-blue-500',
+      bg: 'bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30',
+      text: 'text-blue-600 dark:text-blue-400',
+      icon: 'text-blue-500 dark:text-blue-400',
       ring: '#3b82f6',
       ringBg: '#bfdbfe',
+      ringDark: '#2563eb',
+      ringBgDark: '#1e3a5f',
     },
     purple: {
-      bg: 'bg-gradient-to-br from-purple-50 to-purple-100',
-      text: 'text-purple-600',
-      icon: 'text-purple-500',
+      bg: 'bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30',
+      text: 'text-purple-600 dark:text-purple-400',
+      icon: 'text-purple-500 dark:text-purple-400',
       ring: '#a855f7',
       ringBg: '#e9d5ff',
+      ringDark: '#9333ea',
+      ringBgDark: '#3b0764',
     },
   } as const;
 
   const colorClasses = colorMap[config.color as keyof typeof colorMap] ?? colorMap.orange;
+
+  // Detect dark mode for SVG ring colors (can't use Tailwind dark: prefix)
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+    checkDarkMode();
+    // Watch for class changes on html element
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Calculate progress
   const progress = targetGoal > 0 ? count / targetGoal : 0;
@@ -262,7 +285,7 @@ export function StreakBadge({
       isMilestone && config.color === 'green' && 'ring-green-400',
       isMilestone && config.color === 'blue' && 'ring-blue-400',
       isMilestone && config.color === 'purple' && 'ring-purple-400',
-      'border border-white/50 shadow-sm',
+      'border border-white/30 dark:border-white/10 shadow-sm',
       className
     )}>
       {/* Subtle left accent border */}
@@ -282,8 +305,8 @@ export function StreakBadge({
           <ProgressRing
             progress={progress}
             size={ringSize}
-            strokeColor={colorClasses.ring}
-            bgColor={colorClasses.ringBg}
+            strokeColor={isDark ? colorClasses.ringDark : colorClasses.ring}
+            bgColor={isDark ? colorClasses.ringBgDark : colorClasses.ringBg}
           />
           <div className="absolute inset-0 flex items-center justify-center">
             {renderIcon()}
@@ -346,7 +369,7 @@ export function StreakBadge({
       {/* Milestone celebration */}
       {isMilestone && (
         <div className={cn(
-          'mt-2 pt-2 border-t border-white/50 text-center',
+          'mt-2 pt-2 border-t border-white/30 dark:border-white/10 text-center',
           'animate-pulse'
         )}>
           <span className={cn('font-semibold', sizes.best, colorClasses.text)}>
