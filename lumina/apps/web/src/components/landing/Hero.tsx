@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight, Play, Eye, Activity, Shield, Laptop } from 'lucide-react';
 
 export function Hero() {
   return (
@@ -73,18 +72,49 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Right: Illustration */}
+          {/* Right: Illustration - CSS-based design */}
           <div className="relative flex justify-center lg:justify-end">
             <div className="relative w-full max-w-md lg:max-w-lg">
-              <Image
-                src="/images/illustrations/hero-illustration.png"
-                alt="Person working at computer experiencing eye strain"
-                width={710}
-                height={810}
-                className="w-full h-auto"
-                priority
-              />
-              {/* Decorative elements */}
+              {/* Main illustration container */}
+              <div className="relative aspect-square bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-3xl p-8">
+                {/* Central laptop/monitor graphic */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4">
+                  <div className="relative bg-card rounded-2xl shadow-2xl border border-border p-4">
+                    {/* Screen */}
+                    <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="w-16 h-16 mx-auto bg-primary/20 rounded-full flex items-center justify-center mb-3">
+                          <Eye className="w-8 h-8 text-primary" />
+                        </div>
+                        <div className="h-2 w-24 bg-primary/30 rounded mx-auto mb-2" />
+                        <div className="h-2 w-16 bg-muted-foreground/20 rounded mx-auto" />
+                      </div>
+                    </div>
+                    {/* Keyboard base */}
+                    <div className="mt-2 h-6 bg-muted rounded-lg" />
+                  </div>
+                </div>
+
+                {/* Floating feature badges */}
+                <div className="absolute top-8 right-8 bg-card rounded-xl shadow-lg border border-border p-3 animate-bounce" style={{ animationDuration: '3s' }}>
+                  <Activity className="w-6 h-6 text-green-500" />
+                </div>
+
+                <div className="absolute bottom-12 left-4 bg-card rounded-xl shadow-lg border border-border p-3 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
+                  <Shield className="w-6 h-6 text-primary" />
+                </div>
+
+                <div className="absolute top-1/4 left-8 bg-card rounded-xl shadow-lg border border-border p-3 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
+                  <Laptop className="w-6 h-6 text-blue-500" />
+                </div>
+
+                {/* Decorative circles */}
+                <div className="absolute top-4 left-1/4 w-3 h-3 bg-primary/40 rounded-full" />
+                <div className="absolute bottom-1/4 right-12 w-4 h-4 bg-primary/30 rounded-full" />
+                <div className="absolute top-1/3 right-4 w-2 h-2 bg-primary/50 rounded-full" />
+              </div>
+
+              {/* Background glow */}
               <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary/5 rounded-full blur-3xl" />
             </div>
           </div>

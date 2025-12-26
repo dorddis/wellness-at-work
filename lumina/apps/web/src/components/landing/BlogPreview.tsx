@@ -1,28 +1,33 @@
 import Link from 'next/link';
-import { ArrowRight, Calendar } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowRight, Calendar, Eye, Brain, Monitor } from 'lucide-react';
 
 const blogPosts = [
   {
-    title: 'Best Screen Settings for Eyes: A Science-Backed Guide',
-    excerpt: 'Learn the science behind brightness, color temperature, and dark mode to create a custom visual comfort profile.',
-    date: 'Oct 4, 2025',
-    href: 'https://www.wellnessatwork.ai/post/best-screen-settings-for-eyes-a-science-backed-guide-to-visual-comfort-and-productivity',
-    image: 'https://static.wixstatic.com/media/853d14_28b97f32114547e78c46ba2ccfb24242~mv2.png/v1/fill/w_600,h_400,al_c,q_85/853d14_28b97f32114547e78c46ba2ccfb24242~mv2.webp',
+    title: 'The Science of Blink Rate: Why It Matters for Eye Health',
+    excerpt: 'Research shows we blink 66% less when staring at screens. Learn how Lumina uses computer vision to help you maintain healthy blink patterns.',
+    date: 'Dec 15, 2025',
+    href: '/blog/science-of-blink-rate',
+    icon: Eye,
+    iconColor: 'text-blue-500',
+    bgColor: 'from-blue-500/20 to-blue-500/5',
   },
   {
-    title: 'Symptoms of CVS: A Deep Dive into Digital Eye Strain',
-    excerpt: 'Understand Computer Vision Syndrome - from dry eyes and blurred vision to neck pain and what you can do about it.',
-    date: 'Aug 22, 2025',
-    href: 'https://www.wellnessatwork.ai/post/symptoms-of-cvs-a-deep-dive-into-digital-eye-strain',
-    image: 'https://static.wixstatic.com/media/853d14_8b1234567890~mv2.png/v1/fill/w_600,h_400,al_c,q_85/digital-eye-strain.webp',
+    title: 'Privacy-First AI: How Lumina Processes Everything Locally',
+    excerpt: 'Unlike cloud-based solutions, Lumina never sends your camera feed anywhere. Here is how we built a privacy-first wellness monitoring system.',
+    date: 'Dec 8, 2025',
+    href: '/blog/privacy-first-ai',
+    icon: Brain,
+    iconColor: 'text-purple-500',
+    bgColor: 'from-purple-500/20 to-purple-500/5',
   },
   {
-    title: 'How Smart Screen Settings Minimize Digital Eye Strain',
-    excerpt: 'Eye health isn\'t about avoiding screens - it\'s about mastering your screen environment with the right settings.',
-    date: 'Aug 12, 2025',
-    href: 'https://www.wellnessatwork.ai/post/how-smart-screen-settings-can-help-you-minimize-digital-eye-strain',
-    image: 'https://static.wixstatic.com/media/853d14_smart_screen~mv2.png/v1/fill/w_600,h_400,al_c,q_85/smart-screen.webp',
+    title: 'The 20-20-20 Rule: Does It Actually Work?',
+    excerpt: 'Eye doctors recommend looking at something 20 feet away for 20 seconds every 20 minutes. We tested the science behind this popular advice.',
+    date: 'Nov 28, 2025',
+    href: '/blog/20-20-20-rule',
+    icon: Monitor,
+    iconColor: 'text-green-500',
+    bgColor: 'from-green-500/20 to-green-500/5',
   },
 ];
 
@@ -40,9 +45,7 @@ export function BlogPreview() {
             </p>
           </div>
           <Link
-            href="https://www.wellnessatwork.ai/blog"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/blog"
             className="hidden sm:flex items-center text-primary hover:underline"
           >
             View all posts
@@ -52,21 +55,21 @@ export function BlogPreview() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {blogPosts.map((post) => (
-            <a
+            <Link
               key={post.title}
               href={post.href}
-              target="_blank"
-              rel="noopener noreferrer"
               className="group"
             >
-              <article className="rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="aspect-video bg-muted relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 group-hover:from-primary/30 transition-colors" />
+              <article className="rounded-xl border border-border overflow-hidden hover:shadow-lg transition-shadow h-full">
+                <div className={`aspect-video bg-gradient-to-br ${post.bgColor} relative overflow-hidden`}>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-4xl font-bold text-primary/20">
-                      {post.title.charAt(0)}
-                    </span>
+                    <div className="w-16 h-16 rounded-2xl bg-card/80 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <post.icon className={`w-8 h-8 ${post.iconColor}`} />
+                    </div>
                   </div>
+                  {/* Decorative elements */}
+                  <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10" />
+                  <div className="absolute bottom-4 left-4 w-6 h-6 rounded-full bg-white/10" />
                 </div>
                 <div className="p-6">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
@@ -81,15 +84,13 @@ export function BlogPreview() {
                   </p>
                 </div>
               </article>
-            </a>
+            </Link>
           ))}
         </div>
 
         <div className="mt-8 text-center sm:hidden">
           <Link
-            href="https://www.wellnessatwork.ai/blog"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/blog"
             className="text-primary hover:underline inline-flex items-center"
           >
             View all posts

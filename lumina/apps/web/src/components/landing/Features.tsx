@@ -1,19 +1,24 @@
-import Image from 'next/image';
-import { Shield, Bell, BarChart3 } from 'lucide-react';
+import { Shield, Bell, BarChart3, Eye, Armchair, Brain, type LucideIcon } from 'lucide-react';
 
-const features = [
+const features: { icon: LucideIcon; iconColor: string; bgColor: string; title: string; description: string }[] = [
   {
-    image: '/images/illustrations/eye-icon.png',
+    icon: Eye,
+    iconColor: 'text-blue-500',
+    bgColor: 'from-blue-500/20 to-blue-500/5',
     title: 'Smart Blink Detection',
     description: 'Lumina analyzes your blink patterns and sends gentle reminders to blink optimally, maintaining healthy eye moisture and comfort.',
   },
   {
-    image: '/images/illustrations/neck-icon.png',
+    icon: Armchair,
+    iconColor: 'text-green-500',
+    bgColor: 'from-green-500/20 to-green-500/5',
     title: 'Posture Monitoring',
     description: 'Track your sitting posture in real-time. Get quick tips to reduce neck, shoulder, and back strain before it becomes chronic.',
   },
   {
-    image: '/images/illustrations/forehead-icon.png',
+    icon: Brain,
+    iconColor: 'text-purple-500',
+    bgColor: 'from-purple-500/20 to-purple-500/5',
     title: 'Fatigue Detection',
     description: 'Advanced algorithms detect signs of drowsiness and eye fatigue, suggesting breaks before exhaustion sets in.',
   },
@@ -51,25 +56,23 @@ export function Features() {
           </p>
         </div>
 
-        {/* Main features with illustrations */}
+        {/* Main features with icons */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {features.map((feature) => (
             <div
               key={feature.title}
               className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl hover:border-primary/20 transition-all text-center"
             >
-              <div className="relative z-10 p-8 pb-32">
+              <div className="relative z-10 p-8">
+                {/* Icon container */}
+                <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br ${feature.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                  <feature.icon className={`w-10 h-10 ${feature.iconColor}`} />
+                </div>
                 <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
                 <p className="text-foreground/80 font-medium leading-relaxed">{feature.description}</p>
               </div>
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[30rem] h-72 opacity-40 group-hover:opacity-100 transition-opacity overflow-hidden">
-                <Image
-                  src={feature.image}
-                  alt={feature.title}
-                  fill
-                  className="object-cover object-bottom"
-                />
-              </div>
+              {/* Decorative gradient background */}
+              <div className={`absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t ${feature.bgColor} opacity-30 group-hover:opacity-50 transition-opacity`} />
             </div>
           ))}
         </div>

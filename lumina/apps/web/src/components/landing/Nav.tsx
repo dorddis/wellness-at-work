@@ -1,9 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
+
+// Lumina Logo SVG Component
+function LuminaLogo({ className = 'w-9 h-9' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Outer circle */}
+      <circle cx="20" cy="20" r="18" className="stroke-primary" strokeWidth="2" fill="none" />
+      {/* Eye shape */}
+      <ellipse cx="20" cy="20" rx="10" ry="7" className="stroke-primary" strokeWidth="2" fill="none" />
+      {/* Iris */}
+      <circle cx="20" cy="20" r="4" className="fill-primary" />
+      {/* Shine */}
+      <circle cx="22" cy="18" r="1.5" className="fill-background" />
+      {/* Rays */}
+      <line x1="20" y1="2" x2="20" y2="6" className="stroke-primary" strokeWidth="2" strokeLinecap="round" />
+      <line x1="20" y1="34" x2="20" y2="38" className="stroke-primary" strokeWidth="2" strokeLinecap="round" />
+      <line x1="2" y1="20" x2="6" y2="20" className="stroke-primary" strokeWidth="2" strokeLinecap="round" />
+      <line x1="34" y1="20" x2="38" y2="20" className="stroke-primary" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 const navLinks = [
   { label: 'Features', href: '/#features' },
@@ -20,13 +40,7 @@ export function Nav() {
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/images/illustrations/logo-circular.png"
-            alt="Lumina"
-            width={36}
-            height={36}
-            className="w-9 h-9"
-          />
+          <LuminaLogo />
           <span className="text-xl font-bold">Lumina</span>
         </Link>
 

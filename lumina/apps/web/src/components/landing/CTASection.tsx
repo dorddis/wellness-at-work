@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
-import { ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Sparkles, Eye, TrendingUp, Zap, Heart } from 'lucide-react';
 
 export function CTASection() {
   return (
@@ -11,26 +10,47 @@ export function CTASection() {
       <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
 
       <div className="container relative z-10">
-        
+
         {/* The Card */}
         <div className="relative rounded-[3rem] bg-card shadow-2xl overflow-hidden mx-auto max-w-6xl">
           <div className="flex flex-col lg:flex-row min-h-[550px]">
-            
-            {/* Left: Image Section (Blue/Image Area) */}
-            <div className="relative w-full lg:w-[45%] bg-blue-50/50 flex items-end justify-center group overflow-hidden">
-               {/* Abstract Background behind image */}
+
+            {/* Left: CSS-based Illustration Section */}
+            <div className="relative w-full lg:w-[45%] bg-gradient-to-br from-primary/10 via-primary/5 to-blue-50/50 flex items-center justify-center group overflow-hidden p-8">
+               {/* Abstract Background */}
                <div className="absolute inset-0 bg-gradient-to-tr from-blue-100/50 to-transparent" />
                <div className="absolute top-10 left-10 w-20 h-20 bg-blue-200/30 rounded-full blur-xl" />
-               
-               {/* Fixed height container for mobile image to ensure aspect ratio, flexible on desktop */}
-               <div className="relative w-full h-[350px] lg:h-full lg:absolute lg:inset-0 flex items-end justify-center">
-                 <Image
-                  src="/images/illustrations/happy-man-sketch.png"
-                  alt="Happy productive worker"
-                  width={500}
-                  height={600}
-                  className="relative z-10 w-auto h-[90%] lg:h-[90%] object-contain object-bottom transition-transform duration-700 group-hover:scale-105"
-                />
+               <div className="absolute bottom-20 right-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
+
+               {/* CSS-based wellness illustration */}
+               <div className="relative w-full max-w-xs aspect-square">
+                 {/* Central circle with pulse */}
+                 <div className="absolute inset-0 flex items-center justify-center">
+                   <div className="w-32 h-32 rounded-full bg-primary/20 animate-pulse" />
+                   <div className="absolute w-24 h-24 rounded-full bg-primary/30" />
+                   <div className="absolute w-16 h-16 rounded-full bg-primary flex items-center justify-center">
+                     <Heart className="w-8 h-8 text-white" />
+                   </div>
+                 </div>
+
+                 {/* Orbiting icons */}
+                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 bg-card rounded-xl shadow-lg p-3 animate-bounce" style={{ animationDuration: '3s' }}>
+                   <Eye className="w-6 h-6 text-blue-500" />
+                 </div>
+                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-2 bg-card rounded-xl shadow-lg p-3 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '0.5s' }}>
+                   <TrendingUp className="w-6 h-6 text-green-500" />
+                 </div>
+                 <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-2 bg-card rounded-xl shadow-lg p-3 animate-bounce" style={{ animationDuration: '4s', animationDelay: '1s' }}>
+                   <Zap className="w-6 h-6 text-yellow-500" />
+                 </div>
+                 <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2 bg-card rounded-xl shadow-lg p-3 animate-bounce" style={{ animationDuration: '3.2s', animationDelay: '1.5s' }}>
+                   <Sparkles className="w-6 h-6 text-purple-500" />
+                 </div>
+
+                 {/* Decorative elements */}
+                 <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-primary/50 rounded-full" />
+                 <div className="absolute bottom-1/4 left-1/4 w-3 h-3 bg-blue-400/50 rounded-full" />
+                 <div className="absolute top-1/3 left-1/6 w-2 h-2 bg-green-400/50 rounded-full" />
                </div>
             </div>
 
