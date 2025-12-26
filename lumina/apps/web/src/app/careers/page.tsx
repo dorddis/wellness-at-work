@@ -21,7 +21,7 @@ const openings = [
   },
   {
     title: 'Product Designer',
-    location: 'Singapore / Remote',
+    location: 'Remote (Global)',
     type: 'Full-time',
     description: 'Design beautiful, accessible interfaces for our desktop and web products.',
   },
@@ -101,7 +101,7 @@ export default function CareersPage() {
                   </p>
                 </div>
                 <a
-                  href={`mailto:careers@wellnessatwork.ai?subject=Application: ${encodeURIComponent(job.title)}`}
+                  href={`mailto:careers@getlumina.io?subject=Application: ${encodeURIComponent(job.title)}`}
                   className="btn bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 whitespace-nowrap"
                 >
                   Apply
@@ -123,7 +123,7 @@ export default function CareersPage() {
               like to contribute.
             </p>
             <a
-              href="mailto:careers@wellnessatwork.ai?subject=General Application"
+              href="mailto:careers@getlumina.io?subject=General Application"
               className="btn bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-3"
             >
               Get in Touch

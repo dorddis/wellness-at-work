@@ -23,7 +23,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground leading-relaxed">
-                By accessing or using Lumina (&quot;the Service&quot;), provided by Wellness at Work Pte. Ltd.
+                By accessing or using Lumina (&quot;the Service&quot;), provided by Lumina Technologies
                 (&quot;Company&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;), you agree to be bound by
                 these Terms of Service. If you do not agree to these terms, please do not use the Service.
               </p>
@@ -78,7 +78,7 @@ export default function TermsPage() {
               <h2 className="text-2xl font-semibold mb-4">6. Intellectual Property</h2>
               <p className="text-muted-foreground leading-relaxed">
                 The Service, including all content, features, and functionality, is owned by
-                Wellness at Work Pte. Ltd. and is protected by international copyright, trademark,
+                Lumina Technologies and is protected by international copyright, trademark,
                 and other intellectual property laws. You are granted a limited, non-exclusive license
                 to use the Service for its intended purpose.
               </p>
@@ -96,7 +96,7 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">8. Limitation of Liability</h2>
               <p className="text-muted-foreground leading-relaxed">
-                To the maximum extent permitted by law, Wellness at Work Pte. Ltd. shall not be liable
+                To the maximum extent permitted by law, Lumina Technologies shall not be liable
                 for any indirect, incidental, special, consequential, or punitive damages, or any loss
                 of profits or revenues, whether incurred directly or indirectly.
               </p>
@@ -123,8 +123,8 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">11. Governing Law</h2>
               <p className="text-muted-foreground leading-relaxed">
-                These Terms shall be governed by and construed in accordance with the laws of Singapore,
-                without regard to its conflict of law provisions.
+                These Terms shall be governed by and construed in accordance with applicable local laws,
+                without regard to conflict of law provisions.
               </p>
             </section>
 
@@ -132,13 +132,12 @@ export default function TermsPage() {
               <h2 className="text-2xl font-semibold mb-4">12. Contact</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For questions about these Terms, contact us at{' '}
-                <a href="mailto:legal@wellnessatwork.ai" className="text-primary hover:underline">
-                  legal@wellnessatwork.ai
+                <a href="mailto:legal@getlumina.io" className="text-primary hover:underline">
+                  legal@getlumina.io
                 </a>
               </p>
               <p className="text-muted-foreground mt-2">
-                Wellness at Work Pte. Ltd.<br />
-                Singapore
+                Lumina Technologies
               </p>
             </section>
           </div>

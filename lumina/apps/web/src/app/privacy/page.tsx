@@ -37,7 +37,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">Our Privacy Commitment</h2>
               <p className="text-muted-foreground leading-relaxed">
-                At Wellness at Work Pte. Ltd. (&quot;Lumina&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;),
+                At Lumina Technologies (&quot;Lumina&quot;, &quot;we&quot;, &quot;us&quot;, or &quot;our&quot;),
                 privacy is not just a policy &mdash; it&apos;s a core architectural decision. Lumina is designed
                 to be <strong>privacy-first by default</strong>. All computer vision processing happens
                 100% on your device. No images or video ever leave your computer.
@@ -121,13 +121,12 @@ export default function PrivacyPage() {
               <h2 className="text-2xl font-semibold mb-4">Contact Us</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For privacy-related inquiries, contact us at{' '}
-                <a href="mailto:privacy@wellnessatwork.ai" className="text-primary hover:underline">
-                  privacy@wellnessatwork.ai
+                <a href="mailto:privacy@getlumina.io" className="text-primary hover:underline">
+                  privacy@getlumina.io
                 </a>
               </p>
               <p className="text-muted-foreground mt-2">
-                Wellness at Work Pte. Ltd.<br />
-                Singapore
+                Lumina Technologies
               </p>
             </section>
           </div>
