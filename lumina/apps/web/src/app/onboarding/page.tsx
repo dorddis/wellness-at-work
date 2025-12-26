@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Eye, Building2, Users, Loader2, ArrowLeft, User, Sparkles } from 'lucide-react';
+import { Building2, Users, Loader2, ArrowLeft, User, Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 type Step = 'loading' | 'choice' | 'individual' | 'team-choice' | 'team-join' | 'team-create';
@@ -502,7 +503,13 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-6">
-            <Eye className="w-8 h-8 text-primary" />
+            <Image
+              src="/icon.png"
+              alt="Lumina"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
             <span className="text-2xl font-bold">Lumina</span>
           </div>
           <h1 className="text-2xl font-bold">Welcome!</h1>
@@ -520,7 +527,13 @@ export default function OnboardingPage() {
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Eye className="w-6 h-6 text-primary" />
+                  <Image
+                    src="/icon.png"
+                    alt="Lumina"
+                    width={24}
+                    height={24}
+                    className="w-6 h-6"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold text-primary">Continue to Dashboard</h3>

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, HelpCircle, ChevronDown, Mail, MessageCircle, Book, Shield, Zap, Monitor } from 'lucide-react';
+import { HelpCircle, ChevronDown, Mail, MessageCircle, Book, Shield, Zap, Monitor } from 'lucide-react';
+import Image from 'next/image';
 
 interface FAQItem {
   question: string;
@@ -79,7 +80,13 @@ export default function HelpPage() {
       <div className="bg-white border-b">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Eye className="w-8 h-8 text-primary" />
+            <Image
+              src="/icon.png"
+              alt="Lumina"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
             <span className="text-2xl font-bold">Lumina</span>
           </Link>
           <h1 className="text-3xl font-bold">Help Center</h1>

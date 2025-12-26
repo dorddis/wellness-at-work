@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Eye, Gift, Copy, CheckCircle, Share2, Twitter, Linkedin } from 'lucide-react';
+import { Gift, Copy, CheckCircle, Share2, Twitter, Linkedin } from 'lucide-react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 export default function ReferralPage() {
@@ -54,7 +55,13 @@ export default function ReferralPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Eye className="w-8 h-8 text-primary" />
+            <Image
+              src="/icon.png"
+              alt="Lumina"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
             <span className="text-2xl font-bold">Lumina</span>
           </Link>
           <h1 className="text-2xl font-bold">Get a free month</h1>

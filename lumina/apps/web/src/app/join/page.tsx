@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, Users, Loader2, CheckCircle } from 'lucide-react';
+import { Users, Loader2, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { getBaseUrl } from '@/lib/utils/url';
 
@@ -91,7 +92,13 @@ export default function JoinPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Eye className="w-8 h-8 text-primary" />
+            <Image
+              src="/icon.png"
+              alt="Lumina"
+              width={32}
+              height={32}
+              className="w-8 h-8"
+            />
             <span className="text-2xl font-bold">Lumina</span>
           </Link>
           <h1 className="text-2xl font-bold">Join your organization</h1>
