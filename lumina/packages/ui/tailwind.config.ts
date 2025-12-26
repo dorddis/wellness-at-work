@@ -1,6 +1,8 @@
 import type { Config } from 'tailwindcss';
 
 const config: Config = {
+  // CRITICAL: Use class-based dark mode so app controls theme, not system preference
+  darkMode: 'class',
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     // Include consuming apps

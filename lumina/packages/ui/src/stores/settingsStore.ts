@@ -71,6 +71,9 @@ export interface SettingsState {
   orgName: string | null;
   userRole: 'admin' | 'manager' | 'employee' | null;
 
+  // User tracking (for per-user onboarding)
+  lastUserId: string | null;
+
   // Actions
   setNotifications: (enabled: boolean) => void;
   setSoundEffects: (enabled: boolean) => void;
@@ -100,6 +103,7 @@ export interface SettingsState {
   setCloudSyncEnabled: (enabled: boolean) => void;
   setOrganization: (orgId: string, orgName: string, role: 'admin' | 'manager' | 'employee') => void;
   clearOrganization: () => void;
+  resetForNewUser: (userId: string, forceReset?: boolean) => void;
   reset: () => void;
 }
 
@@ -150,6 +154,8 @@ const initialState = DEMO_MODE ? {
   orgId: 'demo-org-123',
   orgName: 'Acme Corporation',
   userRole: 'employee' as const,
+  // User tracking
+  lastUserId: null,
 } : {
   notifications: true,
   soundEffects: true,
@@ -183,13 +189,15 @@ const initialState = DEMO_MODE ? {
     takeRegularBreaks: true,
   },
   // Appearance
-  theme: 'system' as const,
+  theme: 'light' as const,
   // Privacy & Sync
   cloudSyncEnabled: true, // Default: sync enabled (user can disable for local-only mode)
   // Organization
   orgId: null,
   orgName: null,
   userRole: null,
+  // User tracking
+  lastUserId: null,
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -242,11 +250,56 @@ export const useSettingsStore = create<SettingsState>()(
       clearOrganization: () =>
         set({ orgId: null, orgName: null, userRole: null }),
 
+      resetForNewUser: (userId: string, forceReset = false) =>
+        set((state) => {
+          // If same user and not forcing reset, do nothing
+          if (state.lastUserId === userId && !forceReset) {
+            return state;
+          }
+          // New user or forced reset: reset onboarding/tour state, preserve device settings
+          return {
+            ...state,
+            lastUserId: userId,
+            hasCompletedOnboarding: false,
+            onboardingStep: 0,
+            hasCompletedProductTour: false,
+            // Reset user-specific data
+            earCalibration: null,
+            earThreshold: 0.21,
+            wellnessGoals: {
+              reduceEyeStrain: true,
+              improvePosture: true,
+              takeRegularBreaks: true,
+            },
+            orgId: null,
+            orgName: null,
+            userRole: null,
+          };
+        }),
+
       reset: () => set(initialState),
     }),
     {
       name: 'lumina-settings',
-      version: 6, // v6: Added hasCompletedProductTour for product tour tracking
+      version: 8, // v8: Per-user onboarding tracking via lastUserId
+      migrate: (persistedState: unknown, version: number) => {
+        const state = persistedState as Partial<SettingsState>;
+
+        // Migration from v6 -> v7: Update theme default from 'system' to 'light'
+        if (version < 7) {
+          if (state.theme === 'system') {
+            state.theme = 'light';
+          }
+        }
+
+        // Migration from v7 -> v8: Add lastUserId for per-user onboarding
+        // Set to null - first auth will trigger resetForNewUser which sets it properly
+        if (version < 8) {
+          state.lastUserId = null;
+        }
+
+        return state as SettingsState;
+      },
     }
   )
 );
