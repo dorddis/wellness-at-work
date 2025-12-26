@@ -46,11 +46,11 @@ export function CurvedFeature() {
                   ))}
                 </ul>
 
-                <Link 
-                  href="/demo" 
+                <Link
+                  href="/download"
                   className="inline-flex items-center justify-center px-8 py-4 text-base font-medium transition-colors rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 w-fit group shadow-lg shadow-primary/20"
                 >
-                  Try It Yourself
+                  Download Free
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </div>
