@@ -16,6 +16,8 @@ export interface LuminaAPI {
     getUser: () => Promise<UserResult>;
     signOut: () => Promise<AuthResult>;
     joinOrg: (inviteCode: string) => Promise<JoinOrgResult>;
+    createOrg: (orgName: string) => Promise<CreateOrgResult>;
+    usePersonal: () => Promise<UsePersonalResult>;
     requestAccountDeletion: () => Promise<AccountDeletionResult>;
     // Deep link listeners for magic link auth
     onDeepLinkSuccess: (callback: (data: { user: any }) => void) => () => void;
@@ -303,6 +305,21 @@ interface JoinOrgResult {
   error?: string;
 }
 
+interface CreateOrgResult {
+  success: boolean;
+  orgId?: string;
+  orgName?: string;
+  orgSlug?: string;
+  error?: string;
+}
+
+interface UsePersonalResult {
+  success: boolean;
+  orgId?: string;
+  orgName?: string;
+  error?: string;
+}
+
 interface AccountDeletionResult {
   success: boolean;
   deletionDate?: string;
@@ -385,6 +402,8 @@ const luminaAPI: LuminaAPI = {
     getUser: () => ipcRenderer.invoke('auth:get-user'),
     signOut: () => ipcRenderer.invoke('auth:sign-out'),
     joinOrg: (inviteCode) => ipcRenderer.invoke('auth:join-org', inviteCode),
+    createOrg: (orgName) => ipcRenderer.invoke('auth:create-org', orgName),
+    usePersonal: () => ipcRenderer.invoke('auth:use-personal'),
     requestAccountDeletion: () => ipcRenderer.invoke('auth:request-account-deletion'),
     // Deep link listeners for magic link auth
     onDeepLinkSuccess: (callback) => {

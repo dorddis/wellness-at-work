@@ -4,17 +4,26 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useSettingsStore } from '@lumina/ui';
 import type { AuthUser } from '../types';
 import { SyncService } from '../services';
 
 // Dev mode auth bypass
 const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === 'true';
 
+// Test org choice screen (set to true to show org-choice after bypass auth)
+const TEST_ORG_CHOICE = import.meta.env.VITE_TEST_ORG_CHOICE === 'true';
+
+// Force onboarding reset on every login (for demos)
+// TODO: Set to false after demo period
+const FORCE_ONBOARDING = true;
+
 // Mock user for dev mode (when VITE_BYPASS_AUTH=true)
+// If TEST_ORG_CHOICE=true, user has no org (triggers org-choice screen)
 const DEV_USER: AuthUser = {
   id: 'dev-user-00000000-0000-0000-0000-000000000000',
   email: 'dev@lumina.local',
-  organization: {
+  organization: TEST_ORG_CHOICE ? null : {
     id: 'dev-org-00000000-0000-0000-0000-000000000000',
     name: 'Development Org',
     slug: 'dev-org',
@@ -39,6 +48,7 @@ export interface UseAuthReturn {
 export function useAuth(): UseAuthReturn {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const resetForNewUser = useSettingsStore((s) => s.resetForNewUser);
 
   // Check auth on mount
   useEffect(() => {
@@ -46,6 +56,8 @@ export function useAuth(): UseAuthReturn {
       // Dev mode bypass - skip auth entirely
       if (BYPASS_AUTH) {
         console.log('[Auth] Bypassing auth - using dev user');
+        // Force reset onboarding every time in dev mode (for demos)
+        resetForNewUser(DEV_USER.id, true);
         setAuthUser(DEV_USER);
         setAuthChecked(true);
         return;
@@ -54,6 +66,8 @@ export function useAuth(): UseAuthReturn {
       try {
         const result = await window.lumina.auth.getUser();
         if (result.user && result.user.organization) {
+          // Reset onboarding for new user (or force for demos)
+          resetForNewUser(result.user.id, FORCE_ONBOARDING);
           setAuthUser(result.user);
           // Set sync credentials
           await SyncService.setCredentials(
@@ -68,15 +82,17 @@ export function useAuth(): UseAuthReturn {
       }
     }
     checkAuth();
-  }, []);
+  }, [resetForNewUser]);
 
   // Handle auth complete (called after successful login)
   const handleAuthComplete = useCallback(async (user: AuthUser) => {
+    // Reset onboarding for new user (or force for demos)
+    resetForNewUser(user.id, FORCE_ONBOARDING);
     setAuthUser(user);
     if (user.organization) {
       await SyncService.setCredentials(user.organization.id, user.id);
     }
-  }, []);
+  }, [resetForNewUser]);
 
   // Handle sign out
   const handleSignOut = useCallback(async () => {

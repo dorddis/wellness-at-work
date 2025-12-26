@@ -1107,8 +1107,9 @@ export default function App() {
     return <AppLoader message="Checking authentication..." />;
   }
 
-  // Not authenticated - show auth screen
-  if (!authUser) {
+  // Not authenticated or no organization - show auth screen
+  // (AuthScreen handles org-choice for authenticated users without an org)
+  if (!authUser || !authUser.organization) {
     return <AuthScreen onAuthComplete={handleAuthComplete} />;
   }
 

@@ -572,6 +572,147 @@ export function setupIPC(
     }
   });
 
+  // Create a new organization (user becomes admin)
+  ipcMain.handle('auth:create-org', async (_, orgName: string) => {
+    try {
+      const supabase = getSupabase();
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      // Generate slug from name (lowercase, replace spaces with dashes, remove special chars)
+      const baseSlug = orgName
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
+
+      // Add random suffix to ensure uniqueness
+      const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 8)}`;
+
+      // Create organization
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: orgName.trim(),
+          slug,
+          privacy_mode: 'anonymous',
+          subscription_tier: 'trial',
+        })
+        .select('id, name, slug')
+        .single();
+
+      if (orgError || !org) {
+        return { success: false, error: orgError?.message ?? 'Failed to create organization' };
+      }
+
+      // Add user as admin
+      const { error: memberError } = await supabase.from('org_members').insert({
+        org_id: org.id,
+        user_id: user.id,
+        role: 'admin',
+        department: null,
+      });
+
+      if (memberError) {
+        // Rollback org creation on failure
+        await supabase.from('organizations').delete().eq('id', org.id);
+        return { success: false, error: memberError.message };
+      }
+
+      // Set sync credentials
+      syncService.setCredentials(org.id, user.id);
+
+      return { success: true, orgId: org.id, orgName: org.name, orgSlug: org.slug };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
+  // Use app personally (creates a personal organization for the user)
+  ipcMain.handle('auth:use-personal', async () => {
+    try {
+      const supabase = getSupabase();
+
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      // Check if user already has a personal org
+      const personalSlug = `personal-${user.id.substring(0, 8)}`;
+      const { data: existingOrg } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('slug', personalSlug)
+        .single();
+
+      if (existingOrg) {
+        // Already has personal org - just ensure membership
+        const { data: existing } = await supabase
+          .from('org_members')
+          .select('id')
+          .eq('org_id', existingOrg.id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!existing) {
+          await supabase.from('org_members').insert({
+            org_id: existingOrg.id,
+            user_id: user.id,
+            role: 'admin',
+            department: null,
+          });
+        }
+
+        syncService.setCredentials(existingOrg.id, user.id);
+        return { success: true, orgId: existingOrg.id, orgName: existingOrg.name };
+      }
+
+      // Create personal organization
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: 'Personal',
+          slug: personalSlug,
+          privacy_mode: 'anonymous',
+          subscription_tier: 'trial',
+        })
+        .select('id, name')
+        .single();
+
+      if (orgError || !org) {
+        return { success: false, error: orgError?.message ?? 'Failed to create personal space' };
+      }
+
+      // Add user as admin
+      const { error: memberError } = await supabase.from('org_members').insert({
+        org_id: org.id,
+        user_id: user.id,
+        role: 'admin',
+        department: null,
+      });
+
+      if (memberError) {
+        await supabase.from('organizations').delete().eq('id', org.id);
+        return { success: false, error: memberError.message };
+      }
+
+      // Set sync credentials
+      syncService.setCredentials(org.id, user.id);
+
+      return { success: true, orgId: org.id, orgName: org.name };
+    } catch (err) {
+      return { success: false, error: String(err) };
+    }
+  });
+
   // Request account deletion (30-day grace period)
   // The Edge Function 'process-account-deletions' runs daily at 3 AM UTC
   // to permanently delete accounts marked for deletion > 30 days ago.
