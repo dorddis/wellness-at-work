@@ -1,11 +1,17 @@
 import { Webhook } from "@creem_io/nextjs";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Use service role key for webhook handlers (bypasses RLS)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// Lazy-initialize Supabase client (env vars not available at build time)
+let _supabase: SupabaseClient | null = null;
+function getSupabaseAdmin() {
+  if (!_supabase) {
+    _supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+  }
+  return _supabase;
+}
 
 export const POST = Webhook({
   webhookSecret: process.env.CREEM_WEBHOOK_SECRET!,
@@ -20,7 +26,7 @@ export const POST = Webhook({
     console.log(`[Creem Webhook] Checkout completed: org=${orgId}, customer=${customer.email}, product=${product.name}`);
 
     // Store Creem customer ID on the org
-    await supabase
+    await getSupabaseAdmin()
       .from("organizations")
       .update({
         creem_customer_id: customer.id,
@@ -42,7 +48,7 @@ export const POST = Webhook({
     const tier = product.name?.toLowerCase().includes("pro") ? "pro" : "starter";
     const seatLimit = tier === "pro" ? 200 : 25;
 
-    await supabase
+    await getSupabaseAdmin()
       .from("organizations")
       .update({
         subscription_status: "active",
@@ -63,7 +69,7 @@ export const POST = Webhook({
 
     console.log(`[Creem Webhook] Revoke access: org=${orgId}, reason=${reason}`);
 
-    await supabase
+    await getSupabaseAdmin()
       .from("organizations")
       .update({
         subscription_status: reason === "paused" ? "paused" : "expired",
@@ -83,7 +89,7 @@ export const POST = Webhook({
     const orgId = data?.metadata?.referenceId as string;
     if (!orgId) return;
 
-    await supabase
+    await getSupabaseAdmin()
       .from("organizations")
       .update({ subscription_status: "past_due" })
       .eq("id", orgId);
