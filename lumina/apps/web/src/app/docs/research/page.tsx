@@ -50,7 +50,7 @@ const categories: ResearchCategory[] = [
     id: 'ear-blink-detection',
     icon: Eye,
     title: 'Eye Aspect Ratio & Blink Detection',
-    accent: 'from-blue-500/20 to-cyan-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'The EAR algorithm is the core of Lumina\'s blink tracking. By measuring the ratio of vertical to horizontal eye landmarks, we detect blinks in real-time with high accuracy and minimal computational cost.',
     papers: [
@@ -88,7 +88,7 @@ const categories: ResearchCategory[] = [
     id: 'computer-vision-syndrome',
     icon: Monitor,
     title: 'Computer Vision Syndrome & Digital Eye Strain',
-    accent: 'from-violet-500/20 to-purple-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Computer Vision Syndrome (CVS) affects an estimated 66% of knowledge workers. Understanding its prevalence and mechanisms is foundational to Lumina\'s approach to proactive wellness.',
     papers: [
@@ -126,7 +126,7 @@ const categories: ResearchCategory[] = [
     id: 'blink-rate-screen',
     icon: Activity,
     title: 'Blink Rate & Screen Use',
-    accent: 'from-emerald-500/20 to-teal-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Research consistently shows that concentrated screen work suppresses blink rate, sometimes by over 60%. Lumina monitors your personal baseline and alerts you when your rate drops below your norm.',
     papers: [
@@ -163,7 +163,7 @@ const categories: ResearchCategory[] = [
     id: '20-20-20-rule',
     icon: Timer,
     title: '20-20-20 Rule & Break Strategies',
-    accent: 'from-amber-500/20 to-orange-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'The popular 20-20-20 rule has mixed clinical evidence. Lumina uses adaptive break timing based on your actual eye strain indicators rather than rigid intervals.',
     papers: [
@@ -201,7 +201,7 @@ const categories: ResearchCategory[] = [
     id: 'perclos-fatigue',
     icon: Brain,
     title: 'PERCLOS & Fatigue Detection',
-    accent: 'from-rose-500/20 to-pink-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'PERCLOS (Percentage of Eye Closure) is a NHTSA-validated drowsiness metric. Lumina adapts this automotive safety technology for workplace fatigue detection.',
     papers: [
@@ -230,7 +230,7 @@ const categories: ResearchCategory[] = [
     id: 'posture-head-pose',
     icon: Activity,
     title: 'Posture Monitoring via Facial Landmarks',
-    accent: 'from-sky-500/20 to-indigo-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Lumina estimates head pose and screen distance from facial landmarks alone -- no body camera needed. This enables ergonomic nudges without additional hardware.',
     papers: [
@@ -267,7 +267,7 @@ const categories: ResearchCategory[] = [
     id: 'mediapipe',
     icon: Beaker,
     title: 'MediaPipe Face Mesh',
-    accent: 'from-lime-500/20 to-green-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Lumina is built on Google\'s MediaPipe Face Mesh, which provides 468 3D facial landmarks in real-time on consumer hardware. This enables all of our monitoring without cloud processing.',
     papers: [
@@ -287,7 +287,7 @@ const categories: ResearchCategory[] = [
     id: 'workplace-wellness-roi',
     icon: TrendingUp,
     title: 'Workplace Wellness ROI',
-    accent: 'from-emerald-500/20 to-cyan-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Enterprise customers need data on returns. Research shows wellness programs yield $3-6 in savings for every $1 invested through reduced absenteeism and healthcare costs.',
     papers: [
@@ -325,7 +325,7 @@ const categories: ResearchCategory[] = [
     id: 'blue-light-circadian',
     icon: Sun,
     title: 'Blue Light & Circadian Rhythm',
-    accent: 'from-amber-500/20 to-yellow-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Evening screen exposure suppresses melatonin and disrupts sleep. Lumina tracks cumulative screen time and can recommend wind-down periods to protect your circadian rhythm.',
     papers: [
@@ -353,7 +353,7 @@ const categories: ResearchCategory[] = [
     id: 'break-productivity',
     icon: Heart,
     title: 'Break Frequency & Productivity',
-    accent: 'from-fuchsia-500/20 to-pink-500/20',
+    accent: 'from-muted/80 to-muted/40',
     description:
       'Counter-intuitively, more frequent breaks improve productivity. Lumina helps teams take better breaks at the right times, boosting both wellness and output.',
     papers: [
@@ -627,8 +627,8 @@ export default function ResearchPage() {
           </div>
 
           {/* ===================== HOW WE USE THIS ===================== */}
-          <section className="mt-20 relative overflow-hidden rounded-2xl border border-primary/20">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-primary/5 to-background" />
+          <section className="mt-20 relative overflow-hidden rounded-2xl border border-border">
+            <div className="absolute inset-0 bg-gradient-to-br from-muted/80 via-muted/40 to-background" />
             <div className="relative z-10 p-8 md:p-12">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
