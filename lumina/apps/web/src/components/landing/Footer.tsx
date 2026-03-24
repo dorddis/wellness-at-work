@@ -27,7 +27,7 @@ const footerLinks = {
   resources: [
     { label: 'Documentation', href: '/docs' },
     { label: 'API Reference', href: '/docs/api' },
-    { label: 'Research Papers', href: 'https://www.researchgate.net/publication/397122529_Lumina_AI_Real-Time_Eye_Wellness_Monitoring_Using_Advanced_Computer_Vision_and_Machine_Learning', external: true },
+    { label: 'Research Papers', href: '/docs/research' },
     { label: 'Help Center', href: '/help' },
   ],
   company: [

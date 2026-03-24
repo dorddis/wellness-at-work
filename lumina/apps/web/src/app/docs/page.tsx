@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowLeft, Book, Download, Settings, Eye, Shield, Users, Code, ArrowRight, Search, Monitor, Zap } from 'lucide-react';
+import { ArrowLeft, Book, BookOpen, Download, Settings, Eye, Shield, Users, Code, ArrowRight, Search, Monitor, Zap } from 'lucide-react';
 import { Nav } from '@/components/landing/Nav';
 import { Footer } from '@/components/landing/Footer';
 
@@ -27,6 +27,12 @@ const quickLinks = [
     title: 'API Reference',
     description: 'Integrate Lumina with your enterprise systems',
     href: '/docs/api',
+  },
+  {
+    icon: BookOpen,
+    title: 'Research',
+    description: 'Peer-reviewed papers behind our technology',
+    href: '/docs/research',
   },
 ];
 
@@ -192,7 +198,7 @@ export default function DocsPage() {
           </div>
 
           {/* Quick Links */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-16">
             {quickLinks.map((link) => (
               <Link
                 key={link.title}
