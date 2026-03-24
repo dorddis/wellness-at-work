@@ -459,7 +459,7 @@ export function setupIPC(
         return { user: null, error: userError?.message ?? 'Not authenticated' };
       }
 
-      // Get organization membership
+      // Get organization membership (most recently joined if multiple)
       const { data: membership } = await supabase
         .from('org_members')
         .select(`
@@ -472,7 +472,9 @@ export function setupIPC(
           )
         `)
         .eq('user_id', user.id)
-        .single();
+        .order('joined_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       const org = membership?.organizations as {
         id: string;
