@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Nav } from '@/components/landing/Nav';
 import { Footer } from '@/components/landing/Footer';
+import { CategoryNav } from './CategoryNav';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -508,17 +509,7 @@ export default function ResearchPage() {
         {/* ===================== CATEGORY NAV ===================== */}
         <section className="border-y border-border bg-muted/30 sticky top-16 z-30 backdrop-blur-sm">
           <div className="container max-w-6xl py-3">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
-              {categories.map((cat) => (
-                <a
-                  key={cat.id}
-                  href={`#${cat.id}`}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium border border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground transition-all whitespace-nowrap flex-shrink-0"
-                >
-                  {cat.title}
-                </a>
-              ))}
-            </div>
+            <CategoryNav categories={categories.map(c => ({ id: c.id, title: c.title }))} />
           </div>
         </section>
 
