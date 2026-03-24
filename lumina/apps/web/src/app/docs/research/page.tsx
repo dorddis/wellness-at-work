@@ -524,72 +524,92 @@ export default function ResearchPage() {
 
         {/* ===================== RESEARCH SECTIONS ===================== */}
         <div className="container max-w-6xl pt-16">
-          <div className="space-y-8">
+          <div className="space-y-12">
             {categories.map((category, catIndex) => {
               const stat = keyStats.find((s) => s.afterSection === catIndex);
+              const isReversed = catIndex % 2 === 1;
+
+              const infoPanel = (
+                <div className={`relative rounded-2xl bg-gradient-to-br ${category.accent} p-8 overflow-hidden h-full flex flex-col`}>
+                  <div className="relative z-10 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-background/80 backdrop-blur flex items-center justify-center mb-5">
+                      <category.icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-3">{category.title}</h2>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {category.description}
+                    </p>
+                    <div className="mt-6 pt-5 border-t border-foreground/5">
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground/60 mb-1">Papers in this area</p>
+                      <p className="text-3xl font-bold text-primary">{category.papers.length}</p>
+                    </div>
+                  </div>
+                  {/* Decorative SVG */}
+                  {catIndex === 0 && <EyeIllustration className="absolute right-4 bottom-4 w-32 h-24 text-primary opacity-30" />}
+                  {catIndex === 4 && <BrainWave className="absolute right-2 bottom-6 w-44 h-14 text-primary opacity-40" />}
+                  {catIndex !== 0 && catIndex !== 4 && (
+                    <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-primary/5 rounded-full blur-2xl" />
+                  )}
+                </div>
+              );
+
+              const papersPanel = (
+                <div className="grid gap-3">
+                  {category.papers.map((paper) => (
+                    <a
+                      key={paper.title}
+                      href={paper.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`group block p-5 rounded-xl border transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                        paper.featured
+                          ? 'border-primary/30 bg-primary/[0.02] hover:border-primary/50'
+                          : 'border-border hover:border-primary/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            {paper.featured && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                                <Sparkles className="w-3 h-3" />
+                                Key Paper
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground font-mono">{paper.year}</span>
+                          </div>
+                          <h3 className="font-semibold text-sm leading-snug group-hover:text-primary transition-colors mb-1">
+                            {paper.title}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {paper.authors} &middot;{' '}
+                            <span className="italic">{paper.journal}</span>
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0 w-7 h-7 rounded-lg border border-border group-hover:border-primary/30 group-hover:bg-primary/5 flex items-center justify-center transition-all">
+                          <ExternalLink className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              );
+
               return (
                 <div key={category.id}>
                   <section id={category.id} className="scroll-mt-32">
-                    {/* Section header with gradient accent */}
-                    <div className={`relative rounded-2xl bg-gradient-to-r ${category.accent} p-8 mb-6 overflow-hidden`}>
-                      <div className="relative z-10 flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-background/80 backdrop-blur flex items-center justify-center flex-shrink-0">
-                          <category.icon className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <h2 className="text-2xl font-bold mb-2">{category.title}</h2>
-                          <p className="text-muted-foreground max-w-2xl leading-relaxed">
-                            {category.description}
-                          </p>
-                        </div>
-                      </div>
-                      {/* Decorative element per category */}
-                      {catIndex === 0 && <EyeIllustration className="absolute right-8 top-4 w-28 h-20 text-primary opacity-40" />}
-                      {catIndex === 4 && <BrainWave className="absolute right-4 bottom-2 w-48 h-16 text-primary opacity-50" />}
-                    </div>
-
-                    {/* Paper cards */}
-                    <div className="grid gap-4 mb-4">
-                      {category.papers.map((paper) => (
-                        <a
-                          key={paper.title}
-                          href={paper.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`group block p-6 rounded-xl border transition-all hover:shadow-lg hover:-translate-y-0.5 ${
-                            paper.featured
-                              ? 'border-primary/30 bg-primary/[0.02] hover:border-primary/50'
-                              : 'border-border hover:border-primary/30'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                {paper.featured && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                                    <Sparkles className="w-3 h-3" />
-                                    Key Paper
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground font-mono">{paper.year}</span>
-                              </div>
-                              <h3 className="font-semibold mb-1.5 leading-snug group-hover:text-primary transition-colors">
-                                {paper.title}
-                              </h3>
-                              <p className="text-sm text-muted-foreground mb-2">
-                                {paper.authors} &middot;{' '}
-                                <span className="italic">{paper.journal}</span>
-                              </p>
-                              <p className="text-sm text-muted-foreground/80 leading-relaxed">
-                                {paper.summary}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0 mt-1 w-8 h-8 rounded-lg border border-border group-hover:border-primary/30 group-hover:bg-primary/5 flex items-center justify-center transition-all">
-                              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                            </div>
-                          </div>
-                        </a>
-                      ))}
+                    <div className={`grid lg:grid-cols-5 gap-5 ${isReversed ? '' : ''}`}>
+                      {isReversed ? (
+                        <>
+                          <div className="lg:col-span-3">{papersPanel}</div>
+                          <div className="lg:col-span-2">{infoPanel}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="lg:col-span-2">{infoPanel}</div>
+                          <div className="lg:col-span-3">{papersPanel}</div>
+                        </>
+                      )}
                     </div>
                   </section>
 
