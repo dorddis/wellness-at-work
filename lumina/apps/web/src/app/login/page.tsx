@@ -83,7 +83,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <Image
-              src="/images/illustrations/logo-circular.png"
+              src="/icon.png"
               alt="Lumina"
               width={32}
               height={32}
