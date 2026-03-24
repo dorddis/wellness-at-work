@@ -13,6 +13,7 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@creem_io/nextjs": "^0.6.0",
     "@lumina/api": "workspace:*",
     "@lumina/ui": "workspace:*",
     "@supabase/ssr": "^0.5.0",

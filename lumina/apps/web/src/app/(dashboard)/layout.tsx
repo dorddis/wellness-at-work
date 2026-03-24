@@ -20,6 +20,7 @@ import {
   Trophy,
   Plug,
   TrendingUp,
+  CreditCard,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from '../providers';
 
@@ -63,6 +64,7 @@ const navSections: NavSection[] = [
     items: [
       { href: '/admin/alerts', label: 'Alerts', icon: <Bell className="w-5 h-5" />, adminOnly: true },
       { href: '/admin/integrations', label: 'Integrations', icon: <Plug className="w-5 h-5" />, adminOnly: true },
+      { href: '/admin/billing', label: 'Billing', icon: <CreditCard className="w-5 h-5" />, adminOnly: true },
       { href: '/admin/settings', label: 'Settings', icon: <Settings className="w-5 h-5" />, adminOnly: true },
     ],
   },

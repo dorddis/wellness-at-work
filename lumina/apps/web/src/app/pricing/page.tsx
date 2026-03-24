@@ -24,7 +24,7 @@ const tiers = [
   {
     name: 'Pro',
     description: 'For growing teams that want the full wellness suite',
-    price: '$8',
+    price: '$12',
     priceDetail: '/user/mo',
     features: [
       'Everything in Starter',

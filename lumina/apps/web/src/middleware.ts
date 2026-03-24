@@ -145,6 +145,36 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
     }
+
+    // Trial/subscription enforcement (skip for billing page itself)
+    if (!pathname.startsWith('/admin/billing')) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('subscription_status, trial_ends_at')
+        .eq('id', membership.org_id)
+        .single();
+
+      if (org) {
+        const isTrialing = org.subscription_status === 'trialing';
+        const isActive = org.subscription_status === 'active';
+
+        if (isTrialing && org.trial_ends_at) {
+          const trialEnd = new Date(org.trial_ends_at);
+          const now = new Date();
+          if (now > trialEnd) {
+            // Trial expired - redirect to billing
+            console.log('[Middleware] Trial expired, redirecting to billing');
+            return NextResponse.redirect(new URL('/admin/billing', request.url));
+          }
+        }
+
+        if (!isTrialing && !isActive) {
+          // No active subscription - redirect to billing
+          console.log('[Middleware] No active subscription, redirecting to billing');
+          return NextResponse.redirect(new URL('/admin/billing', request.url));
+        }
+      }
+    }
   }
 
   return response;

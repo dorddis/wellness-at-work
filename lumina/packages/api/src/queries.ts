@@ -453,8 +453,28 @@ export interface OrgSettings {
   name: string;
   slug: string;
   privacyMode: 'anonymous' | 'named' | 'manager_only';
-  subscriptionTier: 'trial' | 'starter' | 'enterprise';
+  subscriptionTier: 'trial' | 'starter' | 'pro' | 'enterprise';
   alertSettings: AlertSettings;
+  // Billing fields
+  subscriptionStatus: 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired' | 'paused' | 'unpaid';
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  creemCustomerId: string | null;
+  creemSubscriptionId: string | null;
+  billingEmail: string | null;
+  seatLimit: number;
+}
+
+export interface BillingInfo {
+  subscriptionStatus: OrgSettings['subscriptionStatus'];
+  subscriptionTier: OrgSettings['subscriptionTier'];
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  creemCustomerId: string | null;
+  billingEmail: string | null;
+  seatLimit: number;
+  seatCount: number;
+  trialDaysLeft: number | null;
 }
 
 const defaultAlertSettings: AlertSettings = {
@@ -473,7 +493,7 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings | null>
 
   const { data, error } = await supabase
     .from('organizations')
-    .select('id, name, slug, privacy_mode, subscription_tier, alert_settings')
+    .select('id, name, slug, privacy_mode, subscription_tier, alert_settings, subscription_status, trial_ends_at, current_period_end, creem_customer_id, creem_subscription_id, billing_email, seat_limit')
     .eq('id', orgId)
     .single();
 
@@ -489,6 +509,13 @@ export async function getOrgSettings(orgId: string): Promise<OrgSettings | null>
     privacyMode: data.privacy_mode as OrgSettings['privacyMode'],
     subscriptionTier: data.subscription_tier as OrgSettings['subscriptionTier'],
     alertSettings: (data.alert_settings as unknown as AlertSettings) ?? defaultAlertSettings,
+    subscriptionStatus: (data.subscription_status ?? 'trialing') as OrgSettings['subscriptionStatus'],
+    trialEndsAt: data.trial_ends_at ?? null,
+    currentPeriodEnd: data.current_period_end ?? null,
+    creemCustomerId: data.creem_customer_id ?? null,
+    creemSubscriptionId: data.creem_subscription_id ?? null,
+    billingEmail: data.billing_email ?? null,
+    seatLimit: data.seat_limit ?? 5,
   };
 }
 
@@ -1854,4 +1881,73 @@ export async function disconnectIntegration(
   }
 
   return { success: true };
+}
+
+// ============================================================================
+// Billing
+// ============================================================================
+
+/**
+ * Get billing info for an organization (includes seat count)
+ */
+export async function getBillingInfo(orgId: string): Promise<BillingInfo | null> {
+  const supabase = getSupabase();
+
+  // Get org settings + member count in parallel
+  const [orgResult, memberCountResult] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('subscription_status, subscription_tier, trial_ends_at, current_period_end, creem_customer_id, billing_email, seat_limit')
+      .eq('id', orgId)
+      .single(),
+    supabase
+      .from('org_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId),
+  ]);
+
+  if (orgResult.error || !orgResult.data) {
+    console.error('Failed to get billing info:', orgResult.error);
+    return null;
+  }
+
+  const org = orgResult.data;
+  const seatCount = memberCountResult.count ?? 0;
+
+  // Calculate trial days left
+  let trialDaysLeft: number | null = null;
+  if (org.subscription_status === 'trialing' && org.trial_ends_at) {
+    const now = new Date();
+    const trialEnd = new Date(org.trial_ends_at);
+    const diff = trialEnd.getTime() - now.getTime();
+    trialDaysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  return {
+    subscriptionStatus: (org.subscription_status ?? 'trialing') as BillingInfo['subscriptionStatus'],
+    subscriptionTier: (org.subscription_tier ?? 'trial') as BillingInfo['subscriptionTier'],
+    trialEndsAt: org.trial_ends_at ?? null,
+    currentPeriodEnd: org.current_period_end ?? null,
+    creemCustomerId: org.creem_customer_id ?? null,
+    billingEmail: org.billing_email ?? null,
+    seatLimit: org.seat_limit ?? 5,
+    seatCount,
+    trialDaysLeft,
+  };
+}
+
+/**
+ * Check if an org has an active subscription or valid trial
+ */
+export async function hasActiveAccess(orgId: string): Promise<boolean> {
+  const billing = await getBillingInfo(orgId);
+  if (!billing) return false;
+
+  if (billing.subscriptionStatus === 'active') return true;
+
+  if (billing.subscriptionStatus === 'trialing' && billing.trialDaysLeft !== null && billing.trialDaysLeft > 0) {
+    return true;
+  }
+
+  return false;
 }

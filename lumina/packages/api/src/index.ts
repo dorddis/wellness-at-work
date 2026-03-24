@@ -102,6 +102,11 @@ export {
   type ChallengeParticipant,
   // Types - Analytics
   type AnalyticsMetrics,
+  // Billing
+  getBillingInfo,
+  hasActiveAccess,
   // Types - Integrations
   type Integration,
+  // Types - Billing
+  type BillingInfo,
 } from './queries';
