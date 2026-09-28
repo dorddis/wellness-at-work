@@ -17,8 +17,8 @@ import { CreemCheckout, CreemPortal } from '@creem_io/nextjs';
 import { getBillingInfo, type BillingInfo } from '@lumina/api';
 import { useAuth } from '../../../providers';
 
-const CREEM_PRODUCT_STARTER = 'prod_56nknnNggE72huMOUqTjfe';
-const CREEM_PRODUCT_PRO = 'prod_76B3Bss2pIZmPSTVEqJJud';
+const CREEM_PRODUCT_STARTER = process.env.NEXT_PUBLIC_CREEM_PRODUCT_STARTER ?? 'prod_56nknnNggE72huMOUqTjfe';
+const CREEM_PRODUCT_PRO = process.env.NEXT_PUBLIC_CREEM_PRODUCT_PRO ?? 'prod_76B3Bss2pIZmPSTVEqJJud';
 
 function StatusBadge({ status }: { status: BillingInfo['subscriptionStatus'] }) {
   const config = {

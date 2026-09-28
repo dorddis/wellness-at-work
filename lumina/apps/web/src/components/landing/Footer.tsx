@@ -84,17 +84,12 @@ export function Footer() {
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.href}>
-                  <a
+                  <Link
                     href={link.href}
-                    target={link.external ? '_blank' : undefined}
-                    rel={link.external ? 'noopener noreferrer' : undefined}
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {link.label}
-                    {link.external && (
-                      <span className="ml-1 text-xs">↗</span>
-                    )}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -355,30 +355,51 @@ export type Database = {
       organizations: {
         Row: {
           alert_settings: Json | null
+          billing_email: string | null
           created_at: string
+          creem_customer_id: string | null
+          creem_subscription_id: string | null
+          current_period_end: string | null
           id: string
           name: string
           privacy_mode: string
+          seat_limit: number
           slug: string
+          subscription_status: string
           subscription_tier: string
+          trial_ends_at: string | null
         }
         Insert: {
           alert_settings?: Json | null
+          billing_email?: string | null
           created_at?: string
+          creem_customer_id?: string | null
+          creem_subscription_id?: string | null
+          current_period_end?: string | null
           id?: string
           name: string
           privacy_mode?: string
+          seat_limit?: number
           slug: string
+          subscription_status?: string
           subscription_tier?: string
+          trial_ends_at?: string | null
         }
         Update: {
           alert_settings?: Json | null
+          billing_email?: string | null
           created_at?: string
+          creem_customer_id?: string | null
+          creem_subscription_id?: string | null
+          current_period_end?: string | null
           id?: string
           name?: string
           privacy_mode?: string
+          seat_limit?: number
           slug?: string
+          subscription_status?: string
           subscription_tier?: string
+          trial_ends_at?: string | null
         }
         Relationships: []
       }

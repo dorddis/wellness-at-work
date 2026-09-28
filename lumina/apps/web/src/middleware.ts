@@ -106,6 +106,27 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // Payment routes - require authentication and admin role
+  if (pathname === '/checkout' || pathname === '/portal') {
+    if (!user) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    const { data: memberships } = await supabase
+      .from('org_members')
+      .select('role, org_id')
+      .eq('user_id', user.id)
+      .order('joined_at', { ascending: false })
+      .limit(1);
+
+    const membership = memberships?.[0];
+    if (!membership || (membership.role !== 'admin' && membership.role !== 'manager')) {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    return response;
+  }
+
   // Protected routes - require authentication and organization
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
     if (!user) {
@@ -146,8 +167,9 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Trial/subscription enforcement (skip for billing page itself)
-    if (!pathname.startsWith('/admin/billing')) {
+    // Trial/subscription enforcement
+    // Skip for billing page (admins) and subscription-expired page (employees)
+    if (!pathname.startsWith('/admin/billing') && pathname !== '/subscription-expired') {
       const { data: org } = await supabase
         .from('organizations')
         .select('subscription_status, trial_ends_at')
@@ -157,21 +179,31 @@ export async function middleware(request: NextRequest) {
       if (org) {
         const isTrialing = org.subscription_status === 'trialing';
         const isActive = org.subscription_status === 'active';
+        const isAdmin = membership.role === 'admin' || membership.role === 'manager';
+
+        let needsBillingRedirect = false;
 
         if (isTrialing && org.trial_ends_at) {
           const trialEnd = new Date(org.trial_ends_at);
-          const now = new Date();
-          if (now > trialEnd) {
-            // Trial expired - redirect to billing
-            console.log('[Middleware] Trial expired, redirecting to billing');
-            return NextResponse.redirect(new URL('/admin/billing', request.url));
+          if (new Date() > trialEnd) {
+            needsBillingRedirect = true;
           }
         }
 
         if (!isTrialing && !isActive) {
-          // No active subscription - redirect to billing
-          console.log('[Middleware] No active subscription, redirecting to billing');
-          return NextResponse.redirect(new URL('/admin/billing', request.url));
+          needsBillingRedirect = true;
+        }
+
+        if (needsBillingRedirect) {
+          if (isAdmin) {
+            // Admins go to billing page to subscribe
+            console.log('[Middleware] Subscription inactive, admin -> billing');
+            return NextResponse.redirect(new URL('/admin/billing', request.url));
+          } else {
+            // Non-admins see a "contact your admin" page (avoids infinite redirect loop)
+            console.log('[Middleware] Subscription inactive, employee -> subscription-expired');
+            return NextResponse.redirect(new URL('/subscription-expired', request.url));
+          }
         }
       }
     }
